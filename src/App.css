@@ -1,0 +1,192 @@
+/* Estilos base (pantalla grande) */
+html, body, #root {
+  min-height: 100vh; 
+  width: 100%;
+  margin: 0;
+  background-color: #F3F3F3;
+  font-family: sans-serif;
+}
+
+.contenido {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2rem;
+  padding: 2rem;
+  padding-top: 6rem;
+  flex-wrap: nowrap;
+}
+
+.izquierda {
+  margin-left: 1rem;
+}
+
+h1 {
+  text-align: center;
+  font-size: 4rem;
+  color: #213547;
+  font-weight: bold;
+}
+
+.fractal {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  width: 13rem;
+  height: auto;
+  z-index: 1000;
+}
+
+.formulario {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 2rem;
+}
+
+.pregunta {
+  width: 38rem;
+  height: 4rem;
+  font-size: 1.2rem;
+}
+
+.Boton {
+  width: 8rem;
+  height: 3rem;
+  background-color: #213547;
+  color: #fff;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.Boton:hover {
+  background-color: blue;
+}
+
+.respuesta {
+  width: 47rem;
+  height: 10rem;
+  margin-top: 3rem;
+  font-size: 1.2rem;
+}
+
+.imagen {
+  max-width: 40rem;
+  width: 100%;
+  height: auto;
+}
+
+.info-container {
+  max-width: 40rem;
+  text-align: center;
+  margin: 1rem auto 0;
+}
+
+.info-label {
+  display: block;
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: #213547;
+}
+
+.info-link {
+  font-size: 1.2rem;
+  color: #1a0dab;
+  text-decoration: underline;
+  word-break: break-word;
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .contenido {
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    gap: 2rem;
+  }
+
+  .fractal {
+    position: static;
+    width: 11rem;
+    margin-bottom: 1rem;
+    align-self: flex-start;
+  }
+
+  h1 {
+    font-size: 3rem;
+    text-align: center;
+  }
+
+  .imagen,
+  .info-container,
+  .pregunta,
+  .respuesta {
+    width: 85vw;
+    max-width: 100%;
+  }
+
+  .formulario {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .Boton {
+    width: 100%;
+  }
+
+  .izquierda {
+    margin-left: 0;
+  }
+}
+
+
+/* Estilos responsivos (pantallas pequeñas) */
+@media (max-width: 768px) {
+  .contenido {
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    gap: 2rem;
+  }
+
+  .fractal {
+    position: static;
+    margin-bottom: 1rem;
+    width: 10rem;
+    align-self: flex-start;
+  }
+
+  .imagen,
+  .info-container,
+  .pregunta,
+  .respuesta {
+    width: 90vw;
+    max-width: 100%;
+  }
+
+  .formulario {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .Boton {
+    width: 100%;
+  }
+
+  .izquierda {
+    margin-left: 0;
+  }
+
+  h1 {
+    font-size: 2.5rem;
+    text-align: center;
+  }
+}
