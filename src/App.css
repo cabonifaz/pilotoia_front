@@ -6,7 +6,20 @@ html, body, #root {
   background-color: #F3F3F3;
   font-family: sans-serif;
 }
+.spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #333;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: girar 1s linear infinite;
+  margin: auto;
+}
 
+@keyframes girar {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 .contenido {
   display: flex;
   flex-direction: row;

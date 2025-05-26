@@ -4,8 +4,11 @@ import './App.css';
 function App() {
   const [consulta, setConsulta] = useState('');
   const [respuesta, setRespuesta] = useState('');
+  const [cargando, setCargando] = useState(false);
 
   const manejarConsulta = async () => {
+    setCargando(true);
+    setRespuesta('');
     try {
       const res = await fetch('https://backpilotoia-f7eeapfvazc3axcu.canadacentral-01.azurewebsites.net/api/chat', {
         method: 'POST',
@@ -19,26 +22,29 @@ function App() {
       setRespuesta(data.respuesta);
     } catch (error) {
       setRespuesta('Error al consultar la API');
+    } finally {
+      setCargando(false);
     }
   };
 
   return (
     <div className='contenido'>
       <img 
-        src = "https://staffing.fractal.com.pe/img/fractal-logo.png"
+        src="https://staffing.fractal.com.pe/img/fractal-logo.png"
         className='fractal'
       />
       <section className='izquierda'>
-        <h1 className='Titulo'>Piloto IA </h1> 
+        <h1 className='Titulo'>Piloto IA</h1> 
         <div className='formulario'>
           <textarea
             value={consulta}
             onChange={(e) => setConsulta(e.target.value)}
             placeholder="Escribe tu consulta"
             className='pregunta'
+            disabled={cargando}
           />
-          <button onClick={manejarConsulta} className='Boton'>
-            Enviar
+          <button onClick={manejarConsulta} className='Boton' disabled={cargando}>
+            {cargando ? <div className="spinner"></div> : 'Enviar'}
           </button>
         </div>
         <textarea
