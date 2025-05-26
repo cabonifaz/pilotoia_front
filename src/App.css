@@ -102,7 +102,7 @@ h1 {
   text-decoration: underline;
   word-break: break-word;
 }
-
+/* Estilos responsivos (pantallas medianas) */
 @media (min-width: 769px) and (max-width: 1024px) {
   .contenido {
     flex-direction: column;

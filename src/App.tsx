@@ -7,12 +7,12 @@ function App() {
 
   const manejarConsulta = async () => {
     try {
-      const res = await fetch('https://tu-api.com/endpoint', {
+      const res = await fetch('https://backpilotoia-f7eeapfvazc3axcu.canadacentral-01.azurewebsites.net/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ consulta }),
+        body: JSON.stringify({ mensaje: consulta }),
       });
 
       const data = await res.json();
