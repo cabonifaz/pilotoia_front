@@ -1,0 +1,137 @@
+.login-container {
+    min-height: 100vh;
+    width: 100%;
+    background-color: #f8fafc;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 600px;
+    background-color: #ffffff;
+    color: #334155;
+    padding: 3rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1.25rem;
+    border-radius: 0.75rem;
+    margin: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e2e8f0;
+}
+
+.logo-container {
+    display: flex;
+    justify-content: center;
+    margin: 12px 0;
+}
+
+.logo-placeholder {
+    width: 8rem;
+    height: 8rem;
+    background-color: #f1f5f9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 0.5rem;
+    color: #64748b;
+    border: 1px dashed #cbd5e1;
+}
+
+.login-title {
+    font-size: 1.75rem;
+    margin-bottom: 1.25rem;
+    color: #1e293b;
+    text-align: center;
+    font-weight: 600;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.login-input {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    padding: 0.875rem;
+    border-radius: 0.5rem;
+    font-size: 1.125rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.login-input:focus {
+    outline: none;
+    border-color: #0B85C3;
+}
+
+.login-button {
+    background-color: #0B85C3;
+    color: white;
+    font-weight: 500;
+    padding: 0.875rem;
+    border-radius: 0.5rem;
+    font-size: 1.125rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.login-button:hover {
+    background-color: #0B6E99;
+    outline: none;
+}
+
+.login-button:disabled {
+    background-color: #93c5fd;
+    cursor: not-allowed;
+}
+
+.error-message {
+    color: #dc2626;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.divider {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 1rem 0;
+}
+
+.register-text {
+    text-align: center;
+    color: #64748b;
+    font-size: 1.125rem;
+}
+
+.register-link {
+    color: #3b82f6;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.register-link:hover {
+    text-decoration: underline;
+}
+
+.loader-icon {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
