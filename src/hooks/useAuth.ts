@@ -5,13 +5,12 @@ import { useState } from 'react';
 import { authApi } from '../api/authApi';
 import { type LoginFormData, loginSchema } from '../pages/login/LoginForm';
 
-export function useAtuh() {
+export function useAuth() {
     const [isLoading, setIsLoading] = useState(false);
     const {
         register,
         handleSubmit,
         formState: { errors },
-        setError,
     } = useForm<LoginFormData>({
         resolver: zodResolver(loginSchema),
     });
@@ -19,13 +18,17 @@ export function useAtuh() {
     const onSubmit = async (data: LoginFormData) => {
         setIsLoading(true);
         try {
-            const userData = await authApi.login(data);
-            localStorage.setItem('user', JSON.stringify(userData));
+            const result = await authApi.login(data);
+
+            if (result.result.idTipoMensaje !== 2) {
+                return { success: false };
+            }
 
             return { success: true };
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
-            setError('root', { message: 'Credenciales inválidas' });
+            if (!(error instanceof Error)) {
+                console.error('Error during login:', error);
+            }
             return { success: false };
         } finally {
             setIsLoading(false);

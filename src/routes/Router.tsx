@@ -1,16 +1,16 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createHashRouter } from "react-router-dom";
 import { HomePage } from "../pages/home/Home";
 import { LoginPage } from "../pages/login/Login";
 import { App } from "../App";
 import { GuardRoute } from "./GuardRoute";
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
   {
     path: "/",
     element: <App />,
     children: [
       {
-        path: "/",
+        index: true,
         element: <LoginPage />,
       },
       {

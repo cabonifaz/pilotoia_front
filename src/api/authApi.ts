@@ -1,21 +1,16 @@
-import axios from 'axios';
 import apiClient from './apiClient';
+import type { MensajeResponse } from './interfaces/Mensaje';
 
 export const authApi = {
     login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-        try {
-            const response = await apiClient.post('/login', credentials);
+        const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
 
-            if (response.data.token) {
-                sessionStorage.setItem('auth_token', response.data.token);
-                return response.data;
-            }
-
+        if (response.data.result.idTipoMensaje === 2) {
+            sessionStorage.setItem('auth_token', response.data.token);
             return response.data;
-        } catch (error) {
-            console.error('Error durante el login:', error);
-            throw error;
         }
+
+        return response.data;
     },
 
     logout: async () => {
@@ -23,15 +18,23 @@ export const authApi = {
         window.dispatchEvent(new Event('storage'));
     },
 
-    validateToken: async (token: string) => {
+    validateToken: async () => {
         try {
-            const response = await axios.get('/api/auth/validate', {
-                headers: { Authorization: `Bearer ${token}` },
+            const authToken = sessionStorage.getItem("auth_token");
+
+            if (!authToken) return false;
+
+            const response = await apiClient.get<ValidateTokenResponse>('/auth/validar-token', {
+                headers: {
+                    Authorization: `Bearer ${authToken}`,
+                },
             });
-            return response.data.isValid;
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
+            return response.data;
         } catch (error) {
-            console.error('Error al validar el token:');
+            if (!(error instanceof Error)) {
+                console.error('Error al validar el token:', error);
+            }
             return false;
         }
     },
@@ -44,10 +47,10 @@ interface LoginRequest {
 
 interface LoginResponse {
     token: string;
-    user: {
-        id: string;
-        username: string;
-        email: string;
-        role: string;
-    };
+    result: MensajeResponse;
+}
+
+interface ValidateTokenResponse {
+    isValid: boolean;
+    result: MensajeResponse;
 }

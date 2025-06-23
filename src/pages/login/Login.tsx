@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import "./Login.css";
-import { useAtuh } from "../../hooks/useAuth";
+import { useAuth } from "../../hooks/useAuth";
 
 type LoginFormData = {
     username: string;
@@ -10,7 +10,7 @@ type LoginFormData = {
 
 export const LoginPage = () => {
     const navigate = useNavigate();
-    const { register, handleSubmit, errors, onSubmit, isLoading } = useAtuh();
+    const { register, handleSubmit, errors, onSubmit, isLoading } = useAuth();
 
     const handleFormSubmit = async (data: LoginFormData) => {
         const result = await onSubmit(data);
