@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import "./Login.css";
 import { useAuth } from "../../hooks/useAuth";
+import { useState } from "react";
 
 type LoginFormData = {
     username: string;
@@ -11,6 +12,7 @@ type LoginFormData = {
 export const LoginPage = () => {
     const navigate = useNavigate();
     const { register, handleSubmit, errors, onSubmit, isLoading } = useAuth();
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleFormSubmit = async (data: LoginFormData) => {
         const result = await onSubmit(data);
@@ -42,13 +44,24 @@ export const LoginPage = () => {
                         <p className="error-message">{errors.username.message}</p>
                     )}
 
-                    <input
-                        {...register("password")}
-                        type="password"
-                        placeholder="Contraseña"
-                        className="login-input"
-                        disabled={isLoading}
-                    />
+                    <div className="password-container">
+                        <input
+                            {...register("password")}
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Contraseña"
+                            className="login-input"
+                            disabled={isLoading}
+                        />
+
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="toggle-password-button"
+                            tabIndex={-1}
+                        >
+                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                    </div>
                     {errors.password && (
                         <p className="error-message">{errors.password.message}</p>
                     )}
