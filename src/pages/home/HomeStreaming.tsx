@@ -5,6 +5,7 @@ const HomeStreaming = () => {
   const [respuesta, setRespuesta] = useState('');
   const [cargando, setCargando] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const respuestaRef = useRef<HTMLTextAreaElement>(null);
 
   const manejarConsulta = async () => {
     setCargando(true);
@@ -16,7 +17,12 @@ const HomeStreaming = () => {
     try {
       const res = await fetch('http://127.0.0.1:8000/api/v1/chat-streaming', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json' ,
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive'
+        },
         body: JSON.stringify({
           message: consulta,
           user_id: 'user123',
@@ -51,6 +57,13 @@ const HomeStreaming = () => {
             if (evt.type === 'chunk' && typeof evt.content === 'string') {
               // El servidor ya concatena el contenido, así que solo reflejamos
               setRespuesta(evt.content);
+              queueMicrotask(() => {
+                if (respuestaRef.current) {
+                  respuestaRef.current.scrollTop = respuestaRef.current.scrollHeight;
+                }
+              })
+            } else if (evt.type === 'complete') {
+              controller.abort();
             }
             // Si quieres usar metadata/complete, puedes manejarlo aquí
           } catch {
@@ -134,6 +147,7 @@ const HomeStreaming = () => {
         </div>
 
         <textarea
+          ref={respuestaRef}
           value={respuesta}
           readOnly
           className='respuesta'
