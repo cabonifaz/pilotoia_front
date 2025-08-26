@@ -20,7 +20,7 @@ export const HomePage = () => {
                   company_id: "Edificaciones",
                   similarity_threshold: 0.7,
                   temperature: 0.3,
-                  max_tokens: 512
+                  max_tokens: 1024
                 }),
             });
             console.log(res)
