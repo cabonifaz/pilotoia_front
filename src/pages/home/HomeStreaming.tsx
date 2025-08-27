@@ -26,10 +26,10 @@ const HomeStreaming = () => {
         body: JSON.stringify({
           message: consulta,
           user_id: 'user123',
-          company_id: 'Edificaciones',
-          similarity_threshold: 0.7,
+          company_id: 'CrisTest4',
+          similarity_threshold: 0.9,
           temperature: 0.3,
-          max_tokens: 512,
+          max_tokens: 1024,
         }),
         signal: controller.signal,
       });
