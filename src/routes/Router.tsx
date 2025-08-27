@@ -1,9 +1,10 @@
 import { createHashRouter } from "react-router-dom";
-import { HomePage } from "../pages/home/Home";
+//import { HomePage } from "../pages/home/Home";
 import { LoginPage } from "../pages/login/Login";
 import { App } from "../App";
 import { GuardRoute } from "./GuardRoute";
-import HomeStreaming from "../pages/home/HomeStreaming";
+//import HomeStreaming from "../pages/home/HomeStreaming";
+import HomeStreamingChat from "../pages/home/HomeStreamingChat";
 
 export const router = createHashRouter([
   {
@@ -23,7 +24,7 @@ export const router = createHashRouter([
         element: (
           <GuardRoute>
             {/* <HomePage /> */}
-            <HomeStreaming />
+            <HomeStreamingChat />
           </GuardRoute>
         ),
       },

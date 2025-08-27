@@ -6,9 +6,11 @@
 }
 
 .app {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  margin: 0;
+  padding: 0;
 }
 
 html,
@@ -47,7 +49,7 @@ body,
   justify-content: center;
   align-items: flex-start;
   gap: 2rem;
-  padding: 2rem;
+  padding: 2rem 2rem 0.5rem 2rem;
   padding-top: 6rem;
   flex-wrap: nowrap;
 }
@@ -247,4 +249,233 @@ h1 {
     font-size: 2.5rem;
     text-align: center;
   }
+}
+
+/* Chat Styles */
+.chat-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 500px;
+  max-width: 700px;
+  margin-bottom: 0.5rem;
+}
+
+.chat-header {
+  margin-bottom: 1rem;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  max-height: 400px;
+  min-height: 300px;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+}
+
+.message-container {
+  margin-bottom: 1rem;
+  display: flex;
+}
+
+.message-container.user {
+  justify-content: flex-end;
+}
+
+.message-container.ai {
+  justify-content: flex-start;
+}
+
+.message-card {
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  margin-bottom: 8px;
+  max-width: 70%;
+  min-width: 200px;
+}
+
+.message-card.user {
+  background: #213547;
+  color: #ffffff;
+  border-radius: 18px 18px 4px 18px;
+}
+
+.message-card.ai {
+  background: #2c3e50;
+  color: #ffffff;
+  border-radius: 18px 18px 18px 4px;
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.message-sender {
+  font-weight: bold;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.message-time {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.message-content {
+  color: #ffffff;
+  line-height: 1.5;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.typing-indicator {
+  color: #a8e6cf;
+  animation: blink 1s infinite;
+  font-weight: bold;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.empty-chat {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  min-height: 200px;
+}
+
+.welcome-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 2px solid #e3f2fd;
+}
+
+.welcome-card h3 {
+  color: #1976d2;
+  margin-bottom: 12px;
+  font-size: 18px;
+}
+
+.welcome-card p {
+  color: #666;
+  font-size: 14px;
+}
+
+.chat-input-container {
+  background: white;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+}
+
+.input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.chat-input {
+  flex: 1;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  resize: none;
+  min-height: 20px;
+  max-height: 100px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chat-input:focus {
+  border-color: #2196F3;
+}
+
+.chat-input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.input-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.send-btn, .cancel-btn {
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.send-btn:hover {
+  background: #1976D2;
+}
+
+.send-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  background: #f44336;
+}
+
+.cancel-btn:hover {
+  background: #d32f2f;
+}
+
+.image-section {
+  margin-left: 2rem;
+  display: flex;
+  flex-direction: column;
+  max-width: 40rem;
+  transition: all 0.3s ease;
+}
+
+.imagen {
+  max-width: 100%;
+  width: 100%;
+  height: auto;
+  transition: all 0.3s ease;
+  object-fit: contain;
+}
+
+/* When config panel is expanded, make image smaller */
+.image-section:has(.config-content) .imagen {
+  max-height: 20px;
+  width: auto;
+  max-width: 80%;
+}
+
+/* Fallback for browsers that don't support :has() */
+.image-section.config-expanded .imagen {
+  max-height: 20px;
+  width: auto;
+  max-width: 80%;
 }
