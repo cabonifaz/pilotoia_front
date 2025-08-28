@@ -186,7 +186,7 @@ const HomeStreamingChat = () => {
           </span>
         </div>
         <div className="message-content">
-          {message.content || (message.type === 'ai' ? 'Escribiendo...' : '')}
+          {message.content || (message.type === 'ai' ? 'Pensando...' : '')}
           {streamingMessageId === message.id && (
             <span className="typing-indicator">▊</span>
           )}
