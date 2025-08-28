@@ -23,8 +23,8 @@ const HomeStreamingChat = () => {
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     user_id: 'user123',
-    company_id: 'Edificaciones',
-    similarity_threshold: 0.9,
+    company_id: 'CIA00001',
+    similarity_threshold: 0.4,
     temperature: 0.3,
     max_tokens: 1024,
   });

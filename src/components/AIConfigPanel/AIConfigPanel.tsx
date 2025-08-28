@@ -18,8 +18,8 @@ interface AIConfigPanelProps {
 const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AIConfigPanelProps) => {
   const [config, setConfig] = useState<AIConfig>({
     user_id: initialConfig?.user_id || 'user123',
-    company_id: initialConfig?.company_id || 'Edificaciones',
-    similarity_threshold: initialConfig?.similarity_threshold || 0.9,
+    company_id: initialConfig?.company_id || 'CIA00001',
+    similarity_threshold: initialConfig?.similarity_threshold || 0.4,
     temperature: initialConfig?.temperature || 0.3,
     max_tokens: initialConfig?.max_tokens || 1024,
   });
