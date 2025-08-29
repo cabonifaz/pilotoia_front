@@ -1,0 +1,160 @@
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/ui/collapsible';
+import { Input } from '@/ui/input';
+import { Label } from '@/ui/label';
+import { Slider } from '@/ui/slider';
+import { ChevronDown } from 'lucide-react';
+
+interface AIConfig {
+  user_id: string;
+  company_id: string;
+  similarity_threshold: number;
+  temperature: number;
+  max_tokens: number;
+}
+
+interface AIConfigPanelProps {
+  onConfigChange: (config: AIConfig) => void;
+  initialConfig?: Partial<AIConfig>;
+  onExpandedChange?: (expanded: boolean) => void;
+}
+
+const AIConfigPanelShadcn = ({ onConfigChange, initialConfig, onExpandedChange }: AIConfigPanelProps) => {
+  const [config, setConfig] = useState<AIConfig>({
+    user_id: initialConfig?.user_id || 'user123',
+    company_id: initialConfig?.company_id || 'CIA00001',
+    similarity_threshold: initialConfig?.similarity_threshold || 0.4,
+    temperature: initialConfig?.temperature || 0.3,
+    max_tokens: initialConfig?.max_tokens || 1024,
+  });
+
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const toggleExpanded = () => {
+    const newExpanded = !isExpanded;
+    setIsExpanded(newExpanded);
+    onExpandedChange?.(newExpanded);
+  };
+
+  const handleConfigChange = (key: keyof AIConfig, value: string | number) => {
+    const newConfig = { ...config, [key]: value };
+    setConfig(newConfig);
+    onConfigChange(newConfig);
+  };
+
+  return (
+    <Card>
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+        <CollapsibleTrigger asChild>
+          <CardHeader 
+            className="cursor-pointer hover:bg-accent/50 transition-colors"
+            onClick={toggleExpanded}
+          >
+            <CardTitle className="flex items-center justify-between text-lg">
+              <span className="flex items-center gap-2">
+                ⚙️ Configuración de IA
+              </span>
+              <ChevronDown 
+                className={`h-4 w-4 transition-transform duration-200 ${
+                  isExpanded ? 'rotate-180' : ''
+                }`} 
+              />
+            </CardTitle>
+          </CardHeader>
+        </CollapsibleTrigger>
+        
+        <CollapsibleContent>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="user_id">Usuario:</Label>
+              <Input
+                id="user_id"
+                type="text"
+                value={config.user_id}
+                onChange={(e) => handleConfigChange('user_id', e.target.value)}
+                placeholder="user123"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="company_id">Empresa:</Label>
+              <Input
+                id="company_id"
+                type="text"
+                value={config.company_id}
+                onChange={(e) => handleConfigChange('company_id', e.target.value)}
+                placeholder="CIA00001"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-foreground font-semibold">Umbral de Similitud:</Label>
+                <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
+                  {config.similarity_threshold}
+                </span>
+              </div>
+              <Slider
+                value={[config.similarity_threshold]}
+                onValueChange={([value]) => handleConfigChange('similarity_threshold', value)}
+                min={0}
+                max={1}
+                step={0.1}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-foreground/70">
+                <span>0.0</span>
+                <span>1.0</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-foreground font-semibold">Temperatura:</Label>
+                <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
+                  {config.temperature}
+                </span>
+              </div>
+              <Slider
+                value={[config.temperature]}
+                onValueChange={([value]) => handleConfigChange('temperature', value)}
+                min={0}
+                max={1}
+                step={0.1}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-foreground/70">
+                <span>0.0 (Conservador)</span>
+                <span>1.0 (Creativo)</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-foreground font-semibold">Máx. Tokens:</Label>
+                <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
+                  {config.max_tokens}
+                </span>
+              </div>
+              <Slider
+                value={[config.max_tokens]}
+                onValueChange={([value]) => handleConfigChange('max_tokens', value)}
+                min={256}
+                max={4096}
+                step={256}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-foreground/70">
+                <span>256</span>
+                <span>4096</span>
+              </div>
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
+  );
+};
+
+export default AIConfigPanelShadcn;
