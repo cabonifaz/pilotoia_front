@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/ui/button';
 import { Textarea } from '@/ui/textarea';
 import { Card, CardContent, CardHeader } from '@/ui/card';
@@ -16,6 +16,7 @@ interface Message {
 interface AIConfig {
   user_id: string;
   company_id: string;
+  area: string;
   similarity_threshold: number;
   temperature: number;
   max_tokens: number;
@@ -27,15 +28,41 @@ interface ChatComponentProps {
 
 const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
   const [consulta, setConsulta] = useState('');
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const { messages, isLoading, streamingMessageId, sendMessage, cancelMessage } = useChatStream();
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    const scrollContainer = document.querySelector('.messages-container');
-    if (scrollContainer) {
-      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+  // Debounced scroll handler
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
     }
-  }, [messages, streamingMessageId]);
+    
+    scrollTimeoutRef.current = setTimeout(() => {
+      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+      const isAtBottom = scrollHeight - scrollTop <= clientHeight + 100; // 100px threshold
+      setShouldAutoScroll(isAtBottom);
+    }, 150);
+  }, []);
+
+  // Auto-scroll to bottom when messages change (only if user is at bottom)
+  useEffect(() => {
+    if (shouldAutoScroll) {
+      const scrollContainer = document.querySelector('.messages-container');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  }, [messages, streamingMessageId, shouldAutoScroll]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const manejarConsulta = async () => {
     if (!consulta.trim()) return;
@@ -88,7 +115,7 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
 
       {/* Messages Container */}
       <Card className="flex-1 flex flex-col overflow-hidden border-2 shadow-lg bg-card/50">
-        <CardContent className="flex-1 overflow-y-auto p-4 messages-container">
+        <CardContent className="flex-1 overflow-y-auto p-4 messages-container" onScroll={handleScroll}>
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <Card className="p-8 text-center bg-muted/30 border shadow-md">

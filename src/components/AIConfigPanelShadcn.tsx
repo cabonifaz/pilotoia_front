@@ -9,6 +9,7 @@ import { ChevronDown } from 'lucide-react';
 interface AIConfig {
   user_id: string;
   company_id: string;
+  area: string;
   similarity_threshold: number;
   temperature: number;
   max_tokens: number;
@@ -24,6 +25,7 @@ const AIConfigPanelShadcn = ({ onConfigChange, initialConfig, onExpandedChange }
   const [config, setConfig] = useState<AIConfig>({
     user_id: initialConfig?.user_id || 'user123',
     company_id: initialConfig?.company_id || 'CIA00001',
+    area: initialConfig?.area || '',
     similarity_threshold: initialConfig?.similarity_threshold || 0.4,
     temperature: initialConfig?.temperature || 0.3,
     max_tokens: initialConfig?.max_tokens || 1024,
@@ -73,7 +75,7 @@ const AIConfigPanelShadcn = ({ onConfigChange, initialConfig, onExpandedChange }
                 type="text"
                 value={config.user_id}
                 onChange={(e) => handleConfigChange('user_id', e.target.value)}
-                placeholder="user123"
+                placeholder="Usuario"
               />
             </div>
 
@@ -84,7 +86,18 @@ const AIConfigPanelShadcn = ({ onConfigChange, initialConfig, onExpandedChange }
                 type="text"
                 value={config.company_id}
                 onChange={(e) => handleConfigChange('company_id', e.target.value)}
-                placeholder="CIA00001"
+                placeholder="Empresa"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="area">Área:</Label>
+              <Input
+                id="area"
+                type="text"
+                value={config.area}
+                onChange={(e) => handleConfigChange('area', e.target.value)}
+                placeholder="Área"
               />
             </div>
 

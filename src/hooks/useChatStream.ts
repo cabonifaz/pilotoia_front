@@ -10,6 +10,7 @@ interface Message {
 interface AIConfig {
   user_id: string;
   company_id: string;
+  area: string;
   similarity_threshold: number;
   temperature: number;
   max_tokens: number;
@@ -70,6 +71,7 @@ export const useChatStream = (): UseChatStreamReturn => {
           message: messageContent,
           user_id: aiConfig.user_id,
           company_id: aiConfig.company_id,
+          area: aiConfig.area,
           similarity_threshold: aiConfig.similarity_threshold,
           temperature: aiConfig.temperature,
           max_tokens: aiConfig.max_tokens,
