@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "../components/Toast/ToastService";
-import { authApi } from "../api/authApi";
+//import { authApi } from "../api/authApi";
 import { Loader } from "../components/loader/Loader";
 
 export const GuardRoute = ({ children }: { children: ReactNode }) => {

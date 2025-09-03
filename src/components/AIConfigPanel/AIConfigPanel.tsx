@@ -4,6 +4,7 @@ import './AIConfigPanel.css';
 interface AIConfig {
   user_id: string;
   company_id: string;
+  area: string;
   similarity_threshold: number;
   temperature: number;
   max_tokens: number;
@@ -19,6 +20,7 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
   const [config, setConfig] = useState<AIConfig>({
     user_id: initialConfig?.user_id || 'user123',
     company_id: initialConfig?.company_id || 'CIA00001',
+    area: initialConfig?.area || '',
     similarity_threshold: initialConfig?.similarity_threshold || 0.4,
     temperature: initialConfig?.temperature || 0.3,
     max_tokens: initialConfig?.max_tokens || 1024,
@@ -71,6 +73,17 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
               value={config.company_id}
               onChange={(e) => handleConfigChange('company_id', e.target.value)}
               placeholder="Edificaciones"
+            />
+          </div>
+
+          <div className="config-group">
+            <label className="config-label">Área:</label>
+            <input
+              type="text"
+              className="config-input"
+              value={config.area}
+              onChange={(e) => handleConfigChange('area', e.target.value)}
+              placeholder="Tecnología, RRHH, etc."
             />
           </div>
 

@@ -7,6 +7,7 @@ import AIConfigPanelShadcn from '../../components/AIConfigPanelShadcn';
 interface AIConfig {
   user_id: string;
   company_id: string;
+  area: string;
   similarity_threshold: number;
   temperature: number;
   max_tokens: number;
@@ -16,6 +17,7 @@ const HomeStreamingChat = () => {
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     user_id: 'user123',
     company_id: 'CIA00001',
+    area: '',
     similarity_threshold: 0.4,
     temperature: 0.3,
     max_tokens: 1024,
