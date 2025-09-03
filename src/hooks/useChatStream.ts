@@ -1,20 +1,30 @@
 import { useState, useRef, useCallback } from 'react';
+import { chatApi, type ChatMessageRequest } from '../api/chatApi';
 
-interface Message {
+type JsonRecord = Record<string, unknown>;
+
+export interface Message {
   id: string;
   type: 'user' | 'ai';
   content: string;
   timestamp: Date;
 }
 
-interface AIConfig {
+export interface AIConfig {
   user_id: string;
   company_id: string;
   area: string;
   similarity_threshold: number;
   temperature: number;
   max_tokens: number;
+  top_k: number;
 }
+
+export type ChunkEvent = { type: "chunk"; content: string };
+export type CompleteEvent = { type: "complete" } & JsonRecord;
+export type UnknownEvent = { type: string } & JsonRecord;
+
+export type StreamEvent = ChunkEvent | CompleteEvent | UnknownEvent;
 
 interface UseChatStreamReturn {
   messages: Message[];
@@ -24,11 +34,47 @@ interface UseChatStreamReturn {
   cancelMessage: () => void;
 }
 
+function isRecord(v: unknown): v is JsonRecord {
+  return typeof v === "object" && v !== null;
+}
+
+function isString(v: unknown): v is string {
+  return typeof v === "string";
+}
+
+function safeJsonParse(input: string): unknown {
+  try {
+    return JSON.parse(input);
+  } catch {
+    return undefined;
+  }
+}
+
+function asStreamEvent(u: unknown): StreamEvent | undefined {
+  if (!isRecord(u)) return undefined;
+  const t = u["type"];
+  if (!isString(t)) return undefined;
+
+  if (t === "chunk") {
+    if (isString(u["content"])) {
+      return { type: "chunk", content: u["content"] };
+    }
+    return undefined;
+  }
+
+  // complete u otros: los aceptamos como JsonRecord
+  return { ...(u as JsonRecord), type: t } as StreamEvent;
+}
+
 export const useChatStream = (): UseChatStreamReturn => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  const cancelMessage = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   const sendMessage = useCallback(async (messageContent: string, aiConfig: AIConfig) => {
     if (!messageContent.trim()) return;
@@ -59,23 +105,15 @@ export const useChatStream = (): UseChatStreamReturn => {
     abortRef.current = controller;
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/chat-streaming', {
+      const streamingConfig = chatApi.getStreamingConfig();
+      
+      const res = await fetch(streamingConfig.url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json' ,
-          'Accept': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive'
-        },
+        headers: streamingConfig.headers,
         body: JSON.stringify({
           message: messageContent,
-          user_id: aiConfig.user_id,
-          company_id: aiConfig.company_id,
-          area: aiConfig.area,
-          similarity_threshold: aiConfig.similarity_threshold,
-          temperature: aiConfig.temperature,
-          max_tokens: aiConfig.max_tokens,
-        }),
+          ...aiConfig
+        } as ChatMessageRequest),
         signal: controller.signal,
       });
 
@@ -88,26 +126,29 @@ export const useChatStream = (): UseChatStreamReturn => {
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
 
-      const flushBlock = (block: string) => {
-        const lines = block.split('\n');
-        for (const line of lines) {
+      const flushChunk = (block: string) => {
+        for (const line of block.split('\n')) {
           if (!line.startsWith('data:')) continue;
-          const jsonStr = line.slice(5).trim();
+          const jsonStr = line.slice(5).trim(); // quita "data:"
           if (!jsonStr) continue;
 
-          try {
-            const evt = JSON.parse(jsonStr);
-            if (evt.type === 'chunk' && typeof evt.content === 'string') {
+          const parsed = safeJsonParse(jsonStr);
+          const evt = asStreamEvent(parsed);
+          if (!evt) continue;
+
+          switch (evt.type) {
+            case "chunk":
               setMessages(prev => prev.map(msg => 
                 msg.id === aiMessageId 
-                  ? { ...msg, content: evt.content }
+                  ? { ...msg, content: (evt as ChunkEvent).content }
                   : msg
               ));
-            } else if (evt.type === 'complete') {
+              break;
+            case "complete":
               controller.abort();
-            }
-          } catch {
-            // ignoramos frames inválidos
+              break;
+            default:
+              break;
           }
         }
       };
@@ -115,20 +156,27 @@ export const useChatStream = (): UseChatStreamReturn => {
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-
         buffer += decoder.decode(value, { stream: true });
+
         const parts = buffer.split('\n\n');
-        buffer = parts.pop() || '';
-        for (const part of parts) flushBlock(part);
+        buffer = parts.pop() ?? '';
+        for (const part of parts) flushChunk(part);
       }
 
-      if (buffer.trim()) flushBlock(buffer);
-    } catch (err) {
-      if (err instanceof DOMException && err?.name !== 'AbortError') {
+      if (buffer.trim()) flushChunk(buffer);
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+      } else if (err instanceof Error) {
         console.error(err);
         setMessages(prev => prev.map(msg => 
           msg.id === aiMessageId 
             ? { ...msg, content: 'Error al consultar la API' }
+            : msg
+        ));
+      } else {
+        setMessages(prev => prev.map(msg => 
+          msg.id === aiMessageId 
+            ? { ...msg, content: 'Error inesperado' }
             : msg
         ));
       }
@@ -136,10 +184,6 @@ export const useChatStream = (): UseChatStreamReturn => {
       setIsLoading(false);
       setStreamingMessageId(null);
     }
-  }, []);
-
-  const cancelMessage = useCallback(() => {
-    abortRef.current?.abort();
   }, []);
 
   return {

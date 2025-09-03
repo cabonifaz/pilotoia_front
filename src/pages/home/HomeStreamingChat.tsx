@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Card, CardContent } from '@/ui/card';
-import { Badge } from '@/ui/badge';
-import ChatComponent from '../../components/ChatComponent';
-import AIConfigPanelShadcn from '../../components/AIConfigPanelShadcn';
+import { Card, CardContent } from '@/components/shadcn/card';
+import { Badge } from '@/components/shadcn/badge';
+import ChatComponent from '../../components/chat/ChatComponent';
+import AIConfigPanel from '../../components/aiConfigPanel/AIConfigPanel';
 
 interface AIConfig {
   user_id: string;
@@ -11,6 +11,7 @@ interface AIConfig {
   similarity_threshold: number;
   temperature: number;
   max_tokens: number;
+  top_k: number;
 }
 
 const HomeStreamingChat = () => {
@@ -21,6 +22,7 @@ const HomeStreamingChat = () => {
     similarity_threshold: 0.4,
     temperature: 0.3,
     max_tokens: 1024,
+    top_k: 5,
   });
 
 
@@ -29,7 +31,7 @@ const HomeStreamingChat = () => {
       {/* Header */}
       <div className="flex justify-start px-4 py-2 bg-background border-b">
         <img
-          src="https://staffing.fractal.com.pe/img/fractal-logo.png"
+          src="/fractal-logo.svg"
           className="h-10 w-auto"
           alt="Logo Fractal"
         />
@@ -64,7 +66,7 @@ const HomeStreamingChat = () => {
             </Card>
 
             {/* AI Configuration Panel */}
-            <AIConfigPanelShadcn 
+            <AIConfigPanel
               onConfigChange={setAiConfig}
               initialConfig={aiConfig}
             />

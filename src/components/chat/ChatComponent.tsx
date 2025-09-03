@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Button } from '@/ui/button';
-import { Textarea } from '@/ui/textarea';
-import { Card, CardContent, CardHeader } from '@/ui/card';
-import { Avatar, AvatarFallback } from '@/ui/avatar';
-import { Badge } from '@/ui/badge';
-import { useChatStream } from '../hooks/useChatStream';
+import { Button } from '@/components/shadcn/button';
+import { Textarea } from '@/components/shadcn/textarea';
+import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
+import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
+import { Badge } from '@/components/shadcn/badge';
+import { useChatStream } from '../../hooks/useChatStream';
 
 interface Message {
   id: string;

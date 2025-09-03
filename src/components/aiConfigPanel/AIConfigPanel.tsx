@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/ui/collapsible';
-import { Input } from '@/ui/input';
-import { Label } from '@/ui/label';
-import { Slider } from '@/ui/slider';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/shadcn/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/shadcn/collapsible';
+import { Input } from '@/components/shadcn/input';
+import { Label } from '@/components/shadcn/label';
+import { Slider } from '@/components/shadcn/slider';
 import { ChevronDown } from 'lucide-react';
 
 interface AIConfig {
@@ -13,6 +13,7 @@ interface AIConfig {
   similarity_threshold: number;
   temperature: number;
   max_tokens: number;
+  top_k: number;
 }
 
 interface AIConfigPanelProps {
@@ -21,7 +22,7 @@ interface AIConfigPanelProps {
   onExpandedChange?: (expanded: boolean) => void;
 }
 
-const AIConfigPanelShadcn = ({ onConfigChange, initialConfig, onExpandedChange }: AIConfigPanelProps) => {
+const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AIConfigPanelProps) => {
   const [config, setConfig] = useState<AIConfig>({
     user_id: initialConfig?.user_id || 'user123',
     company_id: initialConfig?.company_id || 'CIA00001',
@@ -29,6 +30,7 @@ const AIConfigPanelShadcn = ({ onConfigChange, initialConfig, onExpandedChange }
     similarity_threshold: initialConfig?.similarity_threshold || 0.4,
     temperature: initialConfig?.temperature || 0.3,
     max_tokens: initialConfig?.max_tokens || 1024,
+    top_k: initialConfig?.top_k || 5,
   });
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -163,6 +165,27 @@ const AIConfigPanelShadcn = ({ onConfigChange, initialConfig, onExpandedChange }
                 <span>4096</span>
               </div>
             </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-foreground font-semibold">Top-K Resultados:</Label>
+                <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
+                  {config.top_k}
+                </span>
+              </div>
+              <Slider
+                value={[config.top_k]}
+                onValueChange={([value]) => handleConfigChange('top_k', value)}
+                min={1}
+                max={20}
+                step={1}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-foreground/70">
+                <span>1 (Mínimo)</span>
+                <span>20 (Máximo)</span>
+              </div>
+            </div>
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
@@ -170,4 +193,4 @@ const AIConfigPanelShadcn = ({ onConfigChange, initialConfig, onExpandedChange }
   );
 };
 
-export default AIConfigPanelShadcn;
+export default AIConfigPanel;

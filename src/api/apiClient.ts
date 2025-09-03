@@ -1,8 +1,8 @@
 import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import type { MensajeResponse } from './interfaces/Mensaje';
-import { toast } from '../components/Toast/ToastService';
+import { toast } from '../hooks/use-toast';
 
-const API_BASE_URL = 'https://pilotoia-backend-b3h0h7afg8aea3dz.canadacentral-01.azurewebsites.net/api';
+const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
 interface ApiResponse {
     result: MensajeResponse;
@@ -60,7 +60,11 @@ apiClient.interceptors.response.use(
         const mensaje = extraerMensaje(response.data);
 
         if (mensaje && mensaje.idTipoMensaje !== 2) {
-            toast(mensaje.mensaje, { type: "warning" });
+            toast({
+                title: "Advertencia",
+                description: mensaje.mensaje,
+                variant: "warning"
+            });
         }
 
         return response;
@@ -74,62 +78,118 @@ apiClient.interceptors.response.use(
                 case 401:
                     // Error de autenticación - mostrar mensaje del servidor
                     if (mensaje) {
-                        toast(mensaje.mensaje, { type: "warning" });
+                        toast({
+                            title: "Error de autenticación",
+                            description: mensaje.mensaje,
+                            variant: "destructive"
+                        });
                     } else {
-                        toast("Datos inválidas", { type: "warning" });
+                        toast({
+                            title: "Error de autenticación",
+                            description: "Datos inválidos",
+                            variant: "destructive"
+                        });
                     }
                     break;
 
                 case 403:
                     // Prohibido
                     if (mensaje) {
-                        toast(mensaje.mensaje, { type: "error" });
+                        toast({
+                            title: "Acceso prohibido",
+                            description: mensaje.mensaje,
+                            variant: "destructive"
+                        });
                     } else {
-                        toast("No tienes permisos para realizar esta acción", { type: "error" });
+                        toast({
+                            title: "Acceso prohibido",
+                            description: "No tienes permisos para realizar esta acción",
+                            variant: "destructive"
+                        });
                     }
                     break;
 
                 case 404:
                     // No encontrado
                     if (mensaje) {
-                        toast(mensaje.mensaje, { type: "error" });
+                        toast({
+                            title: "No encontrado",
+                            description: mensaje.mensaje,
+                            variant: "destructive"
+                        });
                     } else {
-                        toast("Recurso no encontrado", { type: "error" });
+                        toast({
+                            title: "No encontrado",
+                            description: "Recurso no encontrado",
+                            variant: "destructive"
+                        });
                     }
                     break;
 
                 case 422:
                     // Error de validación
                     if (mensaje) {
-                        toast(mensaje.mensaje, { type: "warning" });
+                        toast({
+                            title: "Error de validación",
+                            description: mensaje.mensaje,
+                            variant: "destructive"
+                        });
                     } else {
-                        toast("Error de validación", { type: "warning" });
+                        toast({
+                            title: "Error de validación",
+                            description: "Error de validación",
+                            variant: "destructive"
+                        });
                     }
                     break;
 
                 case 500:
                     // Error del servidor
                     if (mensaje) {
-                        toast(mensaje.mensaje, { type: "error" });
+                        toast({
+                            title: "Error del servidor",
+                            description: mensaje.mensaje,
+                            variant: "destructive"
+                        });
                     } else {
-                        toast("Error interno del servidor", { type: "error" });
+                        toast({
+                            title: "Error del servidor",
+                            description: "Error interno del servidor",
+                            variant: "destructive"
+                        });
                     }
                     break;
 
                 default:
                     // Otros errores HTTP
                     if (mensaje) {
-                        toast(mensaje.mensaje, { type: "error" });
+                        toast({
+                            title: "Error",
+                            description: mensaje.mensaje,
+                            variant: "destructive"
+                        });
                     } else {
-                        toast(`Error: ${status}`, { type: "error" });
+                        toast({
+                            title: "Error",
+                            description: `Error: ${status}`,
+                            variant: "destructive"
+                        });
                     }
             }
         } else if (error.request) {
             // Error de red/conexión
-            toast("Error de conexión. Verifica tu internet.", { type: "error" });
+            toast({
+                title: "Error de conexión",
+                description: "Error de conexión. Verifica tu internet.",
+                variant: "destructive"
+            });
         } else {
             // Otro tipo de error
-            toast("Error inesperado", { type: "error" });
+            toast({
+                title: "Error inesperado",
+                description: "Error inesperado",
+                variant: "destructive"
+            });
         }
 
         return Promise.reject(error);
