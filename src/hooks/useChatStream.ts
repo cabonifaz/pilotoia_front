@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { chatApi, type ChatMessageRequest } from '../api/chatApi';
+import { showStreamingErrorToast } from '../utils/errorHandler';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -22,9 +23,17 @@ export interface AIConfig {
 
 export type ChunkEvent = { type: "chunk"; content: string };
 export type CompleteEvent = { type: "complete" } & JsonRecord;
+export type ErrorEvent = { 
+  type: "error"; 
+  message: string; 
+  result?: { 
+    idTipoMensaje: number; 
+    mensaje: string; 
+  }; 
+};
 export type UnknownEvent = { type: string } & JsonRecord;
 
-export type StreamEvent = ChunkEvent | CompleteEvent | UnknownEvent;
+export type StreamEvent = ChunkEvent | CompleteEvent | ErrorEvent | UnknownEvent;
 
 interface UseChatStreamReturn {
   messages: Message[];
@@ -60,6 +69,12 @@ function asStreamEvent(u: unknown): StreamEvent | undefined {
       return { type: "chunk", content: u["content"] };
     }
     return undefined;
+  }
+
+  if (t === "error") {
+    const message = isString(u["message"]) ? u["message"] : "Error desconocido";
+    const result = isRecord(u["result"]) ? u["result"] as { idTipoMensaje: number; mensaje: string } : undefined;
+    return { type: "error", message, result };
   }
 
   // complete u otros: los aceptamos como JsonRecord
@@ -145,6 +160,24 @@ export const useChatStream = (): UseChatStreamReturn => {
               ));
               break;
             case "complete":
+              controller.abort();
+              break;
+            case "error":
+              const errorEvt = evt as ErrorEvent;
+              
+              // Show centralized error toast
+              showStreamingErrorToast(errorEvt);
+              
+              // Use the result message if available, otherwise use the message field
+              const errorMessage = errorEvt.result?.mensaje || errorEvt.message || "Error en el streaming";
+              
+              // Update the AI message to show error
+              setMessages(prev => prev.map(msg => 
+                msg.id === aiMessageId 
+                  ? { ...msg, content: `Error: ${errorMessage}` }
+                  : msg
+              ));
+              
               controller.abort();
               break;
             default:
