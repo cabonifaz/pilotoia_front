@@ -3,7 +3,7 @@ import type { MensajeResponse } from './interfaces/Mensaje';
 
 export const chatApi = {
     sendMessage: async (messageRequest: ChatMessageRequest): Promise<ChatMessageResponse> => {
-        const response = await apiClient.post<ChatMessageResponse>('/v1/chat', messageRequest);
+        const response = await apiClient.post<ChatMessageResponse>('/v1/rag/chat', messageRequest);
         return response.data;
     },
 
@@ -11,7 +11,7 @@ export const chatApi = {
     getStreamingConfig: () => {
         const token = sessionStorage.getItem('auth_token');
         return {
-            url: `${import.meta.env.VITE_API_BASE_URL}/api/v1/chat-streaming`,
+            url: `${import.meta.env.VITE_API_BASE_URL}/api/v1/rag/chat-streaming`,
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'text/event-stream',
@@ -28,12 +28,12 @@ export const chatApi = {
             params.append('company_id', companyId);
         }
 
-        const response = await apiClient.get<ChatHistoryResponse>(`/v1/chat/history?${params.toString()}`);
+        const response = await apiClient.get<ChatHistoryResponse>(`/v1/rag/chat/history?${params.toString()}`);
         return response.data;
     },
 
     clearChatHistory: async (userId: string, companyId?: string): Promise<ClearHistoryResponse> => {
-        const response = await apiClient.delete<ClearHistoryResponse>('/v1/chat/history', {
+        const response = await apiClient.delete<ClearHistoryResponse>('/v1/rag/chat/history', {
             data: { user_id: userId, company_id: companyId }
         });
         return response.data;
@@ -41,7 +41,7 @@ export const chatApi = {
 
     getAvailableAreas: async (): Promise<AreasResponse> => {
         try {
-            const response = await apiClient.get<AreasResponse>('/v1/chat/areas');
+            const response = await apiClient.get<AreasResponse>('/v1/rag/chat/areas');
             return response.data;
         } catch (error) {
             if (!(error instanceof Error)) {
@@ -52,7 +52,7 @@ export const chatApi = {
     },
 
     validateConfig: async (config: ChatConfigRequest): Promise<ConfigValidationResponse> => {
-        const response = await apiClient.post<ConfigValidationResponse>('/v1/chat/validate-config', config);
+        const response = await apiClient.post<ConfigValidationResponse>('/v1/rag/chat/validate-config', config);
         return response.data;
     },
 };

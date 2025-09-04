@@ -7,8 +7,8 @@ import { Input } from "@/components/shadcn/input";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
 
 type LoginFormData = {
-    username: string;
-    password: string;
+    usuario: string;
+    clave_acceso: string;
 };
 
 export const LoginPage = () => {
@@ -43,21 +43,21 @@ export const LoginPage = () => {
                     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
                         <div className="space-y-2">
                             <Input
-                                {...register("username")}
+                                {...register("usuario")}
                                 type="text"
                                 placeholder="Usuario"
                                 disabled={isLoading}
                                 className="h-11 text-base"
                             />
-                            {errors.username && (
-                                <p className="text-sm text-red-600">{errors.username.message}</p>
+                            {errors.usuario && (
+                                <p className="text-sm text-red-600">{errors.usuario.message}</p>
                             )}
                         </div>
 
                         <div className="space-y-2">
                             <div className="relative">
                                 <Input
-                                    {...register("password")}
+                                    {...register("clave_acceso")}
                                     type={showPassword ? "text" : "password"}
                                     placeholder="Contraseña"
                                     disabled={isLoading}
@@ -72,8 +72,8 @@ export const LoginPage = () => {
                                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                                 </button>
                             </div>
-                            {errors.password && (
-                                <p className="text-sm text-red-600">{errors.password.message}</p>
+                            {errors.clave_acceso && (
+                                <p className="text-sm text-red-600">{errors.clave_acceso.message}</p>
                             )}
                         </div>
 
