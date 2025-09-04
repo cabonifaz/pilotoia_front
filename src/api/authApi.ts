@@ -3,27 +3,27 @@ import type { MensajeResponse } from './interfaces/Mensaje';
 
 export const authApi = {
     login: async (credentials: LoginRequest): Promise<LoginResponse> => {
+        console.log('*** API CLIENT - SENDING LOGIN REQUEST ***', credentials);
         const response = await apiClient.post<LoginResponse>('/v1/auth/login', credentials);
         
-        // Save user session if login successful
-        if (response.data.status === 'success') {
-            authApi.saveUserSession(response.data);
-        }
+        console.log('*** API CLIENT - LOGIN RESPONSE STATUS ***', response.status);
+        console.log('*** API CLIENT - LOGIN RESPONSE DATA ***', response.data);
+        console.log('*** API CLIENT - RESPONSE DATA TYPE ***', typeof response.data);
+        
+        // Login successful - user data will be stored in React Context
+        // HttpOnly JWT cookie is set by server automatically
         
         return response.data;
     },
 
     logout: async (userId?: number): Promise<LogoutResponse | void> => {
         try {
-            const currentUser = authApi.getCurrentUser();
-            const userIdToLogout = userId || currentUser?.user_id;
-            
-            if (userIdToLogout) {
-                const response = await apiClient.post<LogoutResponse>('/v1/auth/logout', { user_id: userIdToLogout });
+            if (userId) {
+                const response = await apiClient.post<LogoutResponse>('/v1/auth/logout', { user_id: userId });
                 authApi.clearUserSession();
                 return response.data;
             } else {
-                // Just clear local session if no user ID
+                // Clear session if no user ID provided
                 authApi.clearUserSession();
             }
         } catch (error) {
@@ -38,32 +38,12 @@ export const authApi = {
         return response.data;
     },
 
-    // Session management helpers
-    saveUserSession: (loginResponse: LoginResponse): void => {
-        sessionStorage.setItem('user_session', JSON.stringify(loginResponse));
-        if (loginResponse.token) {
-            sessionStorage.setItem('auth_token', loginResponse.token);
-        }
-    },
-
-    getUserSession: (): LoginResponse | null => {
-        const sessionData = sessionStorage.getItem('user_session');
-        return sessionData ? JSON.parse(sessionData) : null;
-    },
-
+    // Session management now handled by React Context
     clearUserSession: (): void => {
-        sessionStorage.removeItem('user_session');
-        sessionStorage.removeItem('auth_token');
-        window.dispatchEvent(new Event('storage')); // Notify other components
-    },
-
-    isAuthenticated: (): boolean => {
-        const session = authApi.getUserSession();
-        return session !== null && session.status === 'success';
-    },
-
-    getCurrentUser: (): LoginResponse | null => {
-        return authApi.getUserSession();
+        // HttpOnly JWT cookie is cleared by server during logout automatically
+        // Trigger storage event to notify other tabs
+        window.dispatchEvent(new Event('storage'));
+        console.log('*** SESSION CLEARED - USING REACT CONTEXT ***');
     }
 };
 
@@ -83,6 +63,9 @@ export interface LoginResponse {
     ultimo_ingreso?: string;
     token?: string;
     status: string;
+    // User role information for display
+    id_tipo_rol: number;
+    rol_nombre: string;  // STRING1 from the SP
 }
 
 export interface UserInfo {

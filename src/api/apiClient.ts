@@ -2,6 +2,8 @@ import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig 
 import type { MensajeResponse } from './interfaces/Mensaje';
 import { toast } from '../hooks/use-toast';
 
+// JWT is now handled via HttpOnly cookies automatically sent by browser
+
 const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
 interface ApiResponse {
@@ -35,17 +37,14 @@ const apiClient = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    withCredentials: true,  // Include cookies (HttpOnly JWT)
 });
 
 // Request interceptor
 apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-        const token = sessionStorage.getItem('auth_token');
-
-        // If token exists, add to headers
-        if (token && config.headers) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
+        // JWT will be sent automatically via HttpOnly cookies
+        console.log('*** API CLIENT - USING HTTPONLY COOKIE AUTH ***');
 
         return config;
     },
@@ -76,7 +75,13 @@ apiClient.interceptors.response.use(
 
             switch (status) {
                 case 401:
-                    // Error de autenticación - mostrar mensaje del servidor
+                    console.log('*** 401 UNAUTHORIZED - REDIRECTING TO LOGIN ***');
+                    
+                    // Clear user session data (HttpOnly JWT cookie cleared by server automatically)
+                    sessionStorage.removeItem('user_session');
+                    window.dispatchEvent(new Event('storage'));
+                    
+                    // Show error message
                     if (mensaje) {
                         toast({
                             title: "Error de autenticación",
@@ -86,10 +91,15 @@ apiClient.interceptors.response.use(
                     } else {
                         toast({
                             title: "Error de autenticación",
-                            description: "Datos inválidos",
+                            description: "Sesión expirada",
                             variant: "destructive"
                         });
                     }
+                    
+                    // Redirect to login after a brief delay for toast to show
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 1000);
                     break;
 
                 case 403:

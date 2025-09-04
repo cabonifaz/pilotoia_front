@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shadcn/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/shadcn/collapsible';
 import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
 import { Slider } from '@/components/shadcn/slider';
 import { ChevronDown } from 'lucide-react';
+import { useAuthContext } from '../../contexts/AuthContext';
 
 interface AIConfig {
   user_id: string;
@@ -23,8 +24,10 @@ interface AIConfigPanelProps {
 }
 
 const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AIConfigPanelProps) => {
+  const { user } = useAuthContext();
+  
   const [config, setConfig] = useState<AIConfig>({
-    user_id: initialConfig?.user_id || 'user123',
+    user_id: initialConfig?.user_id || user?.usuario || '',
     company_id: initialConfig?.company_id || 'CIA00001',
     area: initialConfig?.area || '',
     similarity_threshold: initialConfig?.similarity_threshold || 0.4,
@@ -34,6 +37,18 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
   });
 
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Update config when user data becomes available
+  useEffect(() => {
+    if (user && !initialConfig?.user_id) {
+      const updatedConfig = {
+        ...config,
+        user_id: user.usuario,
+      };
+      setConfig(updatedConfig);
+      onConfigChange(updatedConfig);
+    }
+  }, [user, initialConfig?.user_id, config, onConfigChange]);
 
   const toggleExpanded = () => {
     const newExpanded = !isExpanded;
@@ -78,6 +93,7 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
                 value={config.user_id}
                 onChange={(e) => handleConfigChange('user_id', e.target.value)}
                 placeholder="Usuario"
+                readOnly
               />
             </div>
 

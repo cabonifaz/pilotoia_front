@@ -7,17 +7,17 @@ export const chatApi = {
         return response.data;
     },
 
-    // For streaming chat - returns the streaming URL with auth headers
+    // For streaming chat - returns the streaming URL (HttpOnly cookies sent automatically)
     getStreamingConfig: () => {
-        const token = sessionStorage.getItem('auth_token');
+        console.log('*** STREAMING CONFIG - USING HTTPONLY COOKIE AUTH ***');
+        
         return {
             url: `${import.meta.env.VITE_API_BASE_URL}/api/v1/rag/chat-streaming`,
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'text/event-stream',
                 'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive',
-                ...(token && { 'Authorization': `Bearer ${token}` })
+                'Connection': 'keep-alive'
             }
         };
     },

@@ -130,10 +130,23 @@ export const useChatStream = (): UseChatStreamReturn => {
           ...aiConfig
         } as ChatMessageRequest),
         signal: controller.signal,
+        credentials: 'include'  // Include cookies (HttpOnly JWT)
       });
 
       if (!res.ok || !res.body) {
         const text = await res.text().catch(() => '');
+        
+        // Check for 401 Unauthorized (JWT expired/invalid)
+        if (res.status === 401) {
+          console.log('*** 401 UNAUTHORIZED - REDIRECTING TO LOGIN ***');
+          // Clear user session data (HttpOnly JWT cookie cleared by server automatically)
+          sessionStorage.removeItem('user_session');
+          window.dispatchEvent(new Event('storage'));
+          // Redirect to login page
+          window.location.href = '/login';
+          return;
+        }
+        
         throw new Error(`HTTP ${res.status}: ${text}`);
       }
 

@@ -20,6 +20,7 @@ interface AIConfig {
   similarity_threshold: number;
   temperature: number;
   max_tokens: number;
+  top_k: number;
 }
 
 interface ChatComponentProps {
@@ -38,8 +39,10 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
       clearTimeout(scrollTimeoutRef.current);
     }
     
+    // Capture values immediately before setTimeout to avoid null currentTarget
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    
     scrollTimeoutRef.current = setTimeout(() => {
-      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
       const isAtBottom = scrollHeight - scrollTop <= clientHeight + 100; // 100px threshold
       setShouldAutoScroll(isAtBottom);
     }, 150);
@@ -108,14 +111,9 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Chat Header */}
-      <div className="mb-2 px-2">
-        <h1 className="text-3xl font-bold text-foreground">Piloto IA</h1>
-      </div>
-
       {/* Messages Container */}
       <Card className="flex-1 flex flex-col overflow-hidden border-2 shadow-lg bg-card/50">
-        <CardContent className="flex-1 overflow-y-auto p-4 messages-container" onScroll={handleScroll}>
+        <CardContent className="flex-1 overflow-y-auto p-4 messages-container min-h-0" onScroll={handleScroll}>
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <Card className="p-8 text-center bg-muted/30 border shadow-md">

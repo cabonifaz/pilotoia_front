@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/shadcn/card';
 import { Badge } from '@/components/shadcn/badge';
 import ChatComponent from '../../components/chat/ChatComponent';
 import AIConfigPanel from '../../components/aiConfigPanel/AIConfigPanel';
+import Header from '../../components/layout/Header';
+import { useAuthContext } from '../../contexts/AuthContext';
 
 interface AIConfig {
   user_id: string;
@@ -15,8 +17,10 @@ interface AIConfig {
 }
 
 const HomeStreamingChat = () => {
+  const { user } = useAuthContext();
+  
   const [aiConfig, setAiConfig] = useState<AIConfig>({
-    user_id: 'user123',
+    user_id: user?.usuario || '',
     company_id: 'CIA00001',
     area: '',
     similarity_threshold: 0.4,
@@ -25,22 +29,28 @@ const HomeStreamingChat = () => {
     top_k: 5,
   });
 
+  // Update config when user data becomes available
+  useEffect(() => {
+    if (user) {
+      setAiConfig(prevConfig => ({
+        ...prevConfig,
+        user_id: user.usuario,
+      }));
+    }
+  }, [user]);
+
 
   return (
-    <div className="h-screen bg-background flex flex-col">
-      {/* Header */}
-      <div className="flex justify-start px-4 py-2 bg-background border-b">
-        <img
-          src="/fractal-logo.svg"
-          className="h-10 w-auto"
-          alt="Logo Fractal"
-        />
-      </div>
+    <div className="h-screen bg-muted/30 flex flex-col">
+      <Header />
 
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-8 p-8">
           {/* Chat Section - 70% width */}
-          <div className="flex-1 lg:w-[70%]">
-            <ChatComponent aiConfig={aiConfig} />
+          <div className="flex-1 lg:w-[70%] flex flex-col gap-4 min-h-0">
+            <h1 className="text-3xl font-bold text-foreground">Piloto IA</h1>
+            <div className="flex-1 bg-background rounded-lg min-h-0">
+              <ChatComponent aiConfig={aiConfig} />
+            </div>
           </div>
 
           {/* Right Sidebar - 30% width */}
@@ -48,7 +58,7 @@ const HomeStreamingChat = () => {
             {/* AI Image */}
             <Card className="overflow-hidden border-2 shadow-md">
               <img
-                src="https://cdn.agenciasinc.es/var/ezwebin_site/storage/images/_aliases/img_1col/reportajes/las-mentiras-visuales-de-la-ia/11896126-1-esl-MX/Las-mentiras-visuales-de-la-IA.jpg"
+                src="/Las-mentiras-visuales-de-la-IA.webp"
                 className="w-full h-48 object-contain"
                 alt="Imagen IA"
               />
