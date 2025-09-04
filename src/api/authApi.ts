@@ -3,16 +3,7 @@ import type { MensajeResponse } from './interfaces/Mensaje';
 
 export const authApi = {
     login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-        console.log('*** API CLIENT - SENDING LOGIN REQUEST ***', credentials);
-        const response = await apiClient.post<LoginResponse>('/v1/auth/login', credentials);
-        
-        console.log('*** API CLIENT - LOGIN RESPONSE STATUS ***', response.status);
-        console.log('*** API CLIENT - LOGIN RESPONSE DATA ***', response.data);
-        console.log('*** API CLIENT - RESPONSE DATA TYPE ***', typeof response.data);
-        
-        // Login successful - user data will be stored in React Context
-        // HttpOnly JWT cookie is set by server automatically
-        
+        const response = await apiClient.post<LoginResponse>('/v1/auth/login', credentials);  
         return response.data;
     },
 
@@ -43,7 +34,6 @@ export const authApi = {
         // HttpOnly JWT cookie is cleared by server during logout automatically
         // Trigger storage event to notify other tabs
         window.dispatchEvent(new Event('storage'));
-        console.log('*** SESSION CLEARED - USING REACT CONTEXT ***');
     }
 };
 

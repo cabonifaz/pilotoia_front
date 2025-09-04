@@ -44,8 +44,6 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
         // JWT will be sent automatically via HttpOnly cookies
-        console.log('*** API CLIENT - USING HTTPONLY COOKIE AUTH ***');
-
         return config;
     },
     (error: AxiosError) => {
@@ -75,8 +73,6 @@ apiClient.interceptors.response.use(
 
             switch (status) {
                 case 401:
-                    console.log('*** 401 UNAUTHORIZED - REDIRECTING TO LOGIN ***');
-                    
                     // Clear user session data (HttpOnly JWT cookie cleared by server automatically)
                     sessionStorage.removeItem('user_session');
                     window.dispatchEvent(new Event('storage'));

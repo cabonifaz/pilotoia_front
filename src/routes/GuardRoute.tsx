@@ -13,13 +13,9 @@ export const GuardRoute = ({ children }: { children: ReactNode }) => {
             try {
                 // Make a simple API call that requires JWT authentication
                 // This will validate the HttpOnly JWT cookie on the backend
-                console.log('*** GUARD ROUTE - VALIDATING JWT COOKIE ***');
                 await apiClient.get('/v1/auth/validate'); // We need to create this endpoint
-                
-                console.log('*** GUARD ROUTE - JWT VALID ***');
                 setIsChecking(false);
             } catch (error: any) {
-                console.log('*** GUARD ROUTE - JWT INVALID OR EXPIRED ***');
                 console.error('Auth validation failed:', error);
                 
                 // Clear any existing session data

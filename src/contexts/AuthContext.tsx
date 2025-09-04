@@ -56,22 +56,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         try {
             const result = await authApi.login({ usuario, clave_acceso });
             
-            console.log('*** FRONTEND RECEIVED LOGIN RESULT ***', result);
-            console.log('*** RESULT STATUS ***', result.status);
-            console.log('*** STATUS CHECK ***', result.status === 'success');
-            
             if (result.status === 'success') {
-                console.log('*** LOGIN SUCCESS - USER DATA STORED IN SESSION STORAGE ***');
-                console.log('USUARIO:', result.usuario);
-                console.log('NOMBRES:', result.nombres);
-                console.log('APELLIDOS:', result.apellidos);
-                console.log('ID_TIPO_ROL:', result.id_tipo_rol);
-                console.log('STRING1 (ROL_NOMBRE):', result.rol_nombre);
-                console.log('ID_EMPRESA:', result.id_empresa);
-                console.log('USER_ID:', result.user_id);
-                console.log('JWT TOKEN IN HTTPONLY COOKIE:', result.token === null);
-                console.log('*** USER DATA NOW IN SESSION STORAGE ***', result);
-                
                 // Save to sessionStorage
                 sessionStorage.setItem('user_session', JSON.stringify(result));
                 setUser(result);
@@ -97,7 +82,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             sessionStorage.removeItem('user_session');
             window.dispatchEvent(new Event('storage')); // Notify other tabs
             setUser(null);
-            console.log('*** USER LOGGED OUT - SESSION STORAGE CLEARED ***');
             
             // Redirect to login page
             window.location.href = '/login';
@@ -121,7 +105,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             try {
                 const userData = JSON.parse(savedUser);
                 setUser(userData);
-                console.log('*** REFRESH USER - SESSION STORAGE BASED AUTH ***');
             } catch (error) {
                 console.error('Error parsing user session:', error);
                 sessionStorage.removeItem('user_session');

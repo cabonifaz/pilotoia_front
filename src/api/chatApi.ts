@@ -9,8 +9,6 @@ export const chatApi = {
 
     // For streaming chat - returns the streaming URL (HttpOnly cookies sent automatically)
     getStreamingConfig: () => {
-        console.log('*** STREAMING CONFIG - USING HTTPONLY COOKIE AUTH ***');
-        
         return {
             url: `${import.meta.env.VITE_API_BASE_URL}/api/v1/rag/chat-streaming`,
             headers: {

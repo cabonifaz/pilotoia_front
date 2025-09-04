@@ -138,7 +138,6 @@ export const useChatStream = (): UseChatStreamReturn => {
         
         // Check for 401 Unauthorized (JWT expired/invalid)
         if (res.status === 401) {
-          console.log('*** 401 UNAUTHORIZED - REDIRECTING TO LOGIN ***');
           // Clear user session data (HttpOnly JWT cookie cleared by server automatically)
           sessionStorage.removeItem('user_session');
           window.dispatchEvent(new Event('storage'));
