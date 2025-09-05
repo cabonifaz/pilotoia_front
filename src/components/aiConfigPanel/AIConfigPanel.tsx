@@ -5,7 +5,7 @@ import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
 import { Slider } from '@/components/shadcn/slider';
 import { ChevronDown } from 'lucide-react';
-import { useAuthContext } from '../../contexts/AuthContext';
+import { useAuthContext } from '../../contexts/QueryAuthContext';
 
 interface AIConfig {
   user_id: string;

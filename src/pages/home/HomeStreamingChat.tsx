@@ -4,7 +4,7 @@ import { Badge } from '@/components/shadcn/badge';
 import ChatComponent from '../../components/chat/ChatComponent';
 import AIConfigPanel from '../../components/aiConfigPanel/AIConfigPanel';
 import Header from '../../components/layout/Header';
-import { useAuthContext } from '../../contexts/AuthContext';
+import { useAuthContext } from '../../contexts/QueryAuthContext';
 
 interface AIConfig {
   user_id: string;

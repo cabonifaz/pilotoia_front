@@ -1,15 +1,15 @@
 import { Outlet } from "react-router-dom";
 import { Toaster } from "./components/shadcn/toaster";
-import { AuthProvider } from "./contexts/AuthContext";
+import { QueryAuthProvider } from "./contexts/QueryAuthContext";
 import "./App.css";
 
 export const App = () => {
   return (
-    <AuthProvider>
+    <QueryAuthProvider>
       <div className="app">
         <Outlet />
         <Toaster />
       </div>
-    </AuthProvider>
+    </QueryAuthProvider>
   );
 };

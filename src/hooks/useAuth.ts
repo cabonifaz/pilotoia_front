@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type LoginFormData, loginSchema } from '../pages/login/LoginForm';
-import { useAuthContext } from '../contexts/AuthContext';
+import { useAuthContext } from '../contexts/QueryAuthContext';
 import { showErrorToast } from '../utils/errorHandler';
 
 export function useAuth() {
