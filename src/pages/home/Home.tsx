@@ -9,17 +9,25 @@ export const HomePage = () => {
         setCargando(true);
         setRespuesta('');
         try {
-            const res = await fetch('https://backpilotoia-f7eeapfvazc3axcu.canadacentral-01.azurewebsites.net/api/chat', {
+            const res = await fetch('http://127.0.0.1:8000/api/v1/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ mensaje: consulta }),
+                body: JSON.stringify({
+                  message: consulta,
+                  user_id: "user123",
+                  company_id: "Edificaciones",
+                  similarity_threshold: 0.7,
+                  temperature: 0.3,
+                  max_tokens: 1024
+                }),
             });
-
+            console.log(res)
             const data = await res.json();
-            setRespuesta(data.respuesta);
+            setRespuesta(data.answer);
         } catch (error) {
+            console.log(error)
             setRespuesta('Error al consultar la API');
         } finally {
             setCargando(false);
