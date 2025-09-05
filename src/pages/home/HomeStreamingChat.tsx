@@ -58,7 +58,7 @@ const HomeStreamingChat = () => {
             {/* AI Image */}
             <Card className="overflow-hidden border-2 shadow-md">
               <img
-                src="/Las-mentiras-visuales-de-la-IA.webp"
+                src="/image.webp"
                 className="w-full h-48 object-contain"
                 alt="Imagen IA"
               />
