@@ -1,12 +1,11 @@
-
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
-import { authApi } from '../api/authApi';
 import { type LoginFormData, loginSchema } from '../pages/login/LoginForm';
+import { useAuthContext } from '../contexts/QueryAuthContext';
+import { showErrorToast } from '../utils/errorHandler';
 
 export function useAuth() {
-    const [isLoading, setIsLoading] = useState(false);
+    const { login, isLoading } = useAuthContext();
     const {
         register,
         handleSubmit,
@@ -16,22 +15,26 @@ export function useAuth() {
     });
 
     const onSubmit = async (data: LoginFormData) => {
-        setIsLoading(true);
         try {
-            const result = await authApi.login(data);
+            const result = await login(data.usuario, data.clave_acceso);
 
-            if (result.result.idTipoMensaje !== 2) {
+            if (result.success) {
+                return { success: true, user: result.user };
+            } else {
+                showErrorToast("Credenciales inválidas");
                 return { success: false };
             }
-
-            return { success: true };
-        } catch (error) {
-            if (!(error instanceof Error)) {
-                console.error('Error during login:', error);
+        } catch (error: any) {
+            console.error('Error during login:', error);
+            
+            // Handle API errors with proper error message
+            if (error.response?.data?.result?.mensaje) {
+                showErrorToast(error.response.data.result.mensaje);
+            } else {
+                showErrorToast("Error al conectar con el servidor");
             }
+            
             return { success: false };
-        } finally {
-            setIsLoading(false);
         }
     };
 

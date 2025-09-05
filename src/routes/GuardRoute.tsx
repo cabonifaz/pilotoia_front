@@ -1,30 +1,34 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "../components/Toast/ToastService";
-import { authApi } from "../api/authApi";
+import { useAuthContext } from "../contexts/QueryAuthContext";
 import { Loader } from "../components/loader/Loader";
+import { useEffect } from "react";
 
 export const GuardRoute = ({ children }: { children: ReactNode }) => {
     const navigate = useNavigate();
-    const [isChecking, setIsChecking] = useState(true);
+    const { isAuthenticated, isLoading, user } = useAuthContext();
 
     useEffect(() => {
-        const checkAuth = async () => {
-            const isValid = await authApi.validateToken();
-            if (!isValid) {
-                toast("Sesión caducada, vuelve a iniciar sesión", { type: "warning" });
-                navigate("/login");
-            }
-            setIsChecking(false);
-        };
+        // If not loading and not authenticated, redirect to login
+        if (!isLoading && !isAuthenticated) {
+            navigate("/login", { replace: true });
+        }
+    }, [isLoading, isAuthenticated, navigate]);
 
-        checkAuth();
-    }, [navigate]);
+    // Show loader while checking authentication
+    if (isLoading) {
+        return (
+            <div style={{ position: "relative" }}>
+                <Loader />
+            </div>
+        );
+    }
 
-    return (
-        <div style={{ position: "relative" }}>
-            {children}
-            {isChecking && <Loader />}
-        </div>
-    );
+    // If not authenticated, don't render children (will be redirected)
+    if (!isAuthenticated || !user) {
+        return null;
+    }
+
+    // If authenticated, render protected content
+    return <>{children}</>;
 };
