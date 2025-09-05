@@ -15,14 +15,14 @@ export function useAuth() {
         resolver: zodResolver(loginSchema),
     });
 
-    const onSubmit = async (_data: LoginFormData) => {
+    const onSubmit = async (data: LoginFormData) => {
         setIsLoading(true);
         try {
-            /* const result = await authApi.login(data);
+            const result = await authApi.login(data);
 
             if (result.result.idTipoMensaje !== 2) {
                 return { success: false };
-            } */
+            }
 
             return { success: true };
         } catch (error) {
