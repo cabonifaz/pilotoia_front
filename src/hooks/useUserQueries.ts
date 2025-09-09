@@ -2,14 +2,22 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi, type LoginRequest, type LoginResponse } from '../api/authApi';
 import { queryKeys, clearUserCache } from '../lib/queryClient';
 import { toast } from './use-toast';
+import JWTUtils, { type DecodedUserData } from '../utils/jwtUtils';
 
 // Custom hook for user authentication state
 export const useUserQuery = () => {
     return useQuery({
         queryKey: queryKeys.user.current(),
-        queryFn: async (): Promise<LoginResponse | null> => {
-            // No initial data - TanStack Query persistence handles this
-            return null;
+        queryFn: async (): Promise<DecodedUserData | null> => {
+            // Try to get user data from JWT token in sessionStorage
+            const token = sessionStorage.getItem('jwt_token');
+            if (!token) {
+                return null;
+            }
+            
+            // Decode JWT to get user data
+            const userData = JWTUtils.decodeToken(token);
+            return userData;
         },
         staleTime: 8 * 60 * 60 * 1000, // Consider fresh for 8 hours (match JWT expiration)
         gcTime: 8 * 60 * 60 * 1000, // Keep in cache for 8 hours
@@ -37,23 +45,30 @@ export const useLoginMutation = () => {
             // Store JWT in sessionStorage
             if (data.token) {
                 sessionStorage.setItem('jwt_token', data.token);
+                
+                // Decode JWT to get complete user data
+                const decodedUserData = JWTUtils.decodeToken(data.token);
+                
+                if (decodedUserData) {
+                    // Add actualCompanyArea from first company area
+                    const userDataWithActualCompanyArea = {
+                        ...decodedUserData,
+                        actual_company_area: decodedUserData.company_areas?.[0] || null
+                    };
+                    
+                    // Update the query cache with decoded JWT data
+                    queryClient.setQueryData(queryKeys.user.current(), userDataWithActualCompanyArea);
+                    
+                    // Show success message
+                    toast({
+                        title: "Éxito",
+                        description: `Bienvenido, ${decodedUserData.nombres}`,
+                        variant: "success"
+                    });
+                } else {
+                    console.error('Failed to decode JWT token');
+                }
             }
-            
-            // Add actualCompanyArea from first company area
-            const dataWithActualCompanyArea = {
-                ...data,
-                actual_company_area: data.company_areas?.[0] || null
-            };
-            
-            // Update the query cache - TanStack Query persistence handles storage
-            queryClient.setQueryData(queryKeys.user.current(), dataWithActualCompanyArea);
-            
-            // Show success message
-            toast({
-                title: "Éxito",
-                description: `Bienvenido, ${data.nombres}`,
-                variant: "success"
-            });
         },
         onError: (error: any) => {
             console.error('Login error:', error);

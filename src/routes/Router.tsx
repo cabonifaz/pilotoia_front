@@ -1,10 +1,10 @@
-import { createHashRouter } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { LoginPage } from "../pages/login/Login";
 import { App } from "../App";
 import { GuardRoute } from "./GuardRoute";
 import HomeStreamingChat from "../pages/home/HomeStreamingChat";
 
-export const router = createHashRouter([
+export const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,

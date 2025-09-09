@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/shadcn/select';
 import { queryKeys } from '../../lib/queryClient';
-import { authApi, type LoginResponse, type RefreshCompanyAreaRequest } from '../../api/authApi';
+import type { LoginResponse } from '../../api/authApi';
 import { Loader } from '../loader/Loader';
 import { toast } from '../../hooks/use-toast';
 
@@ -48,23 +48,7 @@ const CompanyAreaModal = ({ isOpen, onClose, user }: CompanyAreaModalProps) => {
       );
       
       if (selected) {
-        // Prepare the request data
-        const refreshRequest: RefreshCompanyAreaRequest = {
-          id_empresa: selected.ID_EMPRESA,
-          empresa: selected.EMPRESA,
-          id_area: selected.ID_AREA,
-          area: selected.AREA
-        };
-        
-        // Call the backend to refresh JWT token
-        const refreshResponse = await authApi.refreshCompanyArea(refreshRequest);
-        
-        // Store new JWT token in sessionStorage
-        if (refreshResponse.token) {
-          sessionStorage.setItem('jwt_token', refreshResponse.token);
-        }
-        
-        // Update the user data in TanStack Query cache
+        // Update the user data in TanStack Query cache (frontend only)
         const currentUserData = queryClient.getQueryData(queryKeys.user.current()) as any;
         if (currentUserData) {
           const updatedUserData = {
