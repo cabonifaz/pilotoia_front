@@ -29,6 +29,11 @@ export const authApi = {
         return response.data;
     },
 
+    refreshCompanyArea: async (companyArea: RefreshCompanyAreaRequest): Promise<void> => {
+        const response = await apiClient.post('/v1/auth/refresh-company-area', companyArea);
+        return response.data;
+    },
+
     // Session management now handled by React Context
     clearUserSession: (): void => {
         // HttpOnly JWT cookie is cleared by server during logout automatically
@@ -42,20 +47,32 @@ export interface LoginRequest {
     clave_acceso: string;
 }
 
+export interface RefreshCompanyAreaRequest {
+    id_empresa: number;
+    empresa: string;
+    id_area: number;
+    area: string;
+}
+
 export interface LoginResponse {
     user_id: number;
     usuario: string;
     nombres: string;
     apellidos: string;
     email?: string;
-    id_empresa: number;
-    id_sucursal?: number;
     ultimo_ingreso?: string;
     token?: string;
     status: string;
     // User role information for display
     id_tipo_rol: number;
     rol_nombre: string;  // STRING1 from the SP
+    // Company areas information
+    company_areas?: Array<{
+        ID_EMPRESA: number;
+        EMPRESA: string;
+        ID_AREA: number;
+        AREA: string;
+    }>;
 }
 
 export interface UserInfo {
@@ -64,8 +81,6 @@ export interface UserInfo {
     nombres: string;
     apellidos: string;
     email?: string;
-    id_empresa: number;
-    id_sucursal?: number;
     ultimo_ingreso?: string;
     id_estado_registro: number;
 }

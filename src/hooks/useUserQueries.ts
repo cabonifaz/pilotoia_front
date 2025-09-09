@@ -8,29 +8,7 @@ export const useUserQuery = () => {
     return useQuery({
         queryKey: queryKeys.user.current(),
         queryFn: async (): Promise<LoginResponse | null> => {
-            // Try to get user from localStorage first (for persistence)
-            const savedUser = localStorage.getItem('user_data');
-            if (savedUser) {
-                try {
-                    const userData = JSON.parse(savedUser);
-                    // Validate the user data by making an API call (optional background check)
-                    if (userData.user_id) {
-                        try {
-                            await authApi.getUserInfo(userData.user_id);
-                            return userData;
-                        } catch (error) {
-                            // If user validation fails, clear the stored data
-                            localStorage.removeItem('user_data');
-                            return null;
-                        }
-                    }
-                    return userData;
-                } catch (error) {
-                    console.error('Error parsing user data:', error);
-                    localStorage.removeItem('user_data');
-                    return null;
-                }
-            }
+            // No initial data - TanStack Query persistence handles this
             return null;
         },
         staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
@@ -56,11 +34,14 @@ export const useLoginMutation = () => {
             }
         },
         onSuccess: (data: LoginResponse) => {
-            // Store user data in localStorage for persistence
-            localStorage.setItem('user_data', JSON.stringify(data));
+            // Add actualCompanyArea from first company area
+            const dataWithActualCompanyArea = {
+                ...data,
+                actual_company_area: data.company_areas?.[0] || null
+            };
             
-            // Update the query cache
-            queryClient.setQueryData(queryKeys.user.current(), data);
+            // Update the query cache - TanStack Query persistence handles storage
+            queryClient.setQueryData(queryKeys.user.current(), dataWithActualCompanyArea);
             
             // Show success message
             toast({
@@ -97,9 +78,8 @@ export const useLogoutMutation = () => {
             }
         },
         onSettled: () => {
-            // Always clear cache and localStorage, even if API call fails
+            // Clear TanStack Query cache - persistence will handle storage cleanup
             clearUserCache();
-            localStorage.removeItem('user_data');
             
             // Invalidate and remove all user-related queries
             queryClient.clear();

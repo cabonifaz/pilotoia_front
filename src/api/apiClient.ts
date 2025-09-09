@@ -73,9 +73,8 @@ apiClient.interceptors.response.use(
 
             switch (status) {
                 case 401:
-                    // Clear user session data (HttpOnly JWT cookie cleared by server automatically)
-                    sessionStorage.removeItem('user_session');
-                    window.dispatchEvent(new Event('storage'));
+                    // HttpOnly JWT cookie cleared by server automatically
+                    // TanStack Query will handle auth state cleanup
                     
                     // Show error message
                     if (mensaje) {

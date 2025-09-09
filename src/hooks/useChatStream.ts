@@ -138,9 +138,8 @@ export const useChatStream = (): UseChatStreamReturn => {
         
         // Check for 401 Unauthorized (JWT expired/invalid)
         if (res.status === 401) {
-          // Clear user session data (HttpOnly JWT cookie cleared by server automatically)
-          sessionStorage.removeItem('user_session');
-          window.dispatchEvent(new Event('storage'));
+          // HttpOnly JWT cookie cleared by server automatically
+          // TanStack Query will handle auth state cleanup
           // Redirect to login page
           window.location.href = '/login';
           return;
