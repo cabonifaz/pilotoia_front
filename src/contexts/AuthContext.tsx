@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
-import { authApi, type LoginResponse } from '../api/authApi';
+import { useCurrentUser, useLoginMutation, useLogoutMutation } from '../hooks/useUserQueries';
+import type { LoginResponse } from '../api/authApi';
 
 interface AuthContextType {
     user: LoginResponse | null;
@@ -18,107 +19,37 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-    const [user, setUser] = useState<LoginResponse | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    // Initialize auth state from sessionStorage
-    useEffect(() => {
-        const initializeAuth = () => {
-            const savedUser = sessionStorage.getItem('user_session');
-            if (savedUser) {
-                try {
-                    const userData = JSON.parse(savedUser);
-                    setUser(userData);
-                } catch (error) {
-                    console.error('Error parsing user session:', error);
-                    sessionStorage.removeItem('user_session');
-                }
-            }
-            setIsLoading(false);
-        };
-
-        initializeAuth();
-
-        // Listen for storage events (logout from other tabs)
-        const handleStorageChange = () => {
-            const savedUser = sessionStorage.getItem('user_session');
-            if (!savedUser) {
-                setUser(null);
-            }
-        };
-
-        window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
-    }, []);
+    const { user, isAuthenticated, isLoading } = useCurrentUser();
+    const loginMutation = useLoginMutation();
+    const logoutMutation = useLogoutMutation();
 
     const login = async (usuario: string, clave_acceso: string): Promise<{ success: boolean; user?: LoginResponse }> => {
-        setIsLoading(true);
         try {
-            const result = await authApi.login({ usuario, clave_acceso });
-            
-            if (result.status === 'success') {
-                // Save to sessionStorage
-                sessionStorage.setItem('user_session', JSON.stringify(result));
-                setUser(result);
-                return { success: true, user: result };
-            }
-            
-            return { success: false };
+            const result = await loginMutation.mutateAsync({ usuario, clave_acceso });
+            return { success: true, user: result };
         } catch (error) {
             console.error('Login error:', error);
             return { success: false };
-        } finally {
-            setIsLoading(false);
         }
     };
 
     const logout = async (): Promise<void> => {
-        setIsLoading(true);
         try {
-            if (user?.user_id) {
-                await authApi.logout(user.user_id);
-            }
-            // Clear sessionStorage and context state - HttpOnly cookie cleared by server
-            sessionStorage.removeItem('user_session');
-            window.dispatchEvent(new Event('storage')); // Notify other tabs
-            setUser(null);
-            
-            // Redirect to login page
-            window.location.href = '/login';
+            await logoutMutation.mutateAsync(user?.user_id);
         } catch (error) {
             console.error('Logout error:', error);
-            // Clear sessionStorage and context state even if API call fails
-            sessionStorage.removeItem('user_session');
-            window.dispatchEvent(new Event('storage')); // Notify other tabs
-            setUser(null);
-            // Still redirect to login even if logout API fails
-            window.location.href = '/login';
-        } finally {
-            setIsLoading(false);
         }
     };
 
     const refreshUser = () => {
-        // Refresh user data from sessionStorage
-        const savedUser = sessionStorage.getItem('user_session');
-        if (savedUser) {
-            try {
-                const userData = JSON.parse(savedUser);
-                setUser(userData);
-            } catch (error) {
-                console.error('Error parsing user session:', error);
-                sessionStorage.removeItem('user_session');
-                setUser(null);
-            }
-        } else {
-            setUser(null);
-        }
+        // TanStack Query handles refresh automatically
+        // This is kept for compatibility but does nothing
     };
 
     const value: AuthContextType = {
-        user,
-        isAuthenticated: !!user && user.status === 'success',
-        isLoading,
+        user: user ?? null,
+        isAuthenticated,
+        isLoading: isLoading || loginMutation.isPending || logoutMutation.isPending,
         login,
         logout,
         refreshUser

@@ -28,7 +28,7 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
   
   const [config, setConfig] = useState<AIConfig>({
     user_id: initialConfig?.user_id || user?.usuario || '',
-    company_id: initialConfig?.company_id || 'CIA00001',
+    company_id: initialConfig?.company_id || 'CIA00099',
     area: initialConfig?.area || '',
     similarity_threshold: initialConfig?.similarity_threshold || 0.4,
     temperature: initialConfig?.temperature || 0.3,
