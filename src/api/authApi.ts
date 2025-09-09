@@ -29,14 +29,15 @@ export const authApi = {
         return response.data;
     },
 
-    refreshCompanyArea: async (companyArea: RefreshCompanyAreaRequest): Promise<void> => {
-        const response = await apiClient.post('/v1/auth/refresh-company-area', companyArea);
+    refreshCompanyArea: async (companyArea: RefreshCompanyAreaRequest): Promise<{ result: any; token: string }> => {
+        const response = await apiClient.post<{ result: any; token: string }>('/v1/auth/refresh-company-area', companyArea);
         return response.data;
     },
 
     // Session management now handled by React Context
     clearUserSession: (): void => {
-        // HttpOnly JWT cookie is cleared by server during logout automatically
+        // Clear JWT from sessionStorage
+        sessionStorage.removeItem('jwt_token');
         // Trigger storage event to notify other tabs
         window.dispatchEvent(new Event('storage'));
     }

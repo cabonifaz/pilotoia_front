@@ -56,8 +56,13 @@ const CompanyAreaModal = ({ isOpen, onClose, user }: CompanyAreaModalProps) => {
           area: selected.AREA
         };
         
-        // Call the backend to update JWT cookie
-        await authApi.refreshCompanyArea(refreshRequest);
+        // Call the backend to refresh JWT token
+        const refreshResponse = await authApi.refreshCompanyArea(refreshRequest);
+        
+        // Store new JWT token in sessionStorage
+        if (refreshResponse.token) {
+          sessionStorage.setItem('jwt_token', refreshResponse.token);
+        }
         
         // Update the user data in TanStack Query cache
         const currentUserData = queryClient.getQueryData(queryKeys.user.current()) as any;
