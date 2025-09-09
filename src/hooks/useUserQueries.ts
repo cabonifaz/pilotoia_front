@@ -11,10 +11,10 @@ export const useUserQuery = () => {
             // No initial data - TanStack Query persistence handles this
             return null;
         },
-        staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
-        gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
-        refetchOnWindowFocus: true, // Refetch when window regains focus
-        refetchOnReconnect: true, // Refetch on network reconnect
+        staleTime: 8 * 60 * 60 * 1000, // Consider fresh for 8 hours (match JWT expiration)
+        gcTime: 8 * 60 * 60 * 1000, // Keep in cache for 8 hours
+        refetchOnWindowFocus: false, // Don't refetch user data on focus
+        refetchOnReconnect: false, // Don't refetch user data on reconnect
         retry: false, // Don't retry user queries automatically
     });
 };
