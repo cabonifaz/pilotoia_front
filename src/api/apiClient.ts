@@ -43,7 +43,11 @@ const apiClient = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-        // JWT will be sent automatically via HttpOnly cookies
+        // Get JWT from sessionStorage and add to Authorization header
+        const token = sessionStorage.getItem('jwt_token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
         return config;
     },
     (error: AxiosError) => {

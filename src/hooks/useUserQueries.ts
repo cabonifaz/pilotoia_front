@@ -34,6 +34,11 @@ export const useLoginMutation = () => {
             }
         },
         onSuccess: (data: LoginResponse) => {
+            // Store JWT in sessionStorage
+            if (data.token) {
+                sessionStorage.setItem('jwt_token', data.token);
+            }
+            
             // Add actualCompanyArea from first company area
             const dataWithActualCompanyArea = {
                 ...data,
@@ -78,6 +83,9 @@ export const useLogoutMutation = () => {
             }
         },
         onSettled: () => {
+            // Clear JWT from sessionStorage
+            sessionStorage.removeItem('jwt_token');
+            
             // Clear TanStack Query cache - persistence will handle storage cleanup
             clearUserCache();
             
