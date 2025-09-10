@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/shadcn/card';
 import { Badge } from '@/components/shadcn/badge';
 import ChatComponent from '../../components/chat/ChatComponent';
+import ChatList from '../../components/chat/ChatList';
 import AIConfigPanel from '../../components/aiConfigPanel/AIConfigPanel';
 import Header from '../../components/layout/Header';
 import { useAuthContext } from '../../contexts/QueryAuthContext';
@@ -18,6 +19,7 @@ interface AIConfig {
 
 const HomeStreamingChat = () => {
   const { user } = useAuthContext();
+  const [selectedChatId, setSelectedChatId] = useState<number | undefined>();
   
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     user_id: user?.usuario || '',
@@ -39,6 +41,18 @@ const HomeStreamingChat = () => {
     }
   }, [user]);
 
+  const handleChatSelect = (chatId: number) => {
+    setSelectedChatId(chatId);
+    console.log('Selected chat:', chatId);
+    // Here you can load specific chat messages or context
+  };
+
+  const handleNewChat = () => {
+    setSelectedChatId(undefined);
+    console.log('Creating new chat...');
+    // Here you can create a new chat or reset the current conversation
+  };
+
 
   return (
     <div className="h-screen bg-muted/30 flex flex-col">
@@ -55,14 +69,12 @@ const HomeStreamingChat = () => {
 
           {/* Right Sidebar - 30% width */}
           <div className="lg:w-[30%] flex-shrink-0 space-y-4 overflow-y-auto">
-            {/* AI Image */}
-            <Card className="overflow-hidden border-2 shadow-md">
-              <img
-                src="/image.webp"
-                className="w-full h-48 object-contain"
-                alt="Imagen IA"
-              />
-            </Card>
+            {/* Chat List */}
+            <ChatList
+              onChatSelect={handleChatSelect}
+              onNewChat={handleNewChat}
+              selectedChatId={selectedChatId}
+            />
 
             {/* Company Info */}
             <Card className="bg-muted/50 border shadow-sm">

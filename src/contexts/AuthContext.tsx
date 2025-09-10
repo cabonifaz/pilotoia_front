@@ -2,9 +2,10 @@ import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
 import { useCurrentUser, useLoginMutation, useLogoutMutation } from '../hooks/useUserQueries';
 import type { LoginResponse } from '../api/authApi';
+import type { DecodedUserData } from '../utils/jwtUtils';
 
 interface AuthContextType {
-    user: LoginResponse | null;
+    user: DecodedUserData | null;
     isAuthenticated: boolean;
     isLoading: boolean;
     login: (usuario: string, clave_acceso: string) => Promise<{ success: boolean; user?: LoginResponse }>;

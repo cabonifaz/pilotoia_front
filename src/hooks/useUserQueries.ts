@@ -59,6 +59,11 @@ export const useLoginMutation = () => {
                     // Update the query cache with decoded JWT data
                     queryClient.setQueryData(queryKeys.user.current(), userDataWithActualCompanyArea);
                     
+                    // Store user's chats in TanStack Query cache
+                    if (data.chats && decodedUserData.user_id) {
+                        queryClient.setQueryData(queryKeys.chat.list(decodedUserData.user_id), data.chats);
+                    }
+                    
                     // Show success message
                     toast({
                         title: "Éxito",
@@ -103,6 +108,9 @@ export const useLogoutMutation = () => {
             
             // Clear TanStack Query cache - persistence will handle storage cleanup
             clearUserCache();
+            
+            // Clear chat cache
+            queryClient.removeQueries({ queryKey: ['chat'] });
             
             // Invalidate and remove all user-related queries
             queryClient.clear();

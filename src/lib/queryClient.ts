@@ -60,6 +60,7 @@ export const queryKeys = {
     },
     // Chat-related queries
     chat: {
+        list: (userId: number) => ['chat', 'list', userId] as const,
         history: (userId: string, companyId?: string) => 
             ['chat', 'history', { userId, companyId }] as const,
         areas: () => ['chat', 'areas'] as const,
@@ -76,6 +77,10 @@ export const invalidateUserQueries = () => {
 export const clearUserCache = () => {
     queryClient.removeQueries({ queryKey: queryKeys.user.current() });
     queryClient.removeQueries({ queryKey: ['user'] });
+};
+
+export const clearChatCache = () => {
+    queryClient.removeQueries({ queryKey: ['chat'] });
 };
 
 export const getUserFromCache = () => {
