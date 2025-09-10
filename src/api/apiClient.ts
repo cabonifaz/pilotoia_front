@@ -2,7 +2,7 @@ import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig 
 import type { MensajeResponse } from './interfaces/Mensaje';
 import { toast } from '../hooks/use-toast';
 
-// JWT is now handled via HttpOnly cookies automatically sent by browser
+// JWT is now stored in sessionStorage and sent via Authorization header
 
 const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
@@ -37,13 +37,17 @@ const apiClient = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    withCredentials: true,  // Include cookies (HttpOnly JWT)
+    withCredentials: false,  // No cookies needed - using Authorization header
 });
 
 // Request interceptor
 apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-        // JWT will be sent automatically via HttpOnly cookies
+        // Get JWT from sessionStorage and add to Authorization header
+        const token = sessionStorage.getItem('jwt_token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
         return config;
     },
     (error: AxiosError) => {
@@ -73,7 +77,8 @@ apiClient.interceptors.response.use(
 
             switch (status) {
                 case 401:
-                    // HttpOnly JWT cookie cleared by server automatically
+                    // Clear JWT from sessionStorage
+                    sessionStorage.removeItem('jwt_token');
                     // TanStack Query will handle auth state cleanup
                     
                     // Show error message

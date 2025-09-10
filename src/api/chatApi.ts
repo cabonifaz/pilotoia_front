@@ -7,16 +7,24 @@ export const chatApi = {
         return response.data;
     },
 
-    // For streaming chat - returns the streaming URL (HttpOnly cookies sent automatically)
+    // For streaming chat - returns the streaming config with Authorization header
     getStreamingConfig: () => {
+        const token = sessionStorage.getItem('jwt_token');
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive'
+        };
+        
+        // Add Authorization header if token exists
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         return {
             url: `${import.meta.env.VITE_API_BASE_URL}/api/v1/rag/chat-streaming`,
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'text/event-stream',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive'
-            }
+            headers
         };
     },
 

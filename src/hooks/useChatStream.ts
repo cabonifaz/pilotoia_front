@@ -130,7 +130,7 @@ export const useChatStream = (): UseChatStreamReturn => {
           ...aiConfig
         } as ChatMessageRequest),
         signal: controller.signal,
-        credentials: 'include'  // Include cookies (HttpOnly JWT)
+        credentials: 'omit'  // No cookies needed - using Authorization header
       });
 
       if (!res.ok || !res.body) {
@@ -138,7 +138,8 @@ export const useChatStream = (): UseChatStreamReturn => {
         
         // Check for 401 Unauthorized (JWT expired/invalid)
         if (res.status === 401) {
-          // HttpOnly JWT cookie cleared by server automatically
+          // Clear JWT from sessionStorage
+          sessionStorage.removeItem('jwt_token');
           // TanStack Query will handle auth state cleanup
           // Redirect to login page
           window.location.href = '/login';
