@@ -48,6 +48,8 @@ export interface LoginRequest {
 export interface LoginResponse {
     token: string;  // JWT token containing all user information
     status: string;
+    usuario: string;
+    company_areas: { ID_EMPRESA: number, ID_AREA: number, EMPRESA: string, AREA: string }[]
 }
 
 export interface UserInfo {

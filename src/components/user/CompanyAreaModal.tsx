@@ -17,14 +17,14 @@ import {
   SelectValue,
 } from '@/components/shadcn/select';
 import { queryKeys } from '../../lib/queryClient';
-import type { LoginResponse } from '../../api/authApi';
+import type { DecodedUserData } from '../../utils/jwtUtils';
 import { Loader } from '../loader/Loader';
 import { toast } from '../../hooks/use-toast';
 
 interface CompanyAreaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  user: LoginResponse;
+  user: DecodedUserData;
 }
 
 const CompanyAreaModal = ({ isOpen, onClose, user }: CompanyAreaModalProps) => {
