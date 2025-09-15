@@ -24,7 +24,7 @@ const HomeStreamingChat = () => {
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     user_id: user?.usuario || '',
     company_id: 'CIA00099',
-    area: '',
+    area: 'AREA001',
     similarity_threshold: 0.4,
     temperature: 0.3,
     max_tokens: 1024,
