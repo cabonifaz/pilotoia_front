@@ -33,8 +33,14 @@ export const useDocumentUpload = () => {
       }
     }
 
-    setFiles(prev => [...prev, ...newFiles]);
-  }, []);
+    setFiles(prev => {
+      // If there's a completed/failed task and we're adding new files, clear the task
+      if (currentTask && (currentTask.status === 'completed' || currentTask.status === 'failed')) {
+        setCurrentTask(null);
+      }
+      return [...prev, ...newFiles];
+    });
+  }, [currentTask]);
 
   const removeFile = useCallback((fileId: string) => {
     setFiles(prev => prev.filter(f => f.id !== fileId));
@@ -111,15 +117,26 @@ export const useDocumentUpload = () => {
     }
   }, []);
 
-  const updateTaskStatus = useCallback((status: TaskStatus['status']) => {
+  const updateTaskStatus = useCallback(async (status: TaskStatus['status']) => {
+    // Update status immediately for responsiveness
     setCurrentTask(prev => prev ? { ...prev, status } : null);
-    
+
+    // Fetch complete task status to get accurate file counts
+    if (currentTask?.task_id) {
+      try {
+        const updatedTask = await getTaskStatus(currentTask.task_id);
+        setCurrentTask(updatedTask);
+      } catch (error) {
+        console.error('Error fetching updated task status:', error);
+      }
+    }
+
     if (status === 'completed' || status === 'failed') {
       setIsProcessing(false);
       // Clear files from frontend when processing is finished
       setFiles([]);
     }
-  }, []);
+  }, [currentTask?.task_id]);
 
   const resetUpload = useCallback(() => {
     setFiles([]);

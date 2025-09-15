@@ -1,4 +1,6 @@
 import apiClient from './apiClient';
+import multipartClient from './multipartClient';
+import { createWSConnection } from './wsClient';
 
 export interface UploadResponse {
   task_id: string;
@@ -35,18 +37,14 @@ export const uploadFiles = async (
   areaName: string
 ): Promise<UploadResponse> => {
   const formData = new FormData();
-  
+
   files.forEach(file => {
     formData.append('files', file);
   });
   formData.append('company_name', companyName);
   formData.append('area_name', areaName);
 
-  const response = await apiClient.post('/v1/processing/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  const response = await multipartClient.post('/v1/processing/upload', formData);
 
   return response.data;
 };
@@ -69,38 +67,20 @@ export const getAllTasks = async (): Promise<{ tasks: Record<string, TaskStatus>
   return response.data;
 };
 
-// WebSocket connection for real-time logs
+// WebSocket connection for real-time logs using centralized client
 export const createWebSocketConnection = (
   taskId: string,
   onMessage: (message: ProcessingLogMessage) => void,
   onError?: (error: Event) => void,
-  onClose?: (event: CloseEvent) => void
+  onClose?: (event: CloseEvent) => void,
+  onOpen?: () => void
 ): WebSocket => {
-  const wsUrl = `${import.meta.env.VITE_API_BASE_URL?.replace('http', 'ws')}/api/v1/processing/ws/logs?task_id=${taskId}`;
-  const websocket = new WebSocket(wsUrl);
-
-  websocket.onopen = () => {
-    console.log('WebSocket connected for task:', taskId);
-  };
-
-  websocket.onmessage = (event) => {
-    try {
-      const message: ProcessingLogMessage = JSON.parse(event.data);
-      onMessage(message);
-    } catch (error) {
-      console.error('Error parsing WebSocket message:', error);
-    }
-  };
-
-  websocket.onerror = (error) => {
-    console.error('WebSocket error:', error);
-    if (onError) onError(error);
-  };
-
-  websocket.onclose = (event) => {
-    console.log('WebSocket closed:', event.code, event.reason);
-    if (onClose) onClose(event);
-  };
-
-  return websocket;
+  return createWSConnection({
+    endpoint: '/v1/processing/ws/logs',
+    params: { task_id: taskId },
+    onMessage,
+    onError,
+    onClose,
+    onOpen
+  });
 };

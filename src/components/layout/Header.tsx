@@ -1,33 +1,51 @@
 import UserDropdown from '../user/UserDropdown';
-import { useAuthContext } from '../../contexts/QueryAuthContext';
+import CompanyAreaDropdown from '../user/CompanyAreaDropdown';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Header = () => {
-  const { user } = useAuthContext();
-  
-  // Get actual company and area info
-  const actualCompanyArea = (user as any)?.actual_company_area;
-  const companyName = actualCompanyArea?.EMPRESA;
-  const areaName = actualCompanyArea?.AREA;
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Navigation options
+  const navigationItems = [
+    { path: '/rag', label: 'Chat', icon: '💬' },
+    { path: '/upload', label: 'Upload', icon: '📁' },
+  ];
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+  };
 
   return (
     <div className="flex justify-between items-center px-6 py-2 bg-background border-b">
-      <img
-        src="/fractal-logo.svg"
-        className="h-6 w-auto"
-        alt="Logo Fractal"
-      />
+      <div className="flex items-center gap-6">
+        <img
+          src="/fractal-logo.svg"
+          className="h-6 w-auto"
+          alt="Logo Fractal"
+        />
+
+        {/* Navigation Router */}
+        <nav className="flex items-center gap-1">
+          {navigationItems.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => handleNavigation(item.path)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                location.pathname === item.path
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+
       <div className="flex items-center gap-4">
-        {companyName && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="font-medium">{companyName}</span>
-            {areaName && (
-              <>
-                <span>•</span>
-                <span>{areaName}</span>
-              </>
-            )}
-          </div>
-        )}
+        <CompanyAreaDropdown />
         <UserDropdown />
       </div>
     </div>
