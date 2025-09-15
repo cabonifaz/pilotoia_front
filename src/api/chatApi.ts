@@ -1,4 +1,5 @@
 import apiClient from './apiClient';
+import { createSSEConnection } from './sseClient';
 import type { MensajeResponse } from './interfaces/Mensaje';
 
 export const chatApi = {
@@ -7,26 +8,23 @@ export const chatApi = {
         return response.data;
     },
 
-    // For streaming chat - returns the streaming config with Authorization header
-    getStreamingConfig: () => {
-        const token = sessionStorage.getItem('jwt_token');
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-            'Accept': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive'
-        };
-        
-        // Add Authorization header if token exists
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-        
-        return {
-            url: `${import.meta.env.VITE_API_BASE_URL}/api/v1/rag/chat-streaming`,
-            headers
-        };
+    // For streaming chat using SSE client with integrated config
+    sendStreamingMessage: async (
+        messageRequest: ChatMessageRequest,
+        onMessage: (data: any) => void,
+        onError?: (error: Event) => void,
+        onClose?: (event: CloseEvent) => void,
+        onOpen?: () => void
+    ): Promise<void> => {
+        return createSSEConnection({
+            endpoint: '/v1/rag/chat-streaming',
+            onMessage,
+            onError,
+            onClose,
+            onOpen
+        }, messageRequest);
     },
+
 
     getChatHistory: async (userId: string, companyId?: string): Promise<ChatHistoryResponse> => {
         const params = new URLSearchParams({ user_id: userId });

@@ -3,6 +3,7 @@ import { LoginPage } from "../pages/login/Login";
 import { App } from "../App";
 import { GuardRoute } from "./GuardRoute";
 import HomeStreamingChat from "../pages/home/HomeStreamingChat";
+import DocumentUpload from "../pages/upload/DocumentUpload";
 
 export const router = createBrowserRouter([
   {
@@ -18,11 +19,18 @@ export const router = createBrowserRouter([
         element: <LoginPage />,
       },
       {
-        path: "home",
+        path: "rag",
         element: (
           <GuardRoute>
-            {/* <HomePage /> */}
             <HomeStreamingChat />
+          </GuardRoute>
+        ),
+      },
+      {
+        path: "upload",
+        element: (
+          <GuardRoute>
+            <DocumentUpload />
           </GuardRoute>
         ),
       },
