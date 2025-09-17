@@ -5,6 +5,7 @@ import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
 import { Slider } from '@/components/shadcn/slider';
 import { ChevronDown } from 'lucide-react';
+import { useAuthContext } from '../../contexts/QueryAuthContext';
 
 interface AIConfig {
   user_id: string;
@@ -24,6 +25,10 @@ interface AIConfigPanelProps {
 
 const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPanelProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { user } = useAuthContext();
+
+  // Check if user is Admin role
+  const isAdminRole = user?.rol_nombre === 'Admin' && user?.id_tipo_rol === 2;
 
   const toggleExpanded = () => {
     const newExpanded = !isExpanded;
@@ -79,6 +84,8 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
                 value={config.company_id}
                 onChange={(e) => handleConfigChange('company_id', e.target.value)}
                 placeholder="Empresa"
+                readOnly={isAdminRole}
+                className={isAdminRole ? "bg-muted cursor-not-allowed" : ""}
               />
             </div>
 
@@ -90,6 +97,8 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
                 value={config.area}
                 onChange={(e) => handleConfigChange('area', e.target.value)}
                 placeholder="Área"
+                readOnly={isAdminRole}
+                className={isAdminRole ? "bg-muted cursor-not-allowed" : ""}
               />
             </div>
 
