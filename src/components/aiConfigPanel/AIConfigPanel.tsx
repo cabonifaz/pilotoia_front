@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shadcn/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/shadcn/collapsible';
 import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
 import { Slider } from '@/components/shadcn/slider';
 import { ChevronDown } from 'lucide-react';
-import { useAuthContext } from '../../contexts/QueryAuthContext';
 
 interface AIConfig {
   user_id: string;
@@ -18,37 +17,13 @@ interface AIConfig {
 }
 
 interface AIConfigPanelProps {
+  config: AIConfig;
   onConfigChange: (config: AIConfig) => void;
-  initialConfig?: Partial<AIConfig>;
   onExpandedChange?: (expanded: boolean) => void;
 }
 
-const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AIConfigPanelProps) => {
-  const { user } = useAuthContext();
-  
-  const [config, setConfig] = useState<AIConfig>({
-    user_id: initialConfig?.user_id || user?.usuario || '',
-    company_id: initialConfig?.company_id || 'CIA00099',
-    area: initialConfig?.area || 'AREA001',
-    similarity_threshold: initialConfig?.similarity_threshold || 0.4,
-    temperature: initialConfig?.temperature || 0.3,
-    max_tokens: initialConfig?.max_tokens || 1024,
-    top_k: initialConfig?.top_k || 5,
-  });
-
+const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPanelProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
-
-  // Update config when user data becomes available
-  useEffect(() => {
-    if (user && !initialConfig?.user_id) {
-      const updatedConfig = {
-        ...config,
-        user_id: user.usuario,
-      };
-      setConfig(updatedConfig);
-      onConfigChange(updatedConfig);
-    }
-  }, [user, initialConfig?.user_id, config, onConfigChange]);
 
   const toggleExpanded = () => {
     const newExpanded = !isExpanded;
@@ -58,7 +33,6 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
 
   const handleConfigChange = (key: keyof AIConfig, value: string | number) => {
     const newConfig = { ...config, [key]: value };
-    setConfig(newConfig);
     onConfigChange(newConfig);
   };
 

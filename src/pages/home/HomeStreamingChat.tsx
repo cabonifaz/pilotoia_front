@@ -89,8 +89,8 @@ const HomeStreamingChat = () => {
 
             {/* AI Configuration Panel */}
             <AIConfigPanel
+              config={aiConfig}
               onConfigChange={setAiConfig}
-              initialConfig={aiConfig}
             />
           </div>
         </div>
