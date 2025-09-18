@@ -15,10 +15,6 @@ export const router = createHashRouter([
         element: <LoginPage />,
       },
       {
-        path: "login",
-        element: <LoginPage />,
-      },
-      {
         path: "rag",
         element: (
           <GuardRoute>

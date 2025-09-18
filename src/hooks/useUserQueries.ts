@@ -124,7 +124,7 @@ export const useLogoutMutation = () => {
             
             // Redirect to login page
             setTimeout(() => {
-                window.location.href = '/#/login';
+                window.location.href = '/#/';
             }, 1000);
         },
         onError: (error: any) => {
