@@ -3,7 +3,7 @@ import type { MensajeResponse } from './interfaces/Mensaje';
 
 export const authApi = {
     login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-        const response = await apiClient.post<LoginResponse>('/v1/auth/login', credentials);  
+        const response = await apiClient.post<LoginResponse>('/v1/auth/login', credentials);
         return response.data;
     },
 
@@ -29,6 +29,10 @@ export const authApi = {
         return response.data;
     },
 
+    getCompanyAreas: async (): Promise<any[]> => {
+        const response = await apiClient.get<{ company_areas: any[] }>('/v1/auth/company-areas');
+        return response.data.company_areas;
+    },
 
     // Session management now handled by React Context
     clearUserSession: (): void => {
@@ -37,7 +41,7 @@ export const authApi = {
         // Trigger storage event to notify other tabs
         window.dispatchEvent(new Event('storage'));
     }
-};
+} as const;
 
 export interface LoginRequest {
     usuario: string;

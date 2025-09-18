@@ -27,10 +27,14 @@ const CompanyAreaDropdown = () => {
     return null;
   }
 
-  // Check if user has multiple company areas and is not Admin role
+  // Check if user has multiple company areas and role permissions
   const hasMultipleCompanyAreas = user.company_areas && user.company_areas.length > 1;
-  const isAdminRole = user.rol_nombre === 'Admin' && user.id_tipo_rol === 2;
-  const canChangeCompanyArea = hasMultipleCompanyAreas && !isAdminRole;
+  const isSuperAdmin = user.id_tipo_rol === 1;
+  const isAdmin = user.id_tipo_rol === 2;
+  const isUser = user.id_tipo_rol === 3;
+
+  // SuperAdmin and Admin can change areas if they have multiple, User cannot
+  const canChangeCompanyArea = hasMultipleCompanyAreas && (isSuperAdmin || isAdmin);
 
   if (!companyName) {
     return null;

@@ -38,10 +38,10 @@ const HomeStreamingChat = () => {
       setAiConfig(prevConfig => ({
         ...prevConfig,
         user_id: user.usuario,
-        // For Admin role, use actual_company_area data
-        ...(user.rol_nombre === 'Admin' && user.id_tipo_rol === 2 && actualCompanyArea && {
-          company_id: actualCompanyArea.ID_EMPRESA || actualCompanyArea.EMPRESA || prevConfig.company_id,
-          area: actualCompanyArea.ID_AREA || actualCompanyArea.AREA || prevConfig.area,
+        // For all users, use actual_company_area data if available
+        ...(actualCompanyArea && {
+          company_id: actualCompanyArea.EMPRESA || prevConfig.company_id,
+          area: actualCompanyArea.AREA || prevConfig.area,
         }),
       }));
     }
