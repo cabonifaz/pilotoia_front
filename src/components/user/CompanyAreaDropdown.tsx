@@ -9,6 +9,7 @@ import {
 } from '@/components/shadcn/dropdown-menu';
 import { useAuthContext } from '../../contexts/QueryAuthContext';
 import CompanyAreaModal from './CompanyAreaModal';
+import type { DecodedUserData } from '../../utils/jwtUtils';
 
 const CompanyAreaDropdown = () => {
   const { user } = useAuthContext();
@@ -31,7 +32,6 @@ const CompanyAreaDropdown = () => {
   const hasMultipleCompanyAreas = user.company_areas && user.company_areas.length > 1;
   const isSuperAdmin = user.id_tipo_rol === 1;
   const isAdmin = user.id_tipo_rol === 2;
-  const isUser = user.id_tipo_rol === 3;
 
   // SuperAdmin and Admin can change areas if they have multiple, User cannot
   const canChangeCompanyArea = hasMultipleCompanyAreas && (isSuperAdmin || isAdmin);
@@ -81,7 +81,7 @@ const CompanyAreaDropdown = () => {
         <CompanyAreaModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          user={user}
+          user={user as DecodedUserData}
         />
       )}
     </>
