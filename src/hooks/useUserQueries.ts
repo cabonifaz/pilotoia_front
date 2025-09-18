@@ -50,14 +50,17 @@ export const useLoginMutation = () => {
                 const decodedUserData = JWTUtils.decodeToken(data.token);
                 
                 if (decodedUserData) {
-                    // Add actualCompanyArea from first company area
-                    const userDataWithActualCompanyArea = {
-                        ...decodedUserData,
-                        actual_company_area: decodedUserData.company_areas?.[0] || null
+                    // Remove company_areas from JWT data - will be populated by separate endpoint
+                    const { company_areas, ...userDataWithoutCompanyAreas } = decodedUserData;
+
+                    const userDataForCache = {
+                        ...userDataWithoutCompanyAreas,
+                        company_areas: [], // Will be populated by useCompanyAreasQuery
+                        actual_company_area: null // Will be set after company areas are loaded
                     };
-                    
-                    // Update the query cache with decoded JWT data
-                    queryClient.setQueryData(queryKeys.user.current(), userDataWithActualCompanyArea);
+
+                    // Update the query cache with decoded JWT data (without company_areas)
+                    queryClient.setQueryData(queryKeys.user.current(), userDataForCache);
                     
                     // Store user's chats in TanStack Query cache
                     if (data.chats && decodedUserData.user_id) {
@@ -70,6 +73,9 @@ export const useLoginMutation = () => {
                         description: `Bienvenido, ${decodedUserData.nombres}`,
                         variant: "success"
                     });
+
+                    // Trigger company areas fetch to populate the cache
+                    queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
                 } else {
                     console.error('Failed to decode JWT token');
                 }
@@ -124,7 +130,7 @@ export const useLogoutMutation = () => {
             
             // Redirect to login page
             setTimeout(() => {
-                window.location.href = '/login';
+                window.location.href = '/#/';
             }, 1000);
         },
         onError: (error: any) => {
@@ -158,11 +164,51 @@ export const useRefreshUser = () => {
 // Hook to check if user has specific role
 export const useUserRole = () => {
     const { user } = useCurrentUser();
-    
+
     return {
         userRole: user?.rol_nombre,
         roleId: user?.id_tipo_rol,
         isAdmin: user?.id_tipo_rol === 1, // Adjust based on your role system
         hasRole: (roleId: number) => user?.id_tipo_rol === roleId,
+    };
+};
+
+// Hook to fetch and update company areas
+export const useCompanyAreasQuery = () => {
+    const queryClient = useQueryClient();
+    const { user } = useCurrentUser();
+
+    return useQuery({
+        queryKey: ['user', 'company-areas'],
+        queryFn: async (): Promise<any[]> => {
+            const companyAreas = await (authApi as any).getCompanyAreas();
+
+            // Update the user cache with fresh company areas
+            const currentUser = queryClient.getQueryData(queryKeys.user.current()) as DecodedUserData;
+            if (currentUser) {
+                const updatedUser = {
+                    ...currentUser,
+                    company_areas: companyAreas,
+                    actual_company_area: companyAreas[0] || null
+                };
+                queryClient.setQueryData(queryKeys.user.current(), updatedUser);
+            }
+
+            return companyAreas;
+        },
+        enabled: !!user, // Only run if user is authenticated
+        staleTime: 24 * 60 * 60 * 1000, // 24 hours
+        gcTime: 24 * 60 * 60 * 1000, // 24 hours
+        refetchOnWindowFocus: false,
+        retry: 2,
+    });
+};
+
+// Hook to invalidate company areas (when permissions change)
+export const useInvalidateCompanyAreas = () => {
+    const queryClient = useQueryClient();
+
+    return () => {
+        queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
     };
 };

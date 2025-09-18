@@ -11,7 +11,7 @@ export const GuardRoute = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         // If not loading and not authenticated, redirect to login
         if (!isLoading && !isAuthenticated) {
-            navigate("/login", { replace: true });
+            navigate("/", { replace: true });
         }
     }, [isLoading, isAuthenticated, navigate]);
 

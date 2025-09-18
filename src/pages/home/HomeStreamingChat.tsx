@@ -25,8 +25,8 @@ const HomeStreamingChat = () => {
     user_id: user?.usuario || '',
     company_id: 'CIA00099',
     area: 'AREA001',
-    similarity_threshold: 0.4,
-    temperature: 0.3,
+    similarity_threshold: 0.1,
+    temperature: 0.1,
     max_tokens: 1024,
     top_k: 5,
   });
@@ -34,9 +34,20 @@ const HomeStreamingChat = () => {
   // Update config when user data becomes available
   useEffect(() => {
     if (user) {
+      const actualCompanyArea = (user as any)?.actual_company_area;
       setAiConfig(prevConfig => ({
         ...prevConfig,
         user_id: user.usuario,
+        // For all users, use actual_company_area data if available
+        ...(actualCompanyArea && {
+          company_id: actualCompanyArea.EMPRESA || prevConfig.company_id,
+          area: actualCompanyArea.AREA || prevConfig.area,
+          // Include AI parameters if they exist in actualCompanyArea
+          ...(actualCompanyArea.RAG_SIMILARITY_THRESHOLD !== undefined && { similarity_threshold: actualCompanyArea.RAG_SIMILARITY_THRESHOLD }),
+          ...(actualCompanyArea.LLM_TEMPERATURE !== undefined && { temperature: actualCompanyArea.LLM_TEMPERATURE }),
+          ...(actualCompanyArea.LLM_MAX_TOKENS !== undefined && { max_tokens: actualCompanyArea.LLM_MAX_TOKENS }),
+          ...(actualCompanyArea.RAG_TOP_K_RESULTS !== undefined && { top_k: actualCompanyArea.RAG_TOP_K_RESULTS }),
+        }),
       }));
     }
   }, [user]);
@@ -81,17 +92,19 @@ const HomeStreamingChat = () => {
               <CardContent className="pt-3 pb-3">
                 <div className="text-center">
                   <Badge variant="secondary" className="text-sm">
-                    {aiConfig.company_id}
+                    {aiConfig.company_id} • {aiConfig.area}
                   </Badge>
                 </div>
               </CardContent>
             </Card>
 
-            {/* AI Configuration Panel */}
-            <AIConfigPanel
-              onConfigChange={setAiConfig}
-              initialConfig={aiConfig}
-            />
+            {/* AI Configuration Panel - Only show for SuperAdmin and Admin */}
+            {user?.id_tipo_rol !== 3 && (
+              <AIConfigPanel
+                config={aiConfig}
+                onConfigChange={setAiConfig}
+              />
+            )}
           </div>
         </div>
     </div>

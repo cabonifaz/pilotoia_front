@@ -27,8 +27,14 @@ const CompanyAreaDropdown = () => {
     return null;
   }
 
-  // Check if user has multiple company areas
+  // Check if user has multiple company areas and role permissions
   const hasMultipleCompanyAreas = user.company_areas && user.company_areas.length > 1;
+  const isSuperAdmin = user.id_tipo_rol === 1;
+  const isAdmin = user.id_tipo_rol === 2;
+  const isUser = user.id_tipo_rol === 3;
+
+  // SuperAdmin and Admin can change areas if they have multiple, User cannot
+  const canChangeCompanyArea = hasMultipleCompanyAreas && (isSuperAdmin || isAdmin);
 
   if (!companyName) {
     return null;
@@ -50,14 +56,14 @@ const CompanyAreaDropdown = () => {
                   <span>{areaName}</span>
                 </>
               )}
-              {hasMultipleCompanyAreas && (
+              {canChangeCompanyArea && (
                 <ChevronDown className="h-3 w-3" />
               )}
             </div>
           </Button>
         </DropdownMenuTrigger>
 
-        {hasMultipleCompanyAreas && (
+        {canChangeCompanyArea && (
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem
               onClick={handleCompanyAreaChange}
@@ -71,7 +77,7 @@ const CompanyAreaDropdown = () => {
       </DropdownMenu>
 
       {/* Company/Area Selection Modal */}
-      {hasMultipleCompanyAreas && (
+      {canChangeCompanyArea && (
         <CompanyAreaModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
