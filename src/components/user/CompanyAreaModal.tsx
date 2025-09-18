@@ -17,14 +17,14 @@ import {
   SelectValue,
 } from '@/components/shadcn/select';
 import { queryKeys } from '../../lib/queryClient';
-import type { LoginResponse } from '../../api/authApi';
+import type { DecodedUserData } from '../../utils/jwtUtils';
 import { Loader } from '../loader/Loader';
 import { toast } from '../../hooks/use-toast';
 
 interface CompanyAreaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  user: LoginResponse;
+  user: DecodedUserData;
 }
 
 const CompanyAreaModal = ({ isOpen, onClose, user }: CompanyAreaModalProps) => {
@@ -43,7 +43,7 @@ const CompanyAreaModal = ({ isOpen, onClose, user }: CompanyAreaModalProps) => {
     setIsChanging(true);
     try {
       // Find the selected company area
-      const selected = user.company_areas.find(ca => 
+      const selected = user.company_areas.find((ca: any) =>
         `${ca.ID_EMPRESA}-${ca.ID_AREA}` === selectedValue
       );
       
@@ -108,7 +108,7 @@ const CompanyAreaModal = ({ isOpen, onClose, user }: CompanyAreaModalProps) => {
                 <SelectValue placeholder="Selecciona una empresa y área" />
               </SelectTrigger>
               <SelectContent>
-                {user.company_areas?.map((companyArea) => {
+                {user.company_areas?.map((companyArea: any) => {
                   const key = `${companyArea.ID_EMPRESA}-${companyArea.ID_AREA}`;
                   const isCurrent = key === currentKey;
                   
