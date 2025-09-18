@@ -8,8 +8,8 @@ const Header = () => {
 
   // Navigation options
   const navigationItems = [
-    { path: '/rag', label: 'Chat', icon: '💬' },
-    { path: '/upload', label: 'Upload', icon: '📁' },
+    { path: '/rag', label: 'Chat', icon: '💬' }/*,
+    { path: '/upload', label: 'Upload', icon: '📁' },*/
   ];
 
   const handleNavigation = (path: string) => {
