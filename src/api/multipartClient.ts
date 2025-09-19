@@ -31,23 +31,30 @@ const extraerMensaje = (data: unknown): MensajeResponse | null => {
     return null;
 };
 
-// Create axios instance with base configuration
-const apiClient = axios.create({
+// Create axios instance for multipart/form-data requests
+const multipartClient = axios.create({
     baseURL: API_BASE_URL,
     headers: {
-        'Content-Type': 'application/json',
+        // Don't set Content-Type for multipart/form-data - browser will set it with boundary
     },
     withCredentials: false,  // No cookies needed - using Authorization header
+    timeout: 300000, // 5 minutes timeout for large file uploads
 });
 
 // Request interceptor
-apiClient.interceptors.request.use(
+multipartClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
         // Get JWT from sessionStorage and add to Authorization header
         const token = sessionStorage.getItem('jwt_token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // For multipart/form-data, let the browser set Content-Type with boundary
+        if (config.data instanceof FormData) {
+            delete config.headers['Content-Type'];
+        }
+
         return config;
     },
     (error: AxiosError) => {
@@ -55,8 +62,8 @@ apiClient.interceptors.request.use(
     }
 );
 
-// Response interceptor
-apiClient.interceptors.response.use(
+// Response interceptor - same error handling as apiClient
+multipartClient.interceptors.response.use(
     (response: AxiosResponse) => {
         const mensaje = extraerMensaje(response.data);
 
@@ -79,8 +86,7 @@ apiClient.interceptors.response.use(
                 case 401:
                     // Clear JWT from sessionStorage
                     sessionStorage.removeItem('jwt_token');
-                    // TanStack Query will handle auth state cleanup
-                    
+
                     // Show error message
                     if (mensaje) {
                         toast({
@@ -95,7 +101,7 @@ apiClient.interceptors.response.use(
                             variant: "destructive"
                         });
                     }
-                    
+
                     // Redirect to login after a brief delay for toast to show
                     setTimeout(() => {
                         window.location.href = '/#/';
@@ -119,18 +125,35 @@ apiClient.interceptors.response.use(
                     }
                     break;
 
-                case 404:
-                    // No encontrado
+                case 413:
+                    // Payload too large
                     if (mensaje) {
                         toast({
-                            title: "No encontrado",
+                            title: "Archivo demasiado grande",
                             description: mensaje.mensaje,
                             variant: "destructive"
                         });
                     } else {
                         toast({
-                            title: "No encontrado",
-                            description: "Recurso no encontrado",
+                            title: "Archivo demasiado grande",
+                            description: "El archivo excede el tamaño máximo permitido",
+                            variant: "destructive"
+                        });
+                    }
+                    break;
+
+                case 415:
+                    // Unsupported media type
+                    if (mensaje) {
+                        toast({
+                            title: "Tipo de archivo no soportado",
+                            description: mensaje.mensaje,
+                            variant: "destructive"
+                        });
+                    } else {
+                        toast({
+                            title: "Tipo de archivo no soportado",
+                            description: "El tipo de archivo no está permitido",
                             variant: "destructive"
                         });
                     }
@@ -147,7 +170,7 @@ apiClient.interceptors.response.use(
                     } else {
                         toast({
                             title: "Error de validación",
-                            description: "Error de validación",
+                            description: "Error de validación de archivos",
                             variant: "destructive"
                         });
                     }
@@ -197,7 +220,7 @@ apiClient.interceptors.response.use(
             // Otro tipo de error
             toast({
                 title: "Error inesperado",
-                description: "Error inesperado",
+                description: "Error inesperado durante la subida",
                 variant: "destructive"
             });
         }
@@ -206,4 +229,4 @@ apiClient.interceptors.response.use(
     }
 );
 
-export default apiClient;
+export default multipartClient;

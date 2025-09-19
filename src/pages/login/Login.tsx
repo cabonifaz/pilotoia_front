@@ -19,7 +19,7 @@ export const LoginPage = () => {
     const handleFormSubmit = async (data: LoginFormData) => {
         const result = await onSubmit(data);
         if (result.success) {
-            navigate('/home');
+            navigate('/rag');
         }
     };
 

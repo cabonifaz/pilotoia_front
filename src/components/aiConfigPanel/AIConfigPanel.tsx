@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shadcn/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/shadcn/collapsible';
 import { Input } from '@/components/shadcn/input';
@@ -18,37 +18,17 @@ interface AIConfig {
 }
 
 interface AIConfigPanelProps {
+  config: AIConfig;
   onConfigChange: (config: AIConfig) => void;
-  initialConfig?: Partial<AIConfig>;
   onExpandedChange?: (expanded: boolean) => void;
 }
 
-const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AIConfigPanelProps) => {
-  const { user } = useAuthContext();
-  
-  const [config, setConfig] = useState<AIConfig>({
-    user_id: initialConfig?.user_id || user?.usuario || '',
-    company_id: initialConfig?.company_id || 'CIA00099',
-    area: initialConfig?.area || '',
-    similarity_threshold: initialConfig?.similarity_threshold || 0.4,
-    temperature: initialConfig?.temperature || 0.3,
-    max_tokens: initialConfig?.max_tokens || 1024,
-    top_k: initialConfig?.top_k || 5,
-  });
-
+const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPanelProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { user } = useAuthContext();
 
-  // Update config when user data becomes available
-  useEffect(() => {
-    if (user && !initialConfig?.user_id) {
-      const updatedConfig = {
-        ...config,
-        user_id: user.usuario,
-      };
-      setConfig(updatedConfig);
-      onConfigChange(updatedConfig);
-    }
-  }, [user, initialConfig?.user_id, config, onConfigChange]);
+  // Check if user should have read-only access (Admin or User roles)
+  const isReadOnlyRole = user?.id_tipo_rol === 2 || user?.id_tipo_rol === 3;
 
   const toggleExpanded = () => {
     const newExpanded = !isExpanded;
@@ -58,7 +38,6 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
 
   const handleConfigChange = (key: keyof AIConfig, value: string | number) => {
     const newConfig = { ...config, [key]: value };
-    setConfig(newConfig);
     onConfigChange(newConfig);
   };
 
@@ -94,6 +73,7 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
                 onChange={(e) => handleConfigChange('user_id', e.target.value)}
                 placeholder="Usuario"
                 readOnly
+                className="bg-muted cursor-not-allowed"
               />
             </div>
 
@@ -105,6 +85,8 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
                 value={config.company_id}
                 onChange={(e) => handleConfigChange('company_id', e.target.value)}
                 placeholder="Empresa"
+                readOnly={isReadOnlyRole}
+                className={isReadOnlyRole ? "bg-muted cursor-not-allowed" : ""}
               />
             </div>
 
@@ -116,6 +98,8 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
                 value={config.area}
                 onChange={(e) => handleConfigChange('area', e.target.value)}
                 placeholder="Área"
+                readOnly={isReadOnlyRole}
+                className={isReadOnlyRole ? "bg-muted cursor-not-allowed" : ""}
               />
             </div>
 
@@ -128,11 +112,12 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
               </div>
               <Slider
                 value={[config.similarity_threshold]}
-                onValueChange={([value]) => handleConfigChange('similarity_threshold', value)}
+                onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('similarity_threshold', value)}
                 min={0}
                 max={1}
                 step={0.1}
-                className="w-full"
+                className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
+                disabled={isReadOnlyRole}
               />
               <div className="flex justify-between text-xs text-foreground/70">
                 <span>0.0</span>
@@ -149,11 +134,12 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
               </div>
               <Slider
                 value={[config.temperature]}
-                onValueChange={([value]) => handleConfigChange('temperature', value)}
+                onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('temperature', value)}
                 min={0}
                 max={1}
                 step={0.1}
-                className="w-full"
+                className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
+                disabled={isReadOnlyRole}
               />
               <div className="flex justify-between text-xs text-foreground/70">
                 <span>0.0 (Conservador)</span>
@@ -170,11 +156,12 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
               </div>
               <Slider
                 value={[config.max_tokens]}
-                onValueChange={([value]) => handleConfigChange('max_tokens', value)}
+                onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('max_tokens', value)}
                 min={256}
                 max={4096}
                 step={256}
-                className="w-full"
+                className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
+                disabled={isReadOnlyRole}
               />
               <div className="flex justify-between text-xs text-foreground/70">
                 <span>256</span>
@@ -191,11 +178,12 @@ const AIConfigPanel = ({ onConfigChange, initialConfig, onExpandedChange }: AICo
               </div>
               <Slider
                 value={[config.top_k]}
-                onValueChange={([value]) => handleConfigChange('top_k', value)}
+                onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('top_k', value)}
                 min={1}
                 max={20}
                 step={1}
-                className="w-full"
+                className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
+                disabled={isReadOnlyRole}
               />
               <div className="flex justify-between text-xs text-foreground/70">
                 <span>1 (Mínimo)</span>
