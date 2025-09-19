@@ -98,7 +98,7 @@ apiClient.interceptors.response.use(
                     
                     // Redirect to login after a brief delay for toast to show
                     setTimeout(() => {
-                        window.location.href = '/login';
+                        window.location.href = '/#/';
                     }, 1000);
                     break;
 
