@@ -19,7 +19,10 @@ export const LoginPage = () => {
     const handleFormSubmit = async (data: LoginFormData) => {
         const result = await onSubmit(data);
         if (result.success) {
-            navigate('/rag');
+            // Small delay to let browser capture successful login
+            setTimeout(() => {
+                navigate('/rag');
+            }, 100);
         }
     };
 
@@ -40,7 +43,14 @@ export const LoginPage = () => {
                 </CardHeader>
                 
                 <CardContent>
-                    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+                    <form
+                        onSubmit={handleSubmit(handleFormSubmit)}
+                        className="space-y-4"
+                        autoComplete="on"
+                        name="loginForm"
+                        method="post"
+                        action="/login"
+                    >
                         <div className="space-y-2">
                             <Input
                                 {...register("usuario")}
@@ -48,6 +58,9 @@ export const LoginPage = () => {
                                 placeholder="Usuario"
                                 disabled={isLoading}
                                 className="h-11 text-base"
+                                autoComplete="username"
+                                name="usuario"
+                                id="usuario"
                             />
                             {errors.usuario && (
                                 <p className="text-sm text-red-600">{errors.usuario.message}</p>
@@ -62,6 +75,9 @@ export const LoginPage = () => {
                                     placeholder="Contraseña"
                                     disabled={isLoading}
                                     className="h-11 text-base pr-10"
+                                    autoComplete="current-password"
+                                    name="clave_acceso"
+                                    id="clave_acceso"
                                 />
                                 <button
                                     type="button"

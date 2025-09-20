@@ -7,12 +7,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/shadcn/dropdown-menu';
-import { useAuthContext } from '../../contexts/QueryAuthContext';
+import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 import CompanyAreaModal from './CompanyAreaModal';
 import type { DecodedUserData } from '../../utils/jwtUtils';
 
 const CompanyAreaDropdown = () => {
-  const { user } = useAuthContext();
+  const { user } = useQueryAuthContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Get actual company and area info

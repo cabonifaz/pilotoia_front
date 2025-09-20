@@ -1,11 +1,11 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type LoginFormData, loginSchema } from '../pages/login/LoginForm';
-import { useAuthContext } from '../contexts/QueryAuthContext';
+import { useQueryAuthContext } from '../contexts/QueryAuthContext';
 import { showErrorToast } from '../utils/errorHandler';
 
 export function useAuth() {
-    const { login, isLoading } = useAuthContext();
+    const { login, isLoading } = useQueryAuthContext();
     const {
         register,
         handleSubmit,

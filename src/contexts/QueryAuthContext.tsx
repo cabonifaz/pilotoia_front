@@ -84,5 +84,3 @@ export const useQueryAuthContext = (): QueryAuthContextType => {
     return context;
 };
 
-// Backward compatibility hook - same interface as the old useAuthContext
-export const useAuthContext = useQueryAuthContext;

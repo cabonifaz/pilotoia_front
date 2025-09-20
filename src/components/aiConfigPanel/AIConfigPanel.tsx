@@ -5,7 +5,7 @@ import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
 import { Slider } from '@/components/shadcn/slider';
 import { ChevronDown } from 'lucide-react';
-import { useAuthContext } from '../../contexts/QueryAuthContext';
+import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 
 interface AIConfig {
   user_id: string;
@@ -25,7 +25,7 @@ interface AIConfigPanelProps {
 
 const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPanelProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { user } = useAuthContext();
+  const { user } = useQueryAuthContext();
 
   // Check if user should have read-only access (Admin or User roles)
   const isReadOnlyRole = user?.id_tipo_rol === 2 || user?.id_tipo_rol === 3;
