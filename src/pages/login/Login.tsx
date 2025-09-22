@@ -1,22 +1,67 @@
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
+import CryptoJS from 'crypto-js';
 
 type LoginFormData = {
     usuario: string;
     clave_acceso: string;
 };
 
+const REMEMBER_ME_USERNAME_KEY = 'login_remember_username';
+const REMEMBER_ME_PASSWORD_KEY = 'login_remember_password';
+
+const ENCRYPTION_KEY = import.meta.env.VITE_LOGIN_ENCRYPTION_KEY || 'default-fallback-key';
+
+// AES encryption/decryption functions
+const encryptData = (data: string): string => {
+    return CryptoJS.AES.encrypt(data, ENCRYPTION_KEY).toString();
+};
+
+const decryptData = (encryptedData: string): string => {
+    try {
+        const bytes = CryptoJS.AES.decrypt(encryptedData, ENCRYPTION_KEY);
+        return bytes.toString(CryptoJS.enc.Utf8);
+    } catch {
+        return '';
+    }
+};
+
 export const LoginPage = () => {
     const navigate = useNavigate();
-    const { register, handleSubmit, errors, onSubmit, isLoading } = useAuth();
+    const { register, handleSubmit, errors, onSubmit, isLoading, setValue } = useAuth();
     const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
+
+    // Load saved credentials on component mount
+    useEffect(() => {
+        const savedUsername = localStorage.getItem(REMEMBER_ME_USERNAME_KEY);
+        const savedPassword = localStorage.getItem(REMEMBER_ME_PASSWORD_KEY);
+        if (savedUsername && savedPassword) {
+            const decryptedUsername = decryptData(savedUsername);
+            const decryptedPassword = decryptData(savedPassword);
+            if (decryptedUsername && decryptedPassword) {
+                setValue('usuario', decryptedUsername);
+                setValue('clave_acceso', decryptedPassword);
+                setRememberMe(true);
+            }
+        }
+    }, [setValue]);
 
     const handleFormSubmit = async (data: LoginFormData) => {
+        // Handle remember me functionality
+        if (rememberMe) {
+            localStorage.setItem(REMEMBER_ME_USERNAME_KEY, encryptData(data.usuario));
+            localStorage.setItem(REMEMBER_ME_PASSWORD_KEY, encryptData(data.clave_acceso));
+        } else {
+            localStorage.removeItem(REMEMBER_ME_USERNAME_KEY);
+            localStorage.removeItem(REMEMBER_ME_PASSWORD_KEY);
+        }
+
         const result = await onSubmit(data);
         if (result.success) {
             navigate('/rag');
@@ -40,7 +85,14 @@ export const LoginPage = () => {
                 </CardHeader>
                 
                 <CardContent>
-                    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+                    <form
+                        onSubmit={handleSubmit(handleFormSubmit)}
+                        className="space-y-4"
+                        autoComplete="on"
+                        name="loginForm"
+                        method="post"
+                        action="/login"
+                    >
                         <div className="space-y-2">
                             <Input
                                 {...register("usuario")}
@@ -48,6 +100,9 @@ export const LoginPage = () => {
                                 placeholder="Usuario"
                                 disabled={isLoading}
                                 className="h-11 text-base"
+                                autoComplete="username"
+                                name="usuario"
+                                id="usuario"
                             />
                             {errors.usuario && (
                                 <p className="text-sm text-red-600">{errors.usuario.message}</p>
@@ -62,6 +117,9 @@ export const LoginPage = () => {
                                     placeholder="Contraseña"
                                     disabled={isLoading}
                                     className="h-11 text-base pr-10"
+                                    autoComplete="current-password"
+                                    name="clave_acceso"
+                                    id="clave_acceso"
                                 />
                                 <button
                                     type="button"
@@ -75,6 +133,32 @@ export const LoginPage = () => {
                             {errors.clave_acceso && (
                                 <p className="text-sm text-red-600">{errors.clave_acceso.message}</p>
                             )}
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                id="rememberMe"
+                                checked={rememberMe}
+                                onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setRememberMe(isChecked);
+
+                                    // Clear localStorage immediately when unchecked
+                                    if (!isChecked) {
+                                        localStorage.removeItem(REMEMBER_ME_USERNAME_KEY);
+                                        localStorage.removeItem(REMEMBER_ME_PASSWORD_KEY);
+                                    }
+                                }}
+                                disabled={isLoading}
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <label
+                                htmlFor="rememberMe"
+                                className="text-sm text-slate-700 font-medium leading-none cursor-pointer"
+                            >
+                                Recordar usuario
+                            </label>
                         </div>
 
                         <Button

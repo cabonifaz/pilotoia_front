@@ -7,10 +7,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/shadcn/dropdown-menu';
-import { useAuthContext } from '../../contexts/QueryAuthContext';
+import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 
 const UserDropdown = () => {
-  const { user, logout } = useAuthContext();
+  const { user, logout } = useQueryAuthContext();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {

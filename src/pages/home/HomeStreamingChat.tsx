@@ -5,7 +5,7 @@ import ChatComponent from '../../components/chat/ChatComponent';
 import ChatList from '../../components/chat/ChatList';
 import AIConfigPanel from '../../components/aiConfigPanel/AIConfigPanel';
 import Header from '../../components/layout/Header';
-import { useAuthContext } from '../../contexts/QueryAuthContext';
+import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 
 interface AIConfig {
   user_id: string;
@@ -18,7 +18,7 @@ interface AIConfig {
 }
 
 const HomeStreamingChat = () => {
-  const { user } = useAuthContext();
+  const { user } = useQueryAuthContext();
   const [selectedChatId, setSelectedChatId] = useState<number | undefined>();
   
   const [aiConfig, setAiConfig] = useState<AIConfig>({
