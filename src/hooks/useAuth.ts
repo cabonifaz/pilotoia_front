@@ -9,6 +9,7 @@ export function useAuth() {
     const {
         register,
         handleSubmit,
+        setValue,
         formState: { errors },
     } = useForm<LoginFormData>({
         resolver: zodResolver(loginSchema),
@@ -38,5 +39,5 @@ export function useAuth() {
         }
     };
 
-    return { register, handleSubmit, errors, onSubmit, isLoading };
+    return { register, handleSubmit, setValue, errors, onSubmit, isLoading };
 }
