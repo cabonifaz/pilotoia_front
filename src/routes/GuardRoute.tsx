@@ -1,12 +1,12 @@
 import { type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthContext } from "../contexts/QueryAuthContext";
+import { useQueryAuthContext } from "../contexts/QueryAuthContext";
 import { Loader } from "../components/loader/Loader";
 import { useEffect } from "react";
 
 export const GuardRoute = ({ children }: { children: ReactNode }) => {
     const navigate = useNavigate();
-    const { isAuthenticated, isLoading, user } = useAuthContext();
+    const { isAuthenticated, isLoading, user } = useQueryAuthContext();
 
     useEffect(() => {
         // If not loading and not authenticated, redirect to login
