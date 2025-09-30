@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
 import { Badge } from '@/components/shadcn/badge';
 import { useChatStream } from '../../hooks/useChatStream';
+import { useExternalLogin } from '../../hooks/useExternalLogin';
+import { LoginModal } from '../external-api/LoginModal';
 
 interface Message {
   id: string;
@@ -31,7 +33,8 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
   const [consulta, setConsulta] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const { messages, isLoading, streamingMessageId, sendMessage, cancelMessage } = useChatStream();
+  const { messages, isLoading, streamingMessageId, sendMessage, sendAgentMessage, cancelMessage } = useChatStream();
+  const { isAuthenticated, token } = useExternalLogin();
 
   // Debounced scroll handler
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -77,6 +80,14 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
 
   const cancelar = () => {
     cancelMessage();
+  };
+
+  const testAnalyzer = async () => {
+    if (!consulta.trim() || !token) return;
+
+    const currentConsulta = consulta;
+    setConsulta('');
+    await sendAgentMessage(currentConsulta, aiConfig, token);
   };
 
   const MessageBubble = ({ message }: { message: Message }) => (
@@ -156,13 +167,27 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
                   ⏹️ Detener
                 </Button>
               ) : (
-                <Button 
-                  onClick={manejarConsulta} 
-                  disabled={!consulta.trim()}
-                  size="sm"
-                >
-                  ▶️ Enviar
-                </Button>
+                <>
+                  <Button
+                    onClick={manejarConsulta}
+                    disabled={!consulta.trim()}
+                    size="sm"
+                  >
+                    ▶️ Enviar
+                  </Button>
+                  {isAuthenticated ? (
+                    <Button
+                      onClick={testAnalyzer}
+                      disabled={!consulta.trim() || isLoading}
+                      variant="outline"
+                      size="sm"
+                    >
+                      {isLoading ? '🔄 Analizando...' : '🔍 Agente'}
+                    </Button>
+                  ) : (
+                    <LoginModal />
+                  )}
+                </>
               )}
             </div>
           </div>

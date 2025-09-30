@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { chatApi, type ChatMessageRequest } from '../api/chatApi';
+import { chatApi, type ChatMessageRequest, type ChatMessageAgentRequest } from '../api/chatApi';
 import { showStreamingErrorToast } from '../utils/errorHandler';
 
 type JsonRecord = Record<string, unknown>;
@@ -40,6 +40,7 @@ interface UseChatStreamReturn {
   isLoading: boolean;
   streamingMessageId: string | null;
   sendMessage: (message: string, config: AIConfig) => Promise<void>;
+  sendAgentMessage: (message: string, config: AIConfig, token: string) => Promise<void>;
   cancelMessage: () => void;
 }
 
@@ -197,11 +198,125 @@ export const useChatStream = (): UseChatStreamReturn => {
     }
   }, []);
 
+  const sendAgentMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, token: string) => {
+    if (!messageContent.trim()) return;
+
+    setIsLoading(true);
+
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: messageContent,
+      timestamp: new Date()
+    };
+
+    // Add AI message placeholder
+    const aiMessageId = (Date.now() + 1).toString();
+    const aiMessage: Message = {
+      id: aiMessageId,
+      type: 'ai',
+      content: '',
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage, aiMessage]);
+    setStreamingMessageId(aiMessageId);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      await chatApi.sendStreamingMessageAgent(
+        {
+          message: messageContent,
+          external_token: token,
+          ...aiConfig
+        } as ChatMessageAgentRequest,
+        (data) => {
+          // Handle incoming SSE message
+          const evt = asStreamEvent(data);
+          if (!evt) return;
+
+          switch (evt.type) {
+            case "chunk":
+              setMessages(prev => prev.map(msg =>
+                msg.id === aiMessageId
+                  ? { ...msg, content: (evt as ChunkEvent).content }
+                  : msg
+              ));
+              break;
+            case "complete":
+              controller.abort();
+              break;
+            case "error":
+              const errorEvt = evt as ErrorEvent;
+
+              // Show centralized error toast
+              showStreamingErrorToast(errorEvt);
+
+              // Use the result message if available, otherwise use the message field
+              const errorMessage = errorEvt.result?.mensaje || errorEvt.message || "Error en el streaming";
+
+              // Update the AI message to show error
+              setMessages(prev => prev.map(msg =>
+                msg.id === aiMessageId
+                  ? { ...msg, content: `Error: ${errorMessage}` }
+                  : msg
+              ));
+
+              controller.abort();
+              break;
+            default:
+              break;
+          }
+        },
+        () => {
+          // Handle connection errors
+          const errorMessage = "Error de conexión con el servidor";
+
+          setMessages(prev => prev.map(msg =>
+            msg.id === aiMessageId
+              ? { ...msg, content: `Error: ${errorMessage}` }
+              : msg
+          ));
+
+          controller.abort();
+        },
+        () => {
+          // Handle connection close
+          setStreamingMessageId(null);
+        },
+        () => {
+          // Handle connection open
+        }
+      );
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') {
+        setMessages(prev => prev.map(msg =>
+          msg.id === aiMessageId
+            ? { ...msg, content: 'Error al consultar la API' }
+            : msg
+        ));
+      } else {
+        setMessages(prev => prev.map(msg =>
+          msg.id === aiMessageId
+            ? { ...msg, content: 'Error inesperado' }
+            : msg
+        ));
+      }
+    } finally {
+      setIsLoading(false);
+      setStreamingMessageId(null);
+    }
+  }, []);
+
   return {
     messages,
     isLoading,
     streamingMessageId,
     sendMessage,
+    sendAgentMessage,
     cancelMessage
   };
 };
