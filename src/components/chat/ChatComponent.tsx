@@ -1,19 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
-import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
-import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
-import { Badge } from '@/components/shadcn/badge';
+import { Card, CardContent } from '@/components/shadcn/card';
 import { useChatStream } from '../../hooks/useChatStream';
 import { useExternalLogin } from '../../hooks/useExternalLogin';
 import { LoginModal } from '../external-api/LoginModal';
-
-interface Message {
-  id: string;
-  type: 'user' | 'ai';
-  content: string;
-  timestamp: Date;
-}
+import { MessageBubble } from './MessageBubble';
 
 interface AIConfig {
   user_id: string;
@@ -90,35 +82,6 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
     await sendAgentMessage(currentConsulta, aiConfig, token);
   };
 
-  const MessageBubble = ({ message }: { message: Message }) => (
-    <div className={`mb-6 ${message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}`}>
-      <Card className={`max-w-[80%] ${message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-2 text-xs">
-            <Avatar className="h-6 w-6">
-              <AvatarFallback className="text-xs">
-                {message.type === 'user' ? '👤' : '🤖'}
-              </AvatarFallback>
-            </Avatar>
-            <span className="font-medium">
-              {message.type === 'user' ? aiConfig.user_id : 'Piloto IA'}
-            </span>
-            <Badge variant={message.type === 'user' ? 'default' : 'outline'} className="text-xs">
-              {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="whitespace-pre-wrap">
-            {message.content || (message.type === 'ai' ? 'Pensando...' : '')}
-            {streamingMessageId === message.id && (
-              <span className="inline-block w-2 h-4 bg-current ml-1 animate-pulse">▊</span>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
 
   return (
     <div className="h-full flex flex-col">
@@ -138,7 +101,12 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
           ) : (
             <div>
               {messages.map(message => (
-                <MessageBubble key={message.id} message={message} />
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  streamingMessageId={streamingMessageId}
+                  userId={aiConfig.user_id}
+                />
               ))}
             </div>
           )}
