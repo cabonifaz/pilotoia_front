@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
@@ -28,6 +29,9 @@ const hasTableOrList = (text: string): boolean => {
   return patterns.some(pattern => pattern.test(text));
 };
 
+// Global map to store scroll positions per message
+const scrollPositions = new Map<string, number>();
+
 // Simplified table fix for remark-gfm
 const fixTableMarkdown = (text: string): string => {
   // remark-gfm is more forgiving, just add basic line breaks
@@ -35,18 +39,42 @@ const fixTableMarkdown = (text: string): string => {
 
   // Split into lines and filter out empty rows
   const lines = fixed.split('\n');
-  const filteredLines = lines.filter(line => {
-    // Skip empty lines
-    if (!line.trim()) return false;
+  const filteredLines: string[] = [];
+  let inTable = false;
 
-    // Skip table rows that are essentially empty (only pipes and whitespace)
-    const tableRowPattern = /^\s*\|\s*(\|\s*)*\|?\s*$/;
-    if (tableRowPattern.test(line)) {
-      return false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isTableRow = line.trim().startsWith('|') && line.trim().endsWith('|');
+    const isEmptyTableRow = /^\s*\|\s*(\|\s*)*\|?\s*$/.test(line);
+    const isEmpty = !line.trim();
+
+    // Track if we're in a table
+    if (isTableRow && !isEmptyTableRow) {
+      inTable = true;
+      filteredLines.push(line);
+    } else if (isEmptyTableRow) {
+      // Skip empty table rows (only pipes and whitespace)
+      continue;
+    } else if (isEmpty) {
+      // Keep empty lines after table or between regular lines
+      if (inTable) {
+        // Transitioning out of table
+        filteredLines.push(line);
+        inTable = false;
+      } else if (filteredLines.length > 0) {
+        // Empty line between regular content - preserve it
+        filteredLines.push(line);
+      }
+    } else {
+      // Regular content line (not a table row)
+      if (inTable) {
+        // Add blank line to separate table from following text
+        filteredLines.push('');
+        inTable = false;
+      }
+      filteredLines.push(line);
     }
-
-    return true;
-  });
+  }
 
   return filteredLines.join('\n');
 };
@@ -79,14 +107,38 @@ export const MessageBubble = ({ message, streamingMessageId, userId }: MessageBu
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
-                // Table styling with horizontal scroll container
-                table: ({ children }) => (
-                  <div className="overflow-x-auto mb-4">
-                    <table className="w-full min-w-max border-collapse border border-gray-300 dark:border-gray-600 text-sm">
-                      {children}
-                    </table>
-                  </div>
-                ),
+                // Table styling with preserved scroll position
+                table: ({ children }) => {
+                  const containerRef = useRef<HTMLDivElement>(null);
+
+                  useEffect(() => {
+                    const container = containerRef.current;
+                    if (!container) return;
+
+                    // Restore saved scroll position for this message
+                    const savedPosition = scrollPositions.get(message.id) || 0;
+                    container.scrollLeft = savedPosition;
+
+                    // Save scroll position when user scrolls
+                    const handleScroll = () => {
+                      scrollPositions.set(message.id, container.scrollLeft);
+                    };
+
+                    container.addEventListener('scroll', handleScroll, { passive: true });
+                    return () => container.removeEventListener('scroll', handleScroll);
+                  }, []);
+
+                  return (
+                    <div
+                      ref={containerRef}
+                      className="overflow-x-auto mb-4 border border-gray-300 dark:border-gray-600"
+                    >
+                      <table className="w-full min-w-max border-collapse text-sm">
+                        {children}
+                      </table>
+                    </div>
+                  );
+                },
                 thead: ({ children }) => (
                   <thead className="bg-gray-200 dark:bg-gray-700">{children}</thead>
                 ),
