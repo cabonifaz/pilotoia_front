@@ -116,7 +116,7 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
                 onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('similarity_threshold', value)}
                 min={0}
                 max={1}
-                step={0.1}
+                step={0.01}
                 className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
                 disabled={isReadOnlyRole}
               />

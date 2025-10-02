@@ -1,4 +1,3 @@
-import { useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
@@ -28,9 +27,6 @@ const hasTableOrList = (text: string): boolean => {
 
   return patterns.some(pattern => pattern.test(text));
 };
-
-// Global map to store scroll positions per message
-const scrollPositions = new Map<string, number>();
 
 // Simplified table fix for remark-gfm
 const fixTableMarkdown = (text: string): string => {
@@ -107,38 +103,14 @@ export const MessageBubble = ({ message, streamingMessageId, userId }: MessageBu
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
-                // Table styling with preserved scroll position
-                table: ({ children }) => {
-                  const containerRef = useRef<HTMLDivElement>(null);
-
-                  useEffect(() => {
-                    const container = containerRef.current;
-                    if (!container) return;
-
-                    // Restore saved scroll position for this message
-                    const savedPosition = scrollPositions.get(message.id) || 0;
-                    container.scrollLeft = savedPosition;
-
-                    // Save scroll position when user scrolls
-                    const handleScroll = () => {
-                      scrollPositions.set(message.id, container.scrollLeft);
-                    };
-
-                    container.addEventListener('scroll', handleScroll, { passive: true });
-                    return () => container.removeEventListener('scroll', handleScroll);
-                  }, []);
-
-                  return (
-                    <div
-                      ref={containerRef}
-                      className="overflow-x-auto mb-4 border border-gray-300 dark:border-gray-600"
-                    >
-                      <table className="w-full min-w-max border-collapse text-sm">
-                        {children}
-                      </table>
-                    </div>
-                  );
-                },
+                // Table styling
+                table: ({ children }) => (
+                  <div className="overflow-x-auto mb-4 border border-gray-300 dark:border-gray-600">
+                    <table className="w-full min-w-max border-collapse text-sm">
+                      {children}
+                    </table>
+                  </div>
+                ),
                 thead: ({ children }) => (
                   <thead className="bg-gray-200 dark:bg-gray-700">{children}</thead>
                 ),
