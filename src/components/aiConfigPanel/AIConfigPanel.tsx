@@ -89,7 +89,7 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <Input
                 id="user_id"
                 type="text"
-                value={config.user_id}
+                value={localConfig.user_id}
                 onChange={(e) => handleConfigChange('user_id', e.target.value)}
                 placeholder="Usuario"
                 readOnly
@@ -102,7 +102,7 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <Input
                 id="company_id"
                 type="text"
-                value={config.company_id}
+                value={localConfig.company_id}
                 onChange={(e) => handleConfigChange('company_id', e.target.value)}
                 placeholder="Empresa"
                 readOnly={isReadOnlyRole}
@@ -115,7 +115,7 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <Input
                 id="area"
                 type="text"
-                value={config.area}
+                value={localConfig.area}
                 onChange={(e) => handleConfigChange('area', e.target.value)}
                 placeholder="Área"
                 readOnly={isReadOnlyRole}
