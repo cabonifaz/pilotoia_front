@@ -14,7 +14,7 @@ const TOKEN_VALIDITY_HOURS = 8;
 
 export function useExternalLogin() {
   const [error, setError] = useState<string>('');
-  const { user, isAuthenticated: isMainAuthenticated } = useQueryAuthContext();
+  const { user } = useQueryAuthContext();
   const queryClient = useQueryClient();
 
   // Get current company ID from actual_company_area
