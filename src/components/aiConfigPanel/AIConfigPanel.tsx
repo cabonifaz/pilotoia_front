@@ -12,6 +12,7 @@ interface AIConfig {
   company_id: string;
   area: string;
   similarity_threshold: number;
+  alpha?: number;
   temperature: number;
   max_tokens: number;
   top_k: number;
@@ -188,6 +189,28 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <div className="flex justify-between text-xs text-foreground/70">
                 <span>1 (Mínimo)</span>
                 <span>20 (Máximo)</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-foreground font-semibold">Alpha (Búsqueda Híbrida):</Label>
+                <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
+                  {config.alpha ?? 0.5}
+                </span>
+              </div>
+              <Slider
+                value={[config.alpha ?? 0.5]}
+                onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('alpha', value)}
+                min={0}
+                max={1}
+                step={0.1}
+                className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
+                disabled={isReadOnlyRole}
+              />
+              <div className="flex justify-between text-xs text-foreground/70">
+                <span>0.0 (Palabras clave)</span>
+                <span>1.0 (Semántico/Vectorial)</span>
               </div>
             </div>
           </CardContent>

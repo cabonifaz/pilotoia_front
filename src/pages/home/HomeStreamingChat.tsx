@@ -12,6 +12,7 @@ interface AIConfig {
   company_id: string;
   area: string;
   similarity_threshold: number;
+  alpha?: number;
   temperature: number;
   max_tokens: number;
   top_k: number;
@@ -26,6 +27,7 @@ const HomeStreamingChat = () => {
     company_id: 'CIA00099',
     area: 'AREA001',
     similarity_threshold: 0.1,
+    alpha: 0.5,
     temperature: 0.1,
     max_tokens: 1024,
     top_k: 5,
