@@ -223,13 +223,13 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
                 onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('alpha', value)}
                 min={0}
                 max={1}
-                step={0.1}
+                step={0.01}
                 className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
                 disabled={isReadOnlyRole}
               />
               <div className="flex justify-between text-xs text-foreground/70">
                 <span>0.0 (Palabras clave)</span>
-                <span>1.0 (Semántico/Vectorial)</span>
+                <span>1.0 (Vectorial)</span>
               </div>
             </div>
           </CardContent>
