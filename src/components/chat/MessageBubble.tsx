@@ -1,3 +1,4 @@
+import { memo, useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
@@ -28,13 +29,26 @@ const hasTableOrList = (text: string): boolean => {
   return patterns.some(pattern => pattern.test(text));
 };
 
+// Animated spinner component for streaming indicator
+const SpinnerCursor = () => {
+  const frames = ['◐', '◓', '◑', '◒'];
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFrame(prev => (prev + 1) % frames.length);
+    }, 150); // Change frame every 150ms
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return <span className="inline-block ml-0.5">{frames[frame]}</span>;
+};
+
 // Simplified table fix for remark-gfm
 const fixTableMarkdown = (text: string): string => {
-  // remark-gfm is more forgiving, just add basic line breaks
-  let fixed = text.replace(/(\|[^|]+\|[^|]+\|[^|]*\|[^|]*\|)\s+(\|)/g, '$1\n$2');
-
-  // Split into lines and filter out empty rows
-  const lines = fixed.split('\n');
+  // Split into lines and filter out empty/invalid rows
+  const lines = text.split('\n');
   const filteredLines: string[] = [];
   let inTable = false;
 
@@ -75,9 +89,11 @@ const fixTableMarkdown = (text: string): string => {
   return filteredLines.join('\n');
 };
 
-export const MessageBubble = ({ message, streamingMessageId, userId }: MessageBubbleProps) => {
+export const MessageBubble = memo(({ message, streamingMessageId, userId }: MessageBubbleProps) => {
   const isTableOrList = hasTableOrList(message.content);
-  const processedContent = isTableOrList ? fixTableMarkdown(message.content) : message.content;
+  // Remove <br> tags
+  const cleanContent = message.content.replace(/<br\s*\/?>/gi, '');
+  const processedContent = isTableOrList ? fixTableMarkdown(cleanContent) : cleanContent;
 
   return (
   <div className={`mb-6 ${message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}`}>
@@ -137,16 +153,17 @@ export const MessageBubble = ({ message, streamingMessageId, userId }: MessageBu
               {processedContent || (message.type === 'ai' ? 'Pensando...' : '')}
             </ReactMarkdown>
           ) : (
-            <div className="whitespace-pre-wrap">
-              {message.content || (message.type === 'ai' ? 'Pensando...' : '')}
-            </div>
+            <>
+              <span className="whitespace-pre-wrap">
+                {message.content || (message.type === 'ai' ? 'Pensando...' : '')}
+              </span>
+              {streamingMessageId === message.id && <SpinnerCursor />}
+            </>
           )}
-          {streamingMessageId === message.id && (
-            <span className="inline-block w-2 h-4 bg-current ml-1 animate-pulse">▊</span>
-          )}
+          {streamingMessageId === message.id && isTableOrList && <SpinnerCursor />}
         </div>
       </CardContent>
     </Card>
   </div>
   );
-};
+});

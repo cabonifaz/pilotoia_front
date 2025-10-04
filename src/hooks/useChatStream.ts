@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { chatApi, type ChatMessageRequest, type ChatMessageAgentRequest } from '../api/chatApi';
 import { showStreamingErrorToast } from '../utils/errorHandler';
 
@@ -81,16 +81,50 @@ export const useChatStream = (): UseChatStreamReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const streamingContentRef = useRef<string>('');
+  const animationFrameRef = useRef<number | null>(null);
 
   const cancelMessage = useCallback(() => {
     abortRef.current?.abort();
+  }, []);
+
+  // Update streaming message content on animation frame
+  const updateStreamingContent = useCallback((messageId: string, content: string) => {
+    streamingContentRef.current = content;
+
+    // Cancel previous animation frame if exists
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    // Schedule update on next animation frame for smooth rendering
+    animationFrameRef.current = requestAnimationFrame(() => {
+      setMessages(prev => prev.map(msg =>
+        msg.id === messageId
+          ? { ...msg, content: streamingContentRef.current }
+          : msg
+      ));
+      animationFrameRef.current = null;
+    });
+  }, []);
+
+  // Cleanup animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, []);
 
   const sendMessage = useCallback(async (messageContent: string, aiConfig: AIConfig) => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
-    
+
+    // Reset streaming content ref
+    streamingContentRef.current = '';
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -98,7 +132,7 @@ export const useChatStream = (): UseChatStreamReturn => {
       content: messageContent,
       timestamp: new Date()
     };
-    
+
     // Add AI message placeholder
     const aiMessageId = (Date.now() + 1).toString();
     const aiMessage: Message = {
@@ -127,11 +161,7 @@ export const useChatStream = (): UseChatStreamReturn => {
 
           switch (evt.type) {
             case "chunk":
-              setMessages(prev => prev.map(msg =>
-                msg.id === aiMessageId
-                  ? { ...msg, content: (evt as ChunkEvent).content }
-                  : msg
-              ));
+              updateStreamingContent(aiMessageId, (evt as ChunkEvent).content);
               break;
             case "complete":
               controller.abort();
@@ -197,12 +227,15 @@ export const useChatStream = (): UseChatStreamReturn => {
       setIsLoading(false);
       setStreamingMessageId(null);
     }
-  }, []);
+  }, [updateStreamingContent]);
 
   const sendAgentMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, token: string) => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
+
+    // Reset streaming content ref
+    streamingContentRef.current = '';
 
     // Add user message
     const userMessage: Message = {
@@ -241,11 +274,7 @@ export const useChatStream = (): UseChatStreamReturn => {
 
           switch (evt.type) {
             case "chunk":
-              setMessages(prev => prev.map(msg =>
-                msg.id === aiMessageId
-                  ? { ...msg, content: (evt as ChunkEvent).content }
-                  : msg
-              ));
+              updateStreamingContent(aiMessageId, (evt as ChunkEvent).content);
               break;
             case "complete":
               controller.abort();
@@ -310,7 +339,7 @@ export const useChatStream = (): UseChatStreamReturn => {
       setIsLoading(false);
       setStreamingMessageId(null);
     }
-  }, []);
+  }, [updateStreamingContent]);
 
   return {
     messages,
