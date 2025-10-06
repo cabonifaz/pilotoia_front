@@ -12,6 +12,7 @@ interface AIConfig {
   company_id: string;
   area: string;
   similarity_threshold: number;
+  alpha: number;
   temperature: number;
   max_tokens: number;
   top_k: number;
@@ -22,7 +23,7 @@ interface ChatComponentProps {
 }
 
 const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
-  const [consulta, setConsulta] = useState('');
+  const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const { messages, isLoading, streamingMessageId, sendMessage, sendAgentMessage, cancelMessage } = useChatStream();
@@ -62,24 +63,24 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
     };
   }, []);
 
-  const manejarConsulta = async () => {
-    if (!consulta.trim()) return;
+  const chatQuery = async () => {
+    if (!userQuery.trim()) return;
     
-    const currentConsulta = consulta;
-    setConsulta('');
-    await sendMessage(currentConsulta, aiConfig);
+    const currentQuery = userQuery;
+    setUserQuery('');
+    await sendMessage(currentQuery, aiConfig);
   };
 
   const cancelar = () => {
     cancelMessage();
   };
 
-  const testAnalyzer = async () => {
-    if (!consulta.trim() || !token) return;
+  const agentQuery = async () => {
+    if (!userQuery.trim() || !token) return;
 
-    const currentConsulta = consulta;
-    setConsulta('');
-    await sendAgentMessage(currentConsulta, aiConfig, token);
+    const currentQuery = userQuery;
+    setUserQuery('');
+    await sendAgentMessage(currentQuery, aiConfig, token);
   };
 
 
@@ -116,8 +117,8 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
         <div className="border-t p-4">
           <div className="flex gap-2">
             <Textarea
-              value={consulta}
-              onChange={(e) => setConsulta(e.target.value)}
+              value={userQuery}
+              onChange={(e) => setUserQuery(e.target.value)}
               placeholder={`Escribe tu consulta sobre ${aiConfig.company_id}...`}
               disabled={isLoading}
               rows={2}
@@ -125,7 +126,7 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  manejarConsulta();
+                  chatQuery();
                 }
               }}
             />
@@ -137,16 +138,16 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
               ) : (
                 <>
                   <Button
-                    onClick={manejarConsulta}
-                    disabled={!consulta.trim()}
+                    onClick={chatQuery}
+                    disabled={!userQuery.trim()}
                     size="sm"
                   >
                     ▶️ Enviar
                   </Button>
                   {isAuthenticated ? (
                     <Button
-                      onClick={testAnalyzer}
-                      disabled={!consulta.trim() || isLoading}
+                      onClick={agentQuery}
+                      disabled={!userQuery.trim() || isLoading}
                       variant="outline"
                       size="sm"
                     >

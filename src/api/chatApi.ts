@@ -27,7 +27,7 @@ export const chatApi = {
 
     // For agent streaming chat using SSE client with external token
     sendStreamingMessageAgent: async (
-        messageRequest: ChatMessageAgentRequest,
+        messageRequest: AgentMessageRequest,
         onMessage: (data: any) => void,
         onError?: (error: Event) => void,
         onClose?: (event: CloseEvent) => void,
@@ -88,17 +88,19 @@ export interface ChatMessageRequest {
     company_id: string;
     area: string;
     similarity_threshold: number;
+    alpha: number;
     temperature: number;
     max_tokens: number;
     top_k: number;
 }
 
-export interface ChatMessageAgentRequest {
+export interface AgentMessageRequest {
     message: string;
     user_id: string;
     company_id: string;
     area: string;
     similarity_threshold: number;
+    alpha: number;
     temperature: number;
     max_tokens: number;
     top_k: number;

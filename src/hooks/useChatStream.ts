@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { chatApi, type ChatMessageRequest, type ChatMessageAgentRequest } from '../api/chatApi';
+import { chatApi, type ChatMessageRequest, type AgentMessageRequest } from '../api/chatApi';
 import { showStreamingErrorToast } from '../utils/errorHandler';
 
 type JsonRecord = Record<string, unknown>;
@@ -16,7 +16,7 @@ export interface AIConfig {
   company_id: string;
   area: string;
   similarity_threshold: number;
-  alpha?: number;
+  alpha: number;
   temperature: number;
   max_tokens: number;
   top_k: number;
@@ -266,7 +266,7 @@ export const useChatStream = (): UseChatStreamReturn => {
           message: messageContent,
           external_token: token,
           ...aiConfig
-        } as ChatMessageAgentRequest,
+        } as AgentMessageRequest,
         (data) => {
           // Handle incoming SSE message
           const evt = asStreamEvent(data);
