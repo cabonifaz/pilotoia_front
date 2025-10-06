@@ -51,17 +51,84 @@ const fixTableMarkdown = (text: string): string => {
   const lines = text.split('\n');
   const filteredLines: string[] = [];
   let inTable = false;
+  let skipFirstColumn = false;
+  let tableStartIndex = -1;
+  let foundSeparator = false;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const isTableRow = line.trim().startsWith('|') && line.trim().endsWith('|');
     const isEmptyTableRow = /^\s*\|\s*(\|\s*)*\|?\s*$/.test(line);
     const isEmpty = !line.trim();
+    const isSeparator = /^\s*\|[\s\-:|]+\|\s*$/.test(line);
 
-    // Track if we're in a table
+    // Detect rows that look like table titles (mostly empty with one bold cell)
+    // Example: | **Tabla de acopio y evacuación** | | |
+    const cells = line.split('|');
+    const nonEmptyCells = cells.filter(c => c.trim() && c.trim() !== '');
+    const isTableTitle = isTableRow && !isSeparator &&
+      line.includes('**') &&
+      nonEmptyCells.length === 1 && // Only one non-empty cell
+      cells.length >= 3; // But multiple columns
+
+    // Check if first column is empty (indicates nested table pattern)
+    const hasEmptyFirstColumn = isTableRow && !isSeparator && /^\s*\|\s*\|/.test(line);
+
+    // If we hit a table title, convert it to plain text heading
+    if (isTableTitle) {
+      if (inTable) {
+        // End current table
+        filteredLines.push('');
+        inTable = false;
+      }
+      // Extract the text from the table row and make it a heading
+      const titleText = nonEmptyCells[0].trim();
+      filteredLines.push('');
+      filteredLines.push(`### ${titleText}`);
+      filteredLines.push('');
+      skipFirstColumn = true; // Next table should skip first column
+      continue;
+    }
+
+    // Process table rows
     if (isTableRow && !isEmptyTableRow) {
+      let processedLine = line;
+
+      // If we're skipping first column and it's empty, remove it
+      if (skipFirstColumn && hasEmptyFirstColumn) {
+        // Split by pipes to get columns
+        const parts = line.split('|');
+        // Remove first empty element and second empty column, rejoin
+        processedLine = '|' + parts.slice(2).join('|');
+      }
+
+      // Track if this is the start of a table
+      if (!inTable) {
+        tableStartIndex = filteredLines.length;
+        foundSeparator = false;
+      }
+
+      if (isSeparator) {
+        foundSeparator = true;
+      }
+
       inTable = true;
-      filteredLines.push(line);
+      filteredLines.push(processedLine);
+
+      // Check if next line is NOT a separator and we haven't found one yet
+      // This means we need to insert a separator after the header row
+      const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
+      const nextIsSeparator = /^\s*\|[\s\-:|]+\|\s*$/.test(nextLine);
+      const nextIsTableRow = nextLine.trim().startsWith('|') && nextLine.trim().endsWith('|');
+
+      if (!foundSeparator && nextIsTableRow && !nextIsSeparator && filteredLines.length === tableStartIndex + 1) {
+        // Insert separator after header row
+        const columnCount = processedLine.split('|').filter(c => c).length;
+        const separator = '|' + ' --- |'.repeat(columnCount);
+        filteredLines.push(separator);
+        foundSeparator = true;
+      }
+
     } else if (isEmptyTableRow) {
       // Skip empty table rows (only pipes and whitespace)
       continue;
@@ -71,6 +138,8 @@ const fixTableMarkdown = (text: string): string => {
         // Transitioning out of table
         filteredLines.push(line);
         inTable = false;
+        skipFirstColumn = false; // Reset when exiting table
+        foundSeparator = false;
       } else if (filteredLines.length > 0) {
         // Empty line between regular content - preserve it
         filteredLines.push(line);
@@ -81,12 +150,15 @@ const fixTableMarkdown = (text: string): string => {
         // Add blank line to separate table from following text
         filteredLines.push('');
         inTable = false;
+        skipFirstColumn = false; // Reset when exiting table
+        foundSeparator = false;
       }
       filteredLines.push(line);
     }
   }
 
-  return filteredLines.join('\n');
+  const result = filteredLines.join('\n');
+  return result;
 };
 
 export const MessageBubble = memo(({ message, streamingMessageId, userId }: MessageBubbleProps) => {
