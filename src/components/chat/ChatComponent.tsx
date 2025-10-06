@@ -3,8 +3,8 @@ import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
 import { Card, CardContent } from '@/components/shadcn/card';
 import { useChatStream } from '../../hooks/useChatStream';
-import { useExternalLogin } from '../../hooks/useExternalLogin';
-import { LoginModal } from '../external-api/LoginModal';
+//import { useExternalLogin } from '../../hooks/useExternalLogin';
+//import { LoginModal } from '../external-api/LoginModal';
 import { MessageBubble } from './MessageBubble';
 
 interface AIConfig {
@@ -26,8 +26,8 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const { messages, isLoading, streamingMessageId, sendMessage, sendAgentMessage, cancelMessage } = useChatStream();
-  const { isAuthenticated, token } = useExternalLogin();
+  const { messages, isLoading, streamingMessageId, sendMessage, /*sendAgentMessage,*/ cancelMessage } = useChatStream();
+  //const { isAuthenticated, token } = useExternalLogin();
 
   // Debounced scroll handler
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -75,13 +75,13 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
     cancelMessage();
   };
 
-  const agentQuery = async () => {
+  /*const agentQuery = async () => {
     if (!userQuery.trim() || !token) return;
 
     const currentQuery = userQuery;
     setUserQuery('');
     await sendAgentMessage(currentQuery, aiConfig, token);
-  };
+  };*/
 
 
   return (
@@ -144,6 +144,7 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
                   >
                     ▶️ Enviar
                   </Button>
+                  {/* NOTE: Agent button disabled for preprod - uncomment to enable agent orchestrator
                   {isAuthenticated ? (
                     <Button
                       onClick={agentQuery}
@@ -156,6 +157,7 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
                   ) : (
                     <LoginModal />
                   )}
+                  */}
                 </>
               )}
             </div>
