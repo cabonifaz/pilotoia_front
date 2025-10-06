@@ -12,7 +12,7 @@ interface AIConfig {
   company_id: string;
   area: string;
   similarity_threshold: number;
-  alpha?: number;
+  alpha: number;
   temperature: number;
   max_tokens: number;
   top_k: number;
@@ -46,6 +46,7 @@ const HomeStreamingChat = () => {
           area: actualCompanyArea.AREA || prevConfig.area,
           // Include AI parameters if they exist in actualCompanyArea
           ...(actualCompanyArea.RAG_SIMILARITY_THRESHOLD !== undefined && { similarity_threshold: actualCompanyArea.RAG_SIMILARITY_THRESHOLD }),
+          ...(actualCompanyArea.RAG_ALPHA !== undefined && { alpha: actualCompanyArea.RAG_ALPHA }),
           ...(actualCompanyArea.LLM_TEMPERATURE !== undefined && { temperature: actualCompanyArea.LLM_TEMPERATURE }),
           ...(actualCompanyArea.LLM_MAX_TOKENS !== undefined && { max_tokens: actualCompanyArea.LLM_MAX_TOKENS }),
           ...(actualCompanyArea.RAG_TOP_K_RESULTS !== undefined && { top_k: actualCompanyArea.RAG_TOP_K_RESULTS }),

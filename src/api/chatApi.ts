@@ -74,12 +74,7 @@ export const chatApi = {
     validateConfig: async (config: ChatConfigRequest): Promise<ConfigValidationResponse> => {
         const response = await apiClient.post<ConfigValidationResponse>('/v1/rag/chat/validate-config', config);
         return response.data;
-    },
-
-    analyzeQuery: async (message: string): Promise<AnalyzeQueryResponse> => {
-        const response = await apiClient.post<AnalyzeQueryResponse>('/v1/rag/analyze-query', { message });
-        return response.data;
-    },
+    }
 };
 
 export interface ChatMessageRequest {
@@ -151,14 +146,5 @@ interface ChatConfigRequest {
 interface ConfigValidationResponse {
     isValid: boolean;
     errors?: string[];
-    result: MensajeResponse;
-}
-
-interface AnalyzeQueryResponse {
-    status: string;
-    tasks: Array<{
-        action: string;
-        [key: string]: any;
-    }>;
     result: MensajeResponse;
 }

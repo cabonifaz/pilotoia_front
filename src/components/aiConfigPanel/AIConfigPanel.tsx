@@ -12,7 +12,7 @@ interface AIConfig {
   company_id: string;
   area: string;
   similarity_threshold: number;
-  alpha?: number;
+  alpha: number;
   temperature: number;
   max_tokens: number;
   top_k: number;
@@ -215,11 +215,11 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <div className="flex items-center justify-between">
                 <Label className="text-foreground font-semibold">Alpha (Búsqueda Híbrida):</Label>
                 <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
-                  {localConfig.alpha ?? 0.5}
+                  {localConfig.alpha}
                 </span>
               </div>
               <Slider
-                value={[localConfig.alpha ?? 0.5]}
+                value={[localConfig.alpha]}
                 onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('alpha', value)}
                 min={0}
                 max={1}
