@@ -30,6 +30,7 @@ export interface DecodedUserData {
     AREA: string;
   }>;
   status: string;
+  token: string;  // JWT token containing all user information
 }
 
 class JWTUtils {
@@ -71,7 +72,8 @@ class JWTUtils {
         id_tipo_rol: payload.ID_TIPO_ROL,
         rol_nombre: payload.STRING1,
         company_areas: payload.company_areas || [],
-        status: 'success'
+        status: 'success',
+        token: token
       };
     } catch (error) {
       console.error('Error decoding JWT:', error);
