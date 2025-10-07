@@ -25,6 +25,22 @@ export const chatApi = {
         }, messageRequest);
     },
 
+    // For agent streaming chat using SSE client with external token
+    sendStreamingMessageAgent: async (
+        messageRequest: AgentMessageRequest,
+        onMessage: (data: any) => void,
+        onError?: (error: Event) => void,
+        onClose?: (event: CloseEvent) => void,
+        onOpen?: () => void
+    ): Promise<void> => {
+        return createSSEConnection({
+            endpoint: '/v1/rag/agent-streaming',
+            onMessage,
+            onError,
+            onClose,
+            onOpen
+        }, messageRequest);
+    },
 
     getChatHistory: async (userId: string, companyId?: string): Promise<ChatHistoryResponse> => {
         const params = new URLSearchParams({ user_id: userId });
@@ -58,7 +74,7 @@ export const chatApi = {
     validateConfig: async (config: ChatConfigRequest): Promise<ConfigValidationResponse> => {
         const response = await apiClient.post<ConfigValidationResponse>('/v1/rag/chat/validate-config', config);
         return response.data;
-    },
+    }
 };
 
 export interface ChatMessageRequest {
@@ -67,9 +83,23 @@ export interface ChatMessageRequest {
     company_id: string;
     area: string;
     similarity_threshold: number;
+    alpha: number;
     temperature: number;
     max_tokens: number;
     top_k: number;
+}
+
+export interface AgentMessageRequest {
+    message: string;
+    user_id: string;
+    company_id: string;
+    area: string;
+    similarity_threshold: number;
+    alpha: number;
+    temperature: number;
+    max_tokens: number;
+    top_k: number;
+    external_token: string;
 }
 
 interface ChatMessageResponse {
