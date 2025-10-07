@@ -31,7 +31,6 @@ export const authApi = {
 
     getCompanyAreas: async (): Promise<any[]> => {
         const response = await apiClient.get<{ company_areas: any[] }>('/v1/auth/company-areas');
-        console.log(response.data);
         return response.data.company_areas;
     },
 
