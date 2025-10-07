@@ -21,7 +21,7 @@ interface MessageBubbleProps {
 // Simplified detection for tables and lists
 const hasTableOrList = (text: string): boolean => {
   const patterns = [
-    /\|.*?\|.*?\|/,         // Tables with multiple pipes
+    /\|.*?\|/,              // Tables with pipes (at least one column)
     /^\s*[-*+]\s/m,         // Unordered lists (-, *, +)
     /^\s*\d+\.\s/m,         // Ordered lists (1. 2. 3.)
   ];
