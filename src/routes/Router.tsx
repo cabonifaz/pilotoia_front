@@ -3,7 +3,7 @@ import { LoginPage } from "../pages/login/Login";
 import { App } from "../App";
 import { GuardRoute } from "./GuardRoute";
 import HomeStreamingChat from "../pages/home/HomeStreamingChat";
-import DocumentUpload from "../pages/upload/DocumentUpload";
+//import DocumentUpload from "../pages/upload/DocumentUpload";
 
 export const router = createHashRouter([
   {
@@ -22,14 +22,14 @@ export const router = createHashRouter([
           </GuardRoute>
         ),
       },
-      {
+      /*{
         path: "upload",
         element: (
           <GuardRoute>
             <DocumentUpload />
           </GuardRoute>
         ),
-      },
+      },*/
     ],
   },
 ]);
