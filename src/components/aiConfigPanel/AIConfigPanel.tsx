@@ -178,7 +178,7 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
                 value={[localConfig.max_tokens]}
                 onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('max_tokens', value)}
                 min={256}
-                max={4096}
+                max={8192}
                 step={256}
                 className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
                 disabled={isReadOnlyRole}
