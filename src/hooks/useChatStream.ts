@@ -188,7 +188,7 @@ export const useChatStream = (): UseChatStreamReturn => {
               break;
           }
         },
-        () => {
+        (error) => {
           // Handle connection errors
           const errorMessage = "Error de conexión con el servidor";
 
@@ -200,25 +200,47 @@ export const useChatStream = (): UseChatStreamReturn => {
 
           controller.abort();
         },
-        () => {
+        (event) => {
           // Handle connection close
+          // Check if it was aborted by user
+          if (controller.signal.aborted) {
+            // Cancel any pending animation frame
+            if (animationFrameRef.current !== null) {
+              cancelAnimationFrame(animationFrameRef.current);
+              animationFrameRef.current = null;
+            }
+
+            const currentContent = streamingContentRef.current;
+            setMessages(prev => prev.map(msg => {
+              if (msg.id === aiMessageId) {
+                return {
+                  ...msg,
+                  content: currentContent || 'Petición detenida por el usuario'
+                };
+              }
+              return msg;
+            }));
+          }
+
           setStreamingMessageId(null);
         },
         () => {
           // Handle connection open
-        }
+        },
+        controller.signal
       );
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
+        // Handled in onClose callback
       } else if (err instanceof Error) {
-        setMessages(prev => prev.map(msg => 
-          msg.id === aiMessageId 
+        setMessages(prev => prev.map(msg =>
+          msg.id === aiMessageId
             ? { ...msg, content: 'Error al consultar la API' }
             : msg
         ));
       } else {
-        setMessages(prev => prev.map(msg => 
-          msg.id === aiMessageId 
+        setMessages(prev => prev.map(msg =>
+          msg.id === aiMessageId
             ? { ...msg, content: 'Error inesperado' }
             : msg
         ));
@@ -301,7 +323,7 @@ export const useChatStream = (): UseChatStreamReturn => {
               break;
           }
         },
-        () => {
+        (error) => {
           // Handle connection errors
           const errorMessage = "Error de conexión con el servidor";
 
@@ -313,16 +335,39 @@ export const useChatStream = (): UseChatStreamReturn => {
 
           controller.abort();
         },
-        () => {
+        (event) => {
           // Handle connection close
+          // Check if it was aborted by user
+          if (controller.signal.aborted) {
+            // Cancel any pending animation frame
+            if (animationFrameRef.current !== null) {
+              cancelAnimationFrame(animationFrameRef.current);
+              animationFrameRef.current = null;
+            }
+
+            const currentContent = streamingContentRef.current;
+            setMessages(prev => prev.map(msg => {
+              if (msg.id === aiMessageId) {
+                return {
+                  ...msg,
+                  content: currentContent || 'Petición detenida por el usuario'
+                };
+              }
+              return msg;
+            }));
+          }
+
           setStreamingMessageId(null);
         },
         () => {
           // Handle connection open
-        }
+        },
+        controller.signal
       );
     } catch (error) {
-      if (error instanceof Error && error.name !== 'AbortError') {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        // Handled in onClose callback
+      } else if (error instanceof Error) {
         setMessages(prev => prev.map(msg =>
           msg.id === aiMessageId
             ? { ...msg, content: 'Error al consultar la API' }

@@ -14,14 +14,16 @@ export const chatApi = {
         onMessage: (data: any) => void,
         onError?: (error: Event) => void,
         onClose?: (event: CloseEvent) => void,
-        onOpen?: () => void
+        onOpen?: () => void,
+        signal?: AbortSignal
     ): Promise<void> => {
         return createSSEConnection({
             endpoint: '/v1/rag/chat-streaming',
             onMessage,
             onError,
             onClose,
-            onOpen
+            onOpen,
+            signal
         }, messageRequest);
     },
 
@@ -31,14 +33,16 @@ export const chatApi = {
         onMessage: (data: any) => void,
         onError?: (error: Event) => void,
         onClose?: (event: CloseEvent) => void,
-        onOpen?: () => void
+        onOpen?: () => void,
+        signal?: AbortSignal
     ): Promise<void> => {
         return createSSEConnection({
             endpoint: '/v1/rag/agent-streaming',
             onMessage,
             onError,
             onClose,
-            onOpen
+            onOpen,
+            signal
         }, messageRequest);
     },
 
