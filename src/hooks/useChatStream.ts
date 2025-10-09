@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from 'react';
-import { chatApi, type ChatMessageRequest } from '../api/chatApi';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { chatApi, type ChatMessageRequest, type AgentMessageRequest } from '../api/chatApi';
 import { showStreamingErrorToast } from '../utils/errorHandler';
 
 type JsonRecord = Record<string, unknown>;
@@ -16,6 +16,7 @@ export interface AIConfig {
   company_id: string;
   area: string;
   similarity_threshold: number;
+  alpha: number;
   temperature: number;
   max_tokens: number;
   top_k: number;
@@ -40,6 +41,7 @@ interface UseChatStreamReturn {
   isLoading: boolean;
   streamingMessageId: string | null;
   sendMessage: (message: string, config: AIConfig) => Promise<void>;
+  sendAgentMessage: (message: string, config: AIConfig, token: string) => Promise<void>;
   cancelMessage: () => void;
 }
 
@@ -79,16 +81,50 @@ export const useChatStream = (): UseChatStreamReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const streamingContentRef = useRef<string>('');
+  const animationFrameRef = useRef<number | null>(null);
 
   const cancelMessage = useCallback(() => {
     abortRef.current?.abort();
+  }, []);
+
+  // Update streaming message content on animation frame
+  const updateStreamingContent = useCallback((messageId: string, content: string) => {
+    streamingContentRef.current = content;
+
+    // Cancel previous animation frame if exists
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    // Schedule update on next animation frame for smooth rendering
+    animationFrameRef.current = requestAnimationFrame(() => {
+      setMessages(prev => prev.map(msg =>
+        msg.id === messageId
+          ? { ...msg, content: streamingContentRef.current }
+          : msg
+      ));
+      animationFrameRef.current = null;
+    });
+  }, []);
+
+  // Cleanup animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, []);
 
   const sendMessage = useCallback(async (messageContent: string, aiConfig: AIConfig) => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
-    
+
+    // Reset streaming content ref
+    streamingContentRef.current = '';
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -96,7 +132,7 @@ export const useChatStream = (): UseChatStreamReturn => {
       content: messageContent,
       timestamp: new Date()
     };
-    
+
     // Add AI message placeholder
     const aiMessageId = (Date.now() + 1).toString();
     const aiMessage: Message = {
@@ -125,11 +161,7 @@ export const useChatStream = (): UseChatStreamReturn => {
 
           switch (evt.type) {
             case "chunk":
-              setMessages(prev => prev.map(msg =>
-                msg.id === aiMessageId
-                  ? { ...msg, content: (evt as ChunkEvent).content }
-                  : msg
-              ));
+              updateStreamingContent(aiMessageId, (evt as ChunkEvent).content);
               break;
             case "complete":
               controller.abort();
@@ -170,23 +202,45 @@ export const useChatStream = (): UseChatStreamReturn => {
         },
         () => {
           // Handle connection close
+          // Check if it was aborted by user
+          if (controller.signal.aborted) {
+            // Cancel any pending animation frame
+            if (animationFrameRef.current !== null) {
+              cancelAnimationFrame(animationFrameRef.current);
+              animationFrameRef.current = null;
+            }
+
+            const currentContent = streamingContentRef.current;
+            setMessages(prev => prev.map(msg => {
+              if (msg.id === aiMessageId) {
+                return {
+                  ...msg,
+                  content: currentContent || 'Petición detenida por el usuario'
+                };
+              }
+              return msg;
+            }));
+          }
+
           setStreamingMessageId(null);
         },
         () => {
           // Handle connection open
-        }
+        },
+        controller.signal
       );
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
+        // Handled in onClose callback
       } else if (err instanceof Error) {
-        setMessages(prev => prev.map(msg => 
-          msg.id === aiMessageId 
+        setMessages(prev => prev.map(msg =>
+          msg.id === aiMessageId
             ? { ...msg, content: 'Error al consultar la API' }
             : msg
         ));
       } else {
-        setMessages(prev => prev.map(msg => 
-          msg.id === aiMessageId 
+        setMessages(prev => prev.map(msg =>
+          msg.id === aiMessageId
             ? { ...msg, content: 'Error inesperado' }
             : msg
         ));
@@ -195,13 +249,149 @@ export const useChatStream = (): UseChatStreamReturn => {
       setIsLoading(false);
       setStreamingMessageId(null);
     }
-  }, []);
+  }, [updateStreamingContent]);
+
+  const sendAgentMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, token: string) => {
+    if (!messageContent.trim()) return;
+
+    setIsLoading(true);
+
+    // Reset streaming content ref
+    streamingContentRef.current = '';
+
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: messageContent,
+      timestamp: new Date()
+    };
+
+    // Add AI message placeholder
+    const aiMessageId = (Date.now() + 1).toString();
+    const aiMessage: Message = {
+      id: aiMessageId,
+      type: 'ai',
+      content: '',
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage, aiMessage]);
+    setStreamingMessageId(aiMessageId);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      await chatApi.sendStreamingMessageAgent(
+        {
+          message: messageContent,
+          external_token: token,
+          ...aiConfig
+        } as AgentMessageRequest,
+        (data) => {
+          // Handle incoming SSE message
+          const evt = asStreamEvent(data);
+          if (!evt) return;
+
+          switch (evt.type) {
+            case "chunk":
+              updateStreamingContent(aiMessageId, (evt as ChunkEvent).content);
+              break;
+            case "complete":
+              controller.abort();
+              break;
+            case "error":
+              const errorEvt = evt as ErrorEvent;
+
+              // Show centralized error toast
+              showStreamingErrorToast(errorEvt);
+
+              // Use the result message if available, otherwise use the message field
+              const errorMessage = errorEvt.result?.mensaje || errorEvt.message || "Error en el streaming";
+
+              // Update the AI message to show error
+              setMessages(prev => prev.map(msg =>
+                msg.id === aiMessageId
+                  ? { ...msg, content: `Error: ${errorMessage}` }
+                  : msg
+              ));
+
+              controller.abort();
+              break;
+            default:
+              break;
+          }
+        },
+        () => {
+          // Handle connection errors
+          const errorMessage = "Error de conexión con el servidor";
+
+          setMessages(prev => prev.map(msg =>
+            msg.id === aiMessageId
+              ? { ...msg, content: `Error: ${errorMessage}` }
+              : msg
+          ));
+
+          controller.abort();
+        },
+        () => {
+          // Handle connection close
+          // Check if it was aborted by user
+          if (controller.signal.aborted) {
+            // Cancel any pending animation frame
+            if (animationFrameRef.current !== null) {
+              cancelAnimationFrame(animationFrameRef.current);
+              animationFrameRef.current = null;
+            }
+
+            const currentContent = streamingContentRef.current;
+            setMessages(prev => prev.map(msg => {
+              if (msg.id === aiMessageId) {
+                return {
+                  ...msg,
+                  content: currentContent || 'Petición detenida por el usuario'
+                };
+              }
+              return msg;
+            }));
+          }
+
+          setStreamingMessageId(null);
+        },
+        () => {
+          // Handle connection open
+        },
+        controller.signal
+      );
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        // Handled in onClose callback
+      } else if (error instanceof Error) {
+        setMessages(prev => prev.map(msg =>
+          msg.id === aiMessageId
+            ? { ...msg, content: 'Error al consultar la API' }
+            : msg
+        ));
+      } else {
+        setMessages(prev => prev.map(msg =>
+          msg.id === aiMessageId
+            ? { ...msg, content: 'Error inesperado' }
+            : msg
+        ));
+      }
+    } finally {
+      setIsLoading(false);
+      setStreamingMessageId(null);
+    }
+  }, [updateStreamingContent]);
 
   return {
     messages,
     isLoading,
     streamingMessageId,
     sendMessage,
+    sendAgentMessage,
     cancelMessage
   };
 };

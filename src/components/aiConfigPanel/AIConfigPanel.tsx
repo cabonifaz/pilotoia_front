@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shadcn/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/shadcn/collapsible';
 import { Input } from '@/components/shadcn/input';
@@ -12,6 +12,7 @@ interface AIConfig {
   company_id: string;
   area: string;
   similarity_threshold: number;
+  alpha: number;
   temperature: number;
   max_tokens: number;
   top_k: number;
@@ -25,10 +26,17 @@ interface AIConfigPanelProps {
 
 const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPanelProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [localConfig, setLocalConfig] = useState(config);
   const { user } = useQueryAuthContext();
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if user should have read-only access (Admin or User roles)
   const isReadOnlyRole = user?.id_tipo_rol === 2 || user?.id_tipo_rol === 3;
+
+  // Sync local state when prop changes
+  useEffect(() => {
+    setLocalConfig(config);
+  }, [config]);
 
   const toggleExpanded = () => {
     const newExpanded = !isExpanded;
@@ -36,9 +44,21 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
     onExpandedChange?.(newExpanded);
   };
 
+  // Debounced config update
+  const debouncedConfigChange = useCallback((newConfig: AIConfig) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      onConfigChange(newConfig);
+    }, 300);
+  }, [onConfigChange]);
+
   const handleConfigChange = (key: keyof AIConfig, value: string | number) => {
-    const newConfig = { ...config, [key]: value };
-    onConfigChange(newConfig);
+    const newConfig = { ...localConfig, [key]: value };
+    setLocalConfig(newConfig);
+    debouncedConfigChange(newConfig);
   };
 
   return (
@@ -69,7 +89,7 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <Input
                 id="user_id"
                 type="text"
-                value={config.user_id}
+                value={localConfig.user_id}
                 onChange={(e) => handleConfigChange('user_id', e.target.value)}
                 placeholder="Usuario"
                 readOnly
@@ -82,7 +102,7 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <Input
                 id="company_id"
                 type="text"
-                value={config.company_id}
+                value={localConfig.company_id}
                 onChange={(e) => handleConfigChange('company_id', e.target.value)}
                 placeholder="Empresa"
                 readOnly={isReadOnlyRole}
@@ -95,7 +115,7 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <Input
                 id="area"
                 type="text"
-                value={config.area}
+                value={localConfig.area}
                 onChange={(e) => handleConfigChange('area', e.target.value)}
                 placeholder="Área"
                 readOnly={isReadOnlyRole}
@@ -107,15 +127,15 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <div className="flex items-center justify-between">
                 <Label className="text-foreground font-semibold">Umbral de Similitud:</Label>
                 <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
-                  {config.similarity_threshold}
+                  {localConfig.similarity_threshold}
                 </span>
               </div>
               <Slider
-                value={[config.similarity_threshold]}
+                value={[localConfig.similarity_threshold]}
                 onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('similarity_threshold', value)}
                 min={0}
                 max={1}
-                step={0.1}
+                step={0.01}
                 className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
                 disabled={isReadOnlyRole}
               />
@@ -129,11 +149,11 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <div className="flex items-center justify-between">
                 <Label className="text-foreground font-semibold">Temperatura:</Label>
                 <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
-                  {config.temperature}
+                  {localConfig.temperature}
                 </span>
               </div>
               <Slider
-                value={[config.temperature]}
+                value={[localConfig.temperature]}
                 onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('temperature', value)}
                 min={0}
                 max={1}
@@ -151,14 +171,14 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <div className="flex items-center justify-between">
                 <Label className="text-foreground font-semibold">Máx. Tokens:</Label>
                 <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
-                  {config.max_tokens}
+                  {localConfig.max_tokens}
                 </span>
               </div>
               <Slider
-                value={[config.max_tokens]}
+                value={[localConfig.max_tokens]}
                 onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('max_tokens', value)}
                 min={256}
-                max={4096}
+                max={8192}
                 step={256}
                 className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
                 disabled={isReadOnlyRole}
@@ -173,11 +193,11 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <div className="flex items-center justify-between">
                 <Label className="text-foreground font-semibold">Top-K Resultados:</Label>
                 <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
-                  {config.top_k}
+                  {localConfig.top_k}
                 </span>
               </div>
               <Slider
-                value={[config.top_k]}
+                value={[localConfig.top_k]}
                 onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('top_k', value)}
                 min={1}
                 max={20}
@@ -188,6 +208,28 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <div className="flex justify-between text-xs text-foreground/70">
                 <span>1 (Mínimo)</span>
                 <span>20 (Máximo)</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-foreground font-semibold">Alpha (Búsqueda Híbrida):</Label>
+                <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
+                  {localConfig.alpha}
+                </span>
+              </div>
+              <Slider
+                value={[localConfig.alpha]}
+                onValueChange={isReadOnlyRole ? undefined : ([value]) => handleConfigChange('alpha', value)}
+                min={0}
+                max={1}
+                step={0.01}
+                className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
+                disabled={isReadOnlyRole}
+              />
+              <div className="flex justify-between text-xs text-foreground/70">
+                <span>0.0 (Palabras clave)</span>
+                <span>1.0 (Vectorial)</span>
               </div>
             </div>
           </CardContent>
