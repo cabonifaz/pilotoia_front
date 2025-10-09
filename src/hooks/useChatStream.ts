@@ -1,26 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { chatApi, type ChatMessageRequest, type AgentMessageRequest } from '../api/chatApi';
 import { showStreamingErrorToast } from '../utils/errorHandler';
+import { type Message } from '@/types/message';
+import { type AIConfig } from '@/types/aiConfig';
 
 type JsonRecord = Record<string, unknown>;
-
-export interface Message {
-  id: string;
-  type: 'user' | 'ai';
-  content: string;
-  timestamp: Date;
-}
-
-export interface AIConfig {
-  user_id: string;
-  company_id: string;
-  area: string;
-  similarity_threshold: number;
-  alpha: number;
-  temperature: number;
-  max_tokens: number;
-  top_k: number;
-}
 
 export type ChunkEvent = { type: "chunk"; content: string };
 export type CompleteEvent = { type: "complete" } & JsonRecord;
@@ -40,8 +24,8 @@ interface UseChatStreamReturn {
   messages: Message[];
   isLoading: boolean;
   streamingMessageId: string | null;
-  sendMessage: (message: string, config: AIConfig) => Promise<void>;
-  sendAgentMessage: (message: string, config: AIConfig, token: string) => Promise<void>;
+  sendMessage: (message: string, config: AIConfig, idIaArea: number) => Promise<void>;
+  sendAgentMessage: (message: string, config: AIConfig, token: string, idIaArea: number) => Promise<void>;
   cancelMessage: () => void;
 }
 
@@ -117,7 +101,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     };
   }, []);
 
-  const sendMessage = useCallback(async (messageContent: string, aiConfig: AIConfig) => {
+  const sendMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, idIaArea: number) => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
@@ -152,7 +136,8 @@ export const useChatStream = (): UseChatStreamReturn => {
       await chatApi.sendStreamingMessage(
         {
           message: messageContent,
-          ...aiConfig
+          ...aiConfig,
+          id_ia_area: idIaArea
         } as ChatMessageRequest,
         (data) => {
           // Handle incoming SSE message
@@ -251,7 +236,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     }
   }, [updateStreamingContent]);
 
-  const sendAgentMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, token: string) => {
+  const sendAgentMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, token: string, idIaArea: number) => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
@@ -287,7 +272,8 @@ export const useChatStream = (): UseChatStreamReturn => {
         {
           message: messageContent,
           external_token: token,
-          ...aiConfig
+          ...aiConfig,
+          id_ia_area: idIaArea
         } as AgentMessageRequest,
         (data) => {
           // Handle incoming SSE message

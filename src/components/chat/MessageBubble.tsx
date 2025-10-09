@@ -4,13 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
 import { Badge } from '@/components/shadcn/badge';
-
-interface Message {
-  id: string;
-  type: 'user' | 'ai';
-  content: string;
-  timestamp: Date;
-}
+import { type Message } from '@/types/message';
 
 interface MessageBubbleProps {
   message: Message;

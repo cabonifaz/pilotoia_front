@@ -6,23 +6,14 @@ import { useChatStream } from '../../hooks/useChatStream';
 import { useExternalLogin } from '../../hooks/useExternalLogin';
 import { MessageBubble } from './MessageBubble';
 import { SendButtonGroup } from './SendButtonGroup';
-
-interface AIConfig {
-  user_id: string;
-  company_id: string;
-  area: string;
-  similarity_threshold: number;
-  alpha: number;
-  temperature: number;
-  max_tokens: number;
-  top_k: number;
-}
+import { type AIConfig } from '@/types/aiConfig';
 
 interface ChatComponentProps {
   aiConfig: AIConfig;
+  idIaArea: number;
 }
 
-const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
+const ChatComponent = ({ aiConfig, idIaArea }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [selectedAction, setSelectedAction] = useState<'enviar' | 'agente' | 'login'>('enviar');
@@ -70,7 +61,7 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
 
     const currentQuery = userQuery;
     setUserQuery('');
-    await sendMessage(currentQuery, aiConfig);
+    await sendMessage(currentQuery, aiConfig, idIaArea);
   };
 
   const cancelar = () => {
@@ -82,7 +73,7 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
 
     const currentQuery = userQuery;
     setUserQuery('');
-    await sendAgentMessage(currentQuery, aiConfig, token);
+    await sendAgentMessage(currentQuery, aiConfig, token, idIaArea);
   };
 
 

@@ -6,17 +6,7 @@ import { Label } from '@/components/shadcn/label';
 import { Slider } from '@/components/shadcn/slider';
 import { ChevronDown } from 'lucide-react';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
-
-interface AIConfig {
-  user_id: string;
-  company_id: string;
-  area: string;
-  similarity_threshold: number;
-  alpha: number;
-  temperature: number;
-  max_tokens: number;
-  top_k: number;
-}
+import { type AIConfig } from '@/types/aiConfig';
 
 interface AIConfigPanelProps {
   config: AIConfig;

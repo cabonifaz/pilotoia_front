@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/shadcn/button';
-/*import {
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/shadcn/dropdown-menu';*/
-import { /*ChevronDown,*/ Send/*, Bot, Lock*/ } from 'lucide-react';
+} from '@/components/shadcn/dropdown-menu';
+import { ChevronDown, Send, Bot, Lock } from 'lucide-react';
 import { LoginModal } from '../external-api/LoginModal';
 
 interface SendButtonGroupProps {
@@ -19,18 +19,17 @@ interface SendButtonGroupProps {
   onMainActionChange?: (action: () => void) => void;
 }
 
-export const SendButtonGroup = ({ onSend, onAgentSend, disabled, isAuthenticated, selectedAction, /*onSelectedActionChange,*/ onMainActionChange }: SendButtonGroupProps) => {
+export const SendButtonGroup = ({ onSend, onAgentSend, disabled, isAuthenticated, selectedAction, onSelectedActionChange, onMainActionChange }: SendButtonGroupProps) => {
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const handleMainButtonClick = () => {
     if (selectedAction === 'enviar') {
       onSend();
+    } else if (selectedAction === 'agente') {
+      onAgentSend();
+    } else if (selectedAction === 'login') {
+      setShowLoginModal(true);
     }
-    // else if (selectedAction === 'agente') {
-    //   onAgentSend();
-    // } else if (selectedAction === 'login') {
-    //   setShowLoginModal(true);
-    // }
   };
 
   // Notify parent when the main action changes
@@ -41,11 +40,11 @@ export const SendButtonGroup = ({ onSend, onAgentSend, disabled, isAuthenticated
   }, [selectedAction, isAuthenticated, onSend, onAgentSend]);
 
   // Auto-switch to agente when user logs in while login is selected
-  // useEffect(() => {
-  //   if (selectedAction === 'login' && isAuthenticated) {
-  //     onSelectedActionChange('agente');
-  //   }
-  // }, [isAuthenticated, selectedAction, onSelectedActionChange]);
+  useEffect(() => {
+    if (selectedAction === 'login' && isAuthenticated) {
+      onSelectedActionChange('agente');
+    }
+  }, [isAuthenticated, selectedAction, onSelectedActionChange]);
 
   const getButtonContent = () => {
     if (selectedAction === 'enviar') {
@@ -56,31 +55,65 @@ export const SendButtonGroup = ({ onSend, onAgentSend, disabled, isAuthenticated
         </>
       );
     }
-    // if (selectedAction === 'agente') {
-    //   return (
-    //     <>
-    //       <Bot className="h-4 w-4 mr-2" />
-    //       Agente
-    //     </>
-    //   );
-    // }
-    // return (
-    //   <>
-    //     <Lock className="h-4 w-4 mr-2" />
-    //     External Login
-    //   </>
-    // );
+    if (selectedAction === 'agente') {
+      return (
+        <>
+          <Bot className="h-4 w-4 mr-2" />
+          Agente
+        </>
+      );
+    }
+    return (
+      <>
+        <Lock className="h-4 w-4 mr-2" />
+        External Login
+      </>
+    );
   };
 
   return (
     <>
-      <Button
-        onClick={handleMainButtonClick}
-        disabled={selectedAction !== 'login' && disabled}
-        size="sm"
-      >
-        {getButtonContent()}
-      </Button>
+      <div className="flex">
+        <Button
+          onClick={handleMainButtonClick}
+          disabled={selectedAction !== 'login' && disabled}
+          size="sm"
+          className="rounded-r-none"
+        >
+          {getButtonContent()}
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              variant="default"
+              className="rounded-l-none border-l px-2"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {selectedAction !== 'enviar' && (
+              <DropdownMenuItem onSelect={() => onSelectedActionChange('enviar')}>
+                <Send className="h-4 w-4 mr-2" />
+                Enviar
+              </DropdownMenuItem>
+            )}
+            {isAuthenticated && selectedAction !== 'agente' && (
+              <DropdownMenuItem onSelect={() => onSelectedActionChange('agente')}>
+                <Bot className="h-4 w-4 mr-2" />
+                Agente
+              </DropdownMenuItem>
+            )}
+            {!isAuthenticated && selectedAction !== 'login' && (
+              <DropdownMenuItem onSelect={() => onSelectedActionChange('login')}>
+                <Lock className="h-4 w-4 mr-2" />
+                External Login
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       <LoginModal
         open={showLoginModal}

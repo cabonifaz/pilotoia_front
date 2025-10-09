@@ -1,6 +1,15 @@
 import apiClient from './apiClient';
 import { createSSEConnection } from './sseClient';
-import type { MensajeResponse } from './interfaces/Mensaje';
+import type {
+    ChatMessageRequest,
+    AgentMessageRequest,
+    ChatMessageResponse,
+    ChatHistoryResponse,
+    ClearHistoryResponse,
+    AreasResponse,
+    ChatConfigRequest,
+    ConfigValidationResponse
+} from '@/types/chat';
 
 export const chatApi = {
     sendMessage: async (messageRequest: ChatMessageRequest): Promise<ChatMessageResponse> => {
@@ -69,7 +78,7 @@ export const chatApi = {
             return response.data;
         } catch (error) {
             if (!(error instanceof Error)) {
-                console.error('Error al obtener las �reas:', error);
+                console.error('Error al obtener las áreas:', error);
             }
             throw error;
         }
@@ -81,74 +90,14 @@ export const chatApi = {
     }
 };
 
-export interface ChatMessageRequest {
-    message: string;
-    user_id: string;
-    company_id: string;
-    area: string;
-    similarity_threshold: number;
-    alpha: number;
-    temperature: number;
-    max_tokens: number;
-    top_k: number;
-}
-
-export interface AgentMessageRequest {
-    message: string;
-    user_id: string;
-    company_id: string;
-    area: string;
-    similarity_threshold: number;
-    alpha: number;
-    temperature: number;
-    max_tokens: number;
-    top_k: number;
-    external_token: string;
-}
-
-interface ChatMessageResponse {
-    response: string;
-    metadata?: {
-        sources?: string[];
-        similarity_scores?: number[];
-        processing_time?: number;
-    };
-    result: MensajeResponse;
-}
-
-interface ChatHistoryResponse {
-    messages: ChatHistoryMessage[];
-    result: MensajeResponse;
-}
-
-interface ChatHistoryMessage {
-    id: string;
-    type: 'user' | 'ai';
-    content: string;
-    timestamp: string;
-    metadata?: Record<string, unknown>;
-}
-
-interface ClearHistoryResponse {
-    result: MensajeResponse;
-}
-
-interface AreasResponse {
-    areas: string[];
-    result: MensajeResponse;
-}
-
-interface ChatConfigRequest {
-    user_id: string;
-    company_id: string;
-    area: string;
-    similarity_threshold: number;
-    temperature: number;
-    max_tokens: number;
-}
-
-interface ConfigValidationResponse {
-    isValid: boolean;
-    errors?: string[];
-    result: MensajeResponse;
-}
+// Re-export types for backwards compatibility
+export type {
+    ChatMessageRequest,
+    AgentMessageRequest,
+    ChatMessageResponse,
+    ChatHistoryResponse,
+    ClearHistoryResponse,
+    AreasResponse,
+    ChatConfigRequest,
+    ConfigValidationResponse
+};

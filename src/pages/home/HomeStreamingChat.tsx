@@ -6,17 +6,7 @@ import ChatList from '../../components/chat/ChatList';
 import AIConfigPanel from '../../components/aiConfigPanel/AIConfigPanel';
 import Header from '../../components/layout/Header';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
-
-interface AIConfig {
-  user_id: string;
-  company_id: string;
-  area: string;
-  similarity_threshold: number;
-  alpha: number;
-  temperature: number;
-  max_tokens: number;
-  top_k: number;
-}
+import { type AIConfig } from '@/types/aiConfig';
 
 const HomeStreamingChat = () => {
   const { user } = useQueryAuthContext();
@@ -24,13 +14,13 @@ const HomeStreamingChat = () => {
   
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     user_id: user?.usuario || '',
-    company_id: 'CIA00099',
-    area: 'AREA001',
-    similarity_threshold: 0.1,
-    alpha: 0.5,
-    temperature: 0.1,
-    max_tokens: 1024,
-    top_k: 5,
+    company_id: 'COM1',
+    area: 'AREA2',
+    similarity_threshold: 0.65,
+    alpha: 0.75,
+    temperature: 0.3,
+    max_tokens: 4096,
+    top_k: 20,
   });
 
   // Update config when user data becomes available
@@ -77,7 +67,10 @@ const HomeStreamingChat = () => {
           <div className="flex-1 lg:w-[70%] flex flex-col gap-4 min-h-0">
             <h1 className="text-3xl font-bold text-foreground">Piloto IA</h1>
             <div className="flex-1 bg-background rounded-lg min-h-0">
-              <ChatComponent aiConfig={aiConfig} />
+              <ChatComponent
+                aiConfig={aiConfig}
+                idIaArea={(user as any)?.actual_company_area?.ID_IA_AREA || 0}
+              />
             </div>
           </div>
 
