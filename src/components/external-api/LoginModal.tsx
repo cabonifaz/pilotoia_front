@@ -9,10 +9,14 @@ import { useToast } from '../../hooks/use-toast'
 
 interface LoginModalProps {
   onLoginSuccess?: (response: any) => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function LoginModal({ onLoginSuccess }: LoginModalProps) {
-  const [isOpen, setIsOpen] = useState(false)
+export function LoginModal({ onLoginSuccess, open, onOpenChange }: LoginModalProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
+  const isOpen = open !== undefined ? open : internalIsOpen
+  const setIsOpen = onOpenChange || setInternalIsOpen
   const [credentials, setCredentials] = useState({
     username: '',
     password: ''
@@ -64,12 +68,14 @@ export function LoginModal({ onLoginSuccess }: LoginModalProps) {
       setIsOpen(open)
       if (!open) resetForm()
     }}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="flex items-center gap-2">
-          <LogIn className="h-4 w-4" />
-          {isAuthenticated ? 'External Login (Active)' : 'External Login'}
-        </Button>
-      </DialogTrigger>
+      {open === undefined && (
+        <DialogTrigger asChild>
+          <Button variant="outline" className="flex items-center gap-2">
+            <LogIn className="h-4 w-4" />
+            {isAuthenticated ? 'External Login (Active)' : 'External Login'}
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>

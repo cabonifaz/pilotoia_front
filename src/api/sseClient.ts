@@ -9,6 +9,7 @@ interface SSEConfig {
     onError?: (error: Event) => void;
     onClose?: (event: CloseEvent) => void;
     onOpen?: () => void;
+    signal?: AbortSignal;
 }
 
 interface SSERequestBody {
@@ -23,7 +24,7 @@ class SSEClient {
      * Since EventSource only supports GET, we'll use fetch with streaming for POST requests
      */
     async connect(config: SSEConfig, requestBody?: SSERequestBody): Promise<void> {
-        const { endpoint, onMessage, onError, onOpen, onClose } = config;
+        const { endpoint, onMessage, onError, onOpen, onClose, signal } = config;
 
         try {
             // Use the same header logic as the original getStreamingConfig
@@ -45,6 +46,7 @@ class SSEClient {
                 method: 'GET',
                 headers,
                 credentials: 'omit', // No cookies needed
+                signal, // Pass abort signal
             };
 
             // If we have a request body, use POST with fetch streaming
@@ -54,6 +56,7 @@ class SSEClient {
                     headers,
                     body: JSON.stringify(requestBody),
                     credentials: 'omit',
+                    signal, // Pass abort signal
                 };
             }
 
@@ -113,6 +116,15 @@ class SSEClient {
             }
 
         } catch (error) {
+            // Don't treat abort as an error - it's intentional cancellation
+            if (error instanceof DOMException && error.name === 'AbortError') {
+                // Stream was intentionally cancelled
+                if (onClose) {
+                    onClose(new CloseEvent('close', { code: 1000, reason: 'Aborted by user' }));
+                }
+                return;
+            }
+
             if (onError) {
                 onError(error as Event);
             } else {

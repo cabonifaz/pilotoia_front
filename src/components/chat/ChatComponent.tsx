@@ -3,9 +3,9 @@ import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
 import { Card, CardContent } from '@/components/shadcn/card';
 import { useChatStream } from '../../hooks/useChatStream';
-//import { useExternalLogin } from '../../hooks/useExternalLogin';
-//import { LoginModal } from '../external-api/LoginModal';
+import { useExternalLogin } from '../../hooks/useExternalLogin';
 import { MessageBubble } from './MessageBubble';
+import { SendButtonGroup } from './SendButtonGroup';
 
 interface AIConfig {
   user_id: string;
@@ -25,9 +25,11 @@ interface ChatComponentProps {
 const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [selectedAction, setSelectedAction] = useState<'enviar' | 'agente' | 'login'>('enviar');
+  const currentMainActionRef = useRef<() => void>(() => {});
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const { messages, isLoading, streamingMessageId, sendMessage, /*sendAgentMessage,*/ cancelMessage } = useChatStream();
-  //const { isAuthenticated, token } = useExternalLogin();
+  const { messages, isLoading, streamingMessageId, sendMessage, sendAgentMessage, cancelMessage } = useChatStream();
+  const { isAuthenticated, token } = useExternalLogin();
 
   // Debounced scroll handler
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -65,7 +67,7 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
 
   const chatQuery = async () => {
     if (!userQuery.trim()) return;
-    
+
     const currentQuery = userQuery;
     setUserQuery('');
     await sendMessage(currentQuery, aiConfig);
@@ -75,13 +77,13 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
     cancelMessage();
   };
 
-  /*const agentQuery = async () => {
+  const agentQuery = async () => {
     if (!userQuery.trim() || !token) return;
 
     const currentQuery = userQuery;
     setUserQuery('');
     await sendAgentMessage(currentQuery, aiConfig, token);
-  };*/
+  };
 
 
   return (
@@ -126,39 +128,28 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  chatQuery();
+                  currentMainActionRef.current();
                 }
               }}
             />
-            <div className="flex flex-col gap-2">
-              {isLoading ? (
+            <div className="flex gap-2">
+              {isLoading && (
                 <Button onClick={cancelar} variant="destructive" size="sm">
                   ⏹️ Detener
                 </Button>
-              ) : (
-                <>
-                  <Button
-                    onClick={chatQuery}
-                    disabled={!userQuery.trim()}
-                    size="sm"
-                  >
-                    ▶️ Enviar
-                  </Button>
-                  {/* NOTE: Agent button disabled for preprod - uncomment to enable agent orchestrator
-                  {isAuthenticated ? (
-                    <Button
-                      onClick={agentQuery}
-                      disabled={!userQuery.trim() || isLoading}
-                      variant="outline"
-                      size="sm"
-                    >
-                      {isLoading ? '🔄 Analizando...' : '🔍 Agente'}
-                    </Button>
-                  ) : (
-                    <LoginModal />
-                  )}
-                  */}
-                </>
+              )}
+              {!isLoading && (
+                <SendButtonGroup
+                  onSend={chatQuery}
+                  onAgentSend={agentQuery}
+                  disabled={!userQuery.trim()}
+                  isAuthenticated={isAuthenticated}
+                  selectedAction={selectedAction}
+                  onSelectedActionChange={setSelectedAction}
+                  onMainActionChange={(action) => {
+                    currentMainActionRef.current = action;
+                  }}
+                />
               )}
             </div>
           </div>
