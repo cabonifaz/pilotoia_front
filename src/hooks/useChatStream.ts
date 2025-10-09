@@ -188,7 +188,7 @@ export const useChatStream = (): UseChatStreamReturn => {
               break;
           }
         },
-        (error) => {
+        () => {
           // Handle connection errors
           const errorMessage = "Error de conexión con el servidor";
 
@@ -200,7 +200,7 @@ export const useChatStream = (): UseChatStreamReturn => {
 
           controller.abort();
         },
-        (event) => {
+        () => {
           // Handle connection close
           // Check if it was aborted by user
           if (controller.signal.aborted) {
@@ -323,7 +323,7 @@ export const useChatStream = (): UseChatStreamReturn => {
               break;
           }
         },
-        (error) => {
+        () => {
           // Handle connection errors
           const errorMessage = "Error de conexión con el servidor";
 
@@ -335,7 +335,7 @@ export const useChatStream = (): UseChatStreamReturn => {
 
           controller.abort();
         },
-        (event) => {
+        () => {
           // Handle connection close
           // Check if it was aborted by user
           if (controller.signal.aborted) {
