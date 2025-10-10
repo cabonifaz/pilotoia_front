@@ -53,16 +53,22 @@ export const LoginPage = () => {
     }, [setValue]);
 
     const handleFormSubmit = async (data: LoginFormData) => {
+        // Trim whitespace from credentials
+        const trimmedData = {
+            usuario: data.usuario.trim(),
+            clave_acceso: data.clave_acceso.trim()
+        };
+
         // Handle remember me functionality
         if (rememberMe) {
-            localStorage.setItem(REMEMBER_ME_USERNAME_KEY, encryptData(data.usuario));
-            localStorage.setItem(REMEMBER_ME_PASSWORD_KEY, encryptData(data.clave_acceso));
+            localStorage.setItem(REMEMBER_ME_USERNAME_KEY, encryptData(trimmedData.usuario));
+            localStorage.setItem(REMEMBER_ME_PASSWORD_KEY, encryptData(trimmedData.clave_acceso));
         } else {
             localStorage.removeItem(REMEMBER_ME_USERNAME_KEY);
             localStorage.removeItem(REMEMBER_ME_PASSWORD_KEY);
         }
 
-        const result = await onSubmit(data);
+        const result = await onSubmit(trimmedData);
         if (result.success) {
             navigate('/rag');
         }
