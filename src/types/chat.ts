@@ -2,8 +2,11 @@ import type { MensajeResponse } from './Mensaje';
 
 export interface ChatMessageRequest {
     message: string;
-    user_id: string;
-    company_id: string;
+    user_id: number;
+    user: string;
+    company_id: number;
+    company: string;
+    area_id: number;
     area: string;
     id_ia_area: number;
     similarity_threshold: number;
@@ -15,8 +18,11 @@ export interface ChatMessageRequest {
 
 export interface AgentMessageRequest {
     message: string;
-    user_id: string;
-    company_id: string;
+    user_id: number;
+    user: string;
+    company_id: number;
+    company: string;
+    area_id: number;
     area: string;
     id_ia_area: number;
     similarity_threshold: number;

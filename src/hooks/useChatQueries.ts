@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../lib/queryClient';
 import { useCurrentUser } from './useUserQueries';
-import type { ChatData } from '../api/authApi';
+import type { ChatData } from '../types/auth';
 
 // Hook to get user's chats list from TanStack Query cache
 export const useUserChats = () => {

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { authApi, type LoginRequest, type LoginResponse } from '../api/authApi';
+import { authApi } from '../api/authApi';
+import type { LoginRequest, LoginResponse } from '../types/auth';
 import { queryKeys, clearUserCache } from '../lib/queryClient';
 import { toast } from './use-toast';
 import JWTUtils, { type DecodedUserData } from '../utils/jwtUtils';
@@ -51,7 +52,7 @@ export const useLoginMutation = () => {
                 
                 if (decodedUserData) {
                     // Remove company_areas from JWT data - will be populated by separate endpoint
-                    const { company_areas, ...userDataWithoutCompanyAreas } = decodedUserData;
+                    const { company_areas: _companyAreas, ...userDataWithoutCompanyAreas } = decodedUserData;
 
                     const userDataForCache = {
                         ...userDataWithoutCompanyAreas,
@@ -70,7 +71,7 @@ export const useLoginMutation = () => {
                     // Show success message
                     toast({
                         title: "Éxito",
-                        description: `Bienvenido, ${decodedUserData.nombres}`,
+                        description: `Bienvenido, ${decodedUserData.user}`,
                         variant: "success"
                     });
 
@@ -81,12 +82,12 @@ export const useLoginMutation = () => {
                 }
             }
         },
-        onError: (error: any) => {
+        onError: (error: Error & { response?: { data?: { result?: { mensaje?: string } } } }) => {
             console.error('Login error:', error);
-            
+
             // Handle API errors with proper error message
-            const errorMessage = error.response?.data?.result?.mensaje || 
-                               error.message || 
+            const errorMessage = error.response?.data?.result?.mensaje ||
+                               error.message ||
                                "Error al iniciar sesión";
             
             toast({
@@ -133,7 +134,7 @@ export const useLogoutMutation = () => {
                 window.location.href = '/#/';
             }, 1000);
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
             console.error('Logout error:', error);
             // Note: onSettled will still run, so user will be logged out locally
         },
@@ -180,8 +181,18 @@ export const useCompanyAreasQuery = () => {
 
     return useQuery({
         queryKey: ['user', 'company-areas'],
-        queryFn: async (): Promise<any[]> => {
-            const companyAreas = await (authApi as any).getCompanyAreas();
+        queryFn: async (): Promise<Array<{
+            ID_EMPRESA: number;
+            EMPRESA: string;
+            ID_AREA: number;
+            AREA: string;
+        }>> => {
+            const companyAreas = await (authApi as { getCompanyAreas: () => Promise<Array<{
+                ID_EMPRESA: number;
+                EMPRESA: string;
+                ID_AREA: number;
+                AREA: string;
+            }>> }).getCompanyAreas();
 
             // Update the user cache with fresh company areas
             const currentUser = queryClient.getQueryData(queryKeys.user.current()) as DecodedUserData;

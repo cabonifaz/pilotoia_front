@@ -6,16 +6,13 @@ import ChatList from '../../components/chat/ChatList';
 import AIConfigPanel from '../../components/aiConfigPanel/AIConfigPanel';
 import Header from '../../components/layout/Header';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
-import { type AIConfig } from '@/types/aiConfig';
+import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 
 const HomeStreamingChat = () => {
   const { user } = useQueryAuthContext();
   const [selectedChatId, setSelectedChatId] = useState<number | undefined>();
-  
+
   const [aiConfig, setAiConfig] = useState<AIConfig>({
-    user_id: user?.usuario || '',
-    company_id: 'COM1',
-    area: 'AREA2',
     similarity_threshold: 0.65,
     alpha: 0.75,
     temperature: 0.3,
@@ -23,40 +20,66 @@ const HomeStreamingChat = () => {
     top_k: 20,
   });
 
-  // Update config when user data becomes available
+  const [chatContext, setChatContext] = useState<ChatContext | null>(null);
+
+  // Update context and config when user data becomes available
   useEffect(() => {
     if (user) {
       const actualCompanyArea = (user as any)?.actual_company_area;
-      setAiConfig(prevConfig => ({
-        ...prevConfig,
-        user_id: user.usuario,
-        // For all users, use actual_company_area data if available
-        ...(actualCompanyArea && {
-          company_id: actualCompanyArea.EMPRESA || prevConfig.company_id,
-          area: actualCompanyArea.AREA || prevConfig.area,
-          // Include AI parameters if they exist in actualCompanyArea
+
+      // Only set context if we have valid data
+      if (actualCompanyArea && user.user_id) {
+        const newChatContext = {
+          user_id: user.user_id,
+          user: user.user,
+          company_id: actualCompanyArea.ID_EMPRESA,
+          company: actualCompanyArea.EMPRESA,
+          area_id: actualCompanyArea.ID_AREA,
+          area: actualCompanyArea.AREA,
+          id_ia_area: actualCompanyArea.ID_IA_AREA,
+        };
+
+        setChatContext(newChatContext);
+      }
+
+      // Update AI config if actualCompanyArea has AI parameters
+      if (actualCompanyArea) {
+        setAiConfig(prevConfig => ({
+          ...prevConfig,
           ...(actualCompanyArea.RAG_SIMILARITY_THRESHOLD !== undefined && { similarity_threshold: actualCompanyArea.RAG_SIMILARITY_THRESHOLD }),
           ...(actualCompanyArea.RAG_ALPHA !== undefined && { alpha: actualCompanyArea.RAG_ALPHA }),
           ...(actualCompanyArea.LLM_TEMPERATURE !== undefined && { temperature: actualCompanyArea.LLM_TEMPERATURE }),
           ...(actualCompanyArea.LLM_MAX_TOKENS !== undefined && { max_tokens: actualCompanyArea.LLM_MAX_TOKENS }),
           ...(actualCompanyArea.RAG_TOP_K_RESULTS !== undefined && { top_k: actualCompanyArea.RAG_TOP_K_RESULTS }),
-        }),
-      }));
+        }));
+      }
     }
   }, [user]);
 
   const handleChatSelect = (chatId: number) => {
     setSelectedChatId(chatId);
-    console.log('Selected chat:', chatId);
-    // Here you can load specific chat messages or context
   };
 
   const handleNewChat = () => {
     setSelectedChatId(undefined);
-    console.log('Creating new chat...');
-    // Here you can create a new chat or reset the current conversation
   };
 
+
+  if (!chatContext) {
+    return (
+      <div className="h-screen bg-muted/30 flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <Card className="p-8">
+            <div className="text-center">
+              <div className="text-4xl mb-4">⏳</div>
+              <p className="text-lg">Cargando configuración...</p>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-muted/30 flex flex-col">
@@ -69,7 +92,8 @@ const HomeStreamingChat = () => {
             <div className="flex-1 bg-background rounded-lg min-h-0">
               <ChatComponent
                 aiConfig={aiConfig}
-                idIaArea={(user as any)?.actual_company_area?.ID_IA_AREA || 0}
+                chatContext={chatContext}
+                idIaArea={chatContext.id_ia_area}
               />
             </div>
           </div>
@@ -88,7 +112,7 @@ const HomeStreamingChat = () => {
               <CardContent className="pt-3 pb-3">
                 <div className="text-center">
                   <Badge variant="secondary" className="text-sm">
-                    {aiConfig.company_id} • {aiConfig.area}
+                    {chatContext.company} • {chatContext.area}
                   </Badge>
                 </div>
               </CardContent>
@@ -98,7 +122,9 @@ const HomeStreamingChat = () => {
             {user?.id_tipo_rol !== 3 && (
               <AIConfigPanel
                 config={aiConfig}
+                chatContext={chatContext}
                 onConfigChange={setAiConfig}
+                onChatContextChange={setChatContext}
               />
             )}
           </div>

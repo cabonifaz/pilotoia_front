@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
-import { type LoginResponse } from '../api/authApi';
-import { type DecodedUserData } from '../utils/jwtUtils';
+import type { LoginResponse } from '../types/auth';
+import type { DecodedUserData } from '../utils/jwtUtils';
 import {
     useCurrentUser,
     useLoginMutation,

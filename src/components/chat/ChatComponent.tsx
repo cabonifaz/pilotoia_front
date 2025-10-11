@@ -6,14 +6,15 @@ import { useChatStream } from '../../hooks/useChatStream';
 import { useExternalLogin } from '../../hooks/useExternalLogin';
 import { MessageBubble } from './MessageBubble';
 import { SendButtonGroup } from './SendButtonGroup';
-import { type AIConfig } from '@/types/aiConfig';
+import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 
 interface ChatComponentProps {
   aiConfig: AIConfig;
+  chatContext: ChatContext;
   idIaArea: number;
 }
 
-const ChatComponent = ({ aiConfig, idIaArea }: ChatComponentProps) => {
+const ChatComponent = ({ aiConfig, chatContext, idIaArea }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [selectedAction, setSelectedAction] = useState<'enviar' | 'agente' | 'login'>('enviar');
@@ -61,7 +62,7 @@ const ChatComponent = ({ aiConfig, idIaArea }: ChatComponentProps) => {
 
     const currentQuery = userQuery;
     setUserQuery('');
-    await sendMessage(currentQuery, aiConfig, idIaArea);
+    await sendMessage(currentQuery, aiConfig, chatContext, idIaArea);
   };
 
   const cancelar = () => {
@@ -73,7 +74,7 @@ const ChatComponent = ({ aiConfig, idIaArea }: ChatComponentProps) => {
 
     const currentQuery = userQuery;
     setUserQuery('');
-    await sendAgentMessage(currentQuery, aiConfig, token, idIaArea);
+    await sendAgentMessage(currentQuery, aiConfig, chatContext, token, idIaArea);
   };
 
 
@@ -88,7 +89,7 @@ const ChatComponent = ({ aiConfig, idIaArea }: ChatComponentProps) => {
                 <div className="text-6xl mb-4">💬</div>
                 <h3 className="text-xl font-semibold mb-2">¡Bienvenido al Piloto IA!</h3>
                 <p className="text-muted-foreground">
-                  Haz tu primera consulta sobre {aiConfig.company_id}
+                  Haz tu primera consulta sobre {chatContext.company}
                 </p>
               </Card>
             </div>
@@ -99,7 +100,7 @@ const ChatComponent = ({ aiConfig, idIaArea }: ChatComponentProps) => {
                   key={message.id}
                   message={message}
                   streamingMessageId={streamingMessageId}
-                  userId={aiConfig.user_id}
+                  userId={chatContext.user}
                 />
               ))}
             </div>
@@ -112,7 +113,7 @@ const ChatComponent = ({ aiConfig, idIaArea }: ChatComponentProps) => {
             <Textarea
               value={userQuery}
               onChange={(e) => setUserQuery(e.target.value)}
-              placeholder={`Escribe tu consulta sobre ${aiConfig.company_id}...`}
+              placeholder={`Escribe tu consulta sobre ${chatContext.company}...`}
               disabled={isLoading}
               rows={2}
               className="resize-none"

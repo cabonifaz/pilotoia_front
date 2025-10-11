@@ -6,15 +6,17 @@ import { Label } from '@/components/shadcn/label';
 import { Slider } from '@/components/shadcn/slider';
 import { ChevronDown } from 'lucide-react';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
-import { type AIConfig } from '@/types/aiConfig';
+import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 
 interface AIConfigPanelProps {
   config: AIConfig;
+  chatContext: ChatContext;
   onConfigChange: (config: AIConfig) => void;
+  onChatContextChange?: (context: ChatContext) => void;
   onExpandedChange?: (expanded: boolean) => void;
 }
 
-const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPanelProps) => {
+const AIConfigPanel = ({ config, chatContext, onConfigChange, onChatContextChange, onExpandedChange }: AIConfigPanelProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [localConfig, setLocalConfig] = useState(config);
   const { user } = useQueryAuthContext();
@@ -51,6 +53,14 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
     debouncedConfigChange(newConfig);
   };
 
+  const handleChatContextChange = (key: keyof ChatContext, value: string | number) => {
+    if (onChatContextChange) {
+      const newContext = { ...chatContext, [key]: value };
+      console.log('🔄 ChatContext updated:', { key, value, newContext });
+      onChatContextChange(newContext);
+    }
+  };
+
   return (
     <Card>
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
@@ -75,12 +85,11 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
         <CollapsibleContent>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="user_id">Usuario:</Label>
+              <Label htmlFor="user">Usuario:</Label>
               <Input
-                id="user_id"
+                id="user"
                 type="text"
-                value={localConfig.user_id}
-                onChange={(e) => handleConfigChange('user_id', e.target.value)}
+                value={chatContext.user}
                 placeholder="Usuario"
                 readOnly
                 className="bg-muted cursor-not-allowed"
@@ -88,14 +97,14 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="company_id">Empresa:</Label>
+              <Label htmlFor="company">Empresa:</Label>
               <Input
-                id="company_id"
+                id="company"
                 type="text"
-                value={localConfig.company_id}
-                onChange={(e) => handleConfigChange('company_id', e.target.value)}
+                value={chatContext.company}
+                onChange={isReadOnlyRole ? undefined : (e) => handleChatContextChange('company', e.target.value)}
                 placeholder="Empresa"
-                readOnly={isReadOnlyRole}
+                disabled={isReadOnlyRole}
                 className={isReadOnlyRole ? "bg-muted cursor-not-allowed" : ""}
               />
             </div>
@@ -105,10 +114,10 @@ const AIConfigPanel = ({ config, onConfigChange, onExpandedChange }: AIConfigPan
               <Input
                 id="area"
                 type="text"
-                value={localConfig.area}
-                onChange={(e) => handleConfigChange('area', e.target.value)}
+                value={chatContext.area}
+                onChange={isReadOnlyRole ? undefined : (e) => handleChatContextChange('area', e.target.value)}
                 placeholder="Área"
-                readOnly={isReadOnlyRole}
+                disabled={isReadOnlyRole}
                 className={isReadOnlyRole ? "bg-muted cursor-not-allowed" : ""}
               />
             </div>

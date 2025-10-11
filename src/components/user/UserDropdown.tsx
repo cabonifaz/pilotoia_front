@@ -40,7 +40,7 @@ const UserDropdown = () => {
           <div className="flex items-center gap-2">
             <User className="h-4 w-4" />
             <span className="text-sm font-medium">
-              {user.usuario}
+              {user.user}
             </span>
             <ChevronDown className="h-4 w-4" />
           </div>

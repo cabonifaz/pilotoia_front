@@ -47,12 +47,9 @@ const CompanyAreaModal = ({ isOpen, onClose, user }: CompanyAreaModalProps) => {
         `${ca.ID_EMPRESA}-${ca.ID_AREA}` === selectedValue
       );
 
-      console.log('Selected company area:', selected);
-
       if (selected) {
         // Update the user data in TanStack Query cache (frontend only)
         const currentUserData = queryClient.getQueryData(queryKeys.user.current()) as any;
-        console.log('Current user data before update:', currentUserData);
 
         if (currentUserData) {
           const updatedUserData = {

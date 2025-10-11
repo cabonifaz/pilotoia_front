@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { chatApi, type ChatMessageRequest, type AgentMessageRequest } from '../api/chatApi';
 import { showStreamingErrorToast } from '../utils/errorHandler';
 import { type Message } from '@/types/message';
-import { type AIConfig } from '@/types/aiConfig';
+import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -24,8 +24,8 @@ interface UseChatStreamReturn {
   messages: Message[];
   isLoading: boolean;
   streamingMessageId: string | null;
-  sendMessage: (message: string, config: AIConfig, idIaArea: number) => Promise<void>;
-  sendAgentMessage: (message: string, config: AIConfig, token: string, idIaArea: number) => Promise<void>;
+  sendMessage: (message: string, config: AIConfig, chatContext: ChatContext, idIaArea: number) => Promise<void>;
+  sendAgentMessage: (message: string, config: AIConfig, chatContext: ChatContext, token: string, idIaArea: number) => Promise<void>;
   cancelMessage: () => void;
 }
 
@@ -101,7 +101,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     };
   }, []);
 
-  const sendMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, idIaArea: number) => {
+  const sendMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, chatContext: ChatContext, idIaArea: number) => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
@@ -137,6 +137,7 @@ export const useChatStream = (): UseChatStreamReturn => {
         {
           message: messageContent,
           ...aiConfig,
+          ...chatContext,
           id_ia_area: idIaArea
         } as ChatMessageRequest,
         (data) => {
@@ -236,7 +237,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     }
   }, [updateStreamingContent]);
 
-  const sendAgentMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, token: string, idIaArea: number) => {
+  const sendAgentMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, chatContext: ChatContext, token: string, idIaArea: number) => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
@@ -273,6 +274,7 @@ export const useChatStream = (): UseChatStreamReturn => {
           message: messageContent,
           external_token: token,
           ...aiConfig,
+          ...chatContext,
           id_ia_area: idIaArea
         } as AgentMessageRequest,
         (data) => {
