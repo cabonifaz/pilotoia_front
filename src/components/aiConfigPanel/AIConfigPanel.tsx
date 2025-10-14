@@ -56,7 +56,6 @@ const AIConfigPanel = ({ config, chatContext, onConfigChange, onChatContextChang
   const handleChatContextChange = (key: keyof ChatContext, value: string | number) => {
     if (onChatContextChange) {
       const newContext = { ...chatContext, [key]: value };
-      console.log('🔄 ChatContext updated:', { key, value, newContext });
       onChatContextChange(newContext);
     }
   };

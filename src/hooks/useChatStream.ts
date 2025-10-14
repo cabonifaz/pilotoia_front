@@ -81,6 +81,8 @@ export const useChatStream = (): UseChatStreamReturn => {
   const abortRef = useRef<AbortController | null>(null);
   const streamingContentRef = useRef<string>('');
   const animationFrameRef = useRef<number | null>(null);
+  const activeChatIdRef = useRef<number | null>(null); // Track the active chat_id for cache operations
+  const streamingMessageIdRef = useRef<string | null>(null); // Track the streaming message ID for cache operations
 
   // Helper to add messages to cache
   const addMessagesToCache = useCallback((chatId: number | null, messages: Message[]) => {
@@ -137,6 +139,9 @@ export const useChatStream = (): UseChatStreamReturn => {
     // Reset streaming content ref
     streamingContentRef.current = '';
 
+    // Initialize active chat_id with the current chat_id from context
+    activeChatIdRef.current = chatContext.chat_id;
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -146,7 +151,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     };
 
     // Add messages to TanStack Query cache (only user message initially)
-    addMessagesToCache(chatContext.chat_id, [userMessage]);
+    addMessagesToCache(activeChatIdRef.current, [userMessage]);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -176,7 +181,25 @@ export const useChatStream = (): UseChatStreamReturn => {
             case "metadata":
               // Extract chat_id from metadata if present
               if (isRecord(evt) && typeof evt.chat_id === 'number') {
-                setCurrentChatId(evt.chat_id);
+                const newChatId = evt.chat_id as number;
+                setCurrentChatId(newChatId);
+
+                // If chat was just created (was null, now has ID), migrate messages
+                if (activeChatIdRef.current === null && newChatId !== null) {
+                  // Get messages from null cache
+                  const messagesFromNull = queryClient.getQueryData<Message[]>(queryKeys.chat.messages(null)) || [];
+
+                  // Copy to new chat_id cache
+                  if (messagesFromNull.length > 0) {
+                    queryClient.setQueryData<Message[]>(
+                      queryKeys.chat.messages(newChatId),
+                      messagesFromNull
+                    );
+                  }
+
+                  // Update active chat_id for all subsequent operations
+                  activeChatIdRef.current = newChatId;
+                }
               }
               break;
             case "assistant_metadata":
@@ -188,13 +211,16 @@ export const useChatStream = (): UseChatStreamReturn => {
                 message: '',
                 created_at: assistantMetadataEvt.created_at // Use backend timestamp
               };
-              addMessagesToCache(chatContext.chat_id, [assistantMessage]);
+              addMessagesToCache(activeChatIdRef.current, [assistantMessage]);
               setStreamingMessageId(assistantMessage.id);
+              streamingMessageIdRef.current = assistantMessage.id; // Also update ref for callback access
               break;
             case "chunk":
               // Only update if we have a streaming message ID
-              if (streamingMessageId) {
-                updateStreamingContent(chatContext.chat_id, streamingMessageId, (evt as ChunkEvent).content);
+              if (streamingMessageIdRef.current) {
+                updateStreamingContent(activeChatIdRef.current, streamingMessageIdRef.current, (evt as ChunkEvent).content);
+              } else {
+                console.warn('[STREAM] Received chunk but no streaming message ID!');
               }
               break;
             case "complete":
@@ -210,8 +236,8 @@ export const useChatStream = (): UseChatStreamReturn => {
               const errorMessage = errorEvt.result?.mensaje || errorEvt.message || "Error en el streaming";
 
               // Update the AI message to show error (only if we have a streaming message ID)
-              if (streamingMessageId) {
-                updateMessageInCache(chatContext.chat_id, streamingMessageId, { message: `Error: ${errorMessage}` });
+              if (streamingMessageIdRef.current) {
+                updateMessageInCache(activeChatIdRef.current, streamingMessageIdRef.current, { message: `Error: ${errorMessage}` });
               }
 
               controller.abort();
@@ -225,8 +251,8 @@ export const useChatStream = (): UseChatStreamReturn => {
           const errorMessage = "Error de conexión con el servidor";
 
           // Only update if we have a streaming message ID
-          if (streamingMessageId) {
-            updateMessageInCache(chatContext.chat_id, streamingMessageId, { message: `Error: ${errorMessage}` });
+          if (streamingMessageIdRef.current) {
+            updateMessageInCache(activeChatIdRef.current, streamingMessageIdRef.current, { message: `Error: ${errorMessage}` });
           }
 
           controller.abort();
@@ -243,14 +269,15 @@ export const useChatStream = (): UseChatStreamReturn => {
 
             const currentContent = streamingContentRef.current;
             // Only update if we have a streaming message ID
-            if (streamingMessageId) {
-              updateMessageInCache(chatContext.chat_id, streamingMessageId, {
+            if (streamingMessageIdRef.current) {
+              updateMessageInCache(activeChatIdRef.current, streamingMessageIdRef.current, {
                 message: currentContent || 'Petición detenida por el usuario'
               });
             }
           }
 
           setStreamingMessageId(null);
+          streamingMessageIdRef.current = null; // Reset ref on close
         },
         () => {
           // Handle connection open
@@ -262,14 +289,15 @@ export const useChatStream = (): UseChatStreamReturn => {
         // Handled in onClose callback
       } else {
         // Only update if we have a streaming message ID
-        if (streamingMessageId) {
+        if (streamingMessageIdRef.current) {
           const errorMsg = err instanceof Error ? 'Error al consultar la API' : 'Error inesperado';
-          updateMessageInCache(chatContext.chat_id, streamingMessageId, { message: errorMsg });
+          updateMessageInCache(activeChatIdRef.current, streamingMessageIdRef.current, { message: errorMsg });
         }
       }
     } finally {
       setIsLoading(false);
       setStreamingMessageId(null);
+      streamingMessageIdRef.current = null; // Reset ref
     }
   }, [updateStreamingContent, addMessagesToCache, updateMessageInCache, streamingMessageId]);
 
@@ -281,6 +309,9 @@ export const useChatStream = (): UseChatStreamReturn => {
     // Reset streaming content ref
     streamingContentRef.current = '';
 
+    // Initialize active chat_id with the current chat_id from context
+    activeChatIdRef.current = chatContext.chat_id;
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -290,7 +321,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     };
 
     // Add messages to TanStack Query cache (only user message initially)
-    addMessagesToCache(chatContext.chat_id, [userMessage]);
+    addMessagesToCache(activeChatIdRef.current, [userMessage]);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -321,7 +352,25 @@ export const useChatStream = (): UseChatStreamReturn => {
             case "metadata":
               // Extract chat_id from metadata if present
               if (isRecord(evt) && typeof evt.chat_id === 'number') {
-                setCurrentChatId(evt.chat_id);
+                const newChatId = evt.chat_id as number;
+                setCurrentChatId(newChatId);
+
+                // If chat was just created (was null, now has ID), migrate messages
+                if (activeChatIdRef.current === null && newChatId !== null) {
+                  // Get messages from null cache
+                  const messagesFromNull = queryClient.getQueryData<Message[]>(queryKeys.chat.messages(null)) || [];
+
+                  // Copy to new chat_id cache
+                  if (messagesFromNull.length > 0) {
+                    queryClient.setQueryData<Message[]>(
+                      queryKeys.chat.messages(newChatId),
+                      messagesFromNull
+                    );
+                  }
+
+                  // Update active chat_id for all subsequent operations
+                  activeChatIdRef.current = newChatId;
+                }
               }
               break;
             case "assistant_metadata":
@@ -333,13 +382,16 @@ export const useChatStream = (): UseChatStreamReturn => {
                 message: '',
                 created_at: assistantMetadataEvt.created_at // Use backend timestamp
               };
-              addMessagesToCache(chatContext.chat_id, [assistantMessage]);
+              addMessagesToCache(activeChatIdRef.current, [assistantMessage]);
               setStreamingMessageId(assistantMessage.id);
+              streamingMessageIdRef.current = assistantMessage.id; // Also update ref for callback access
               break;
             case "chunk":
               // Only update if we have a streaming message ID
-              if (streamingMessageId) {
-                updateStreamingContent(chatContext.chat_id, streamingMessageId, (evt as ChunkEvent).content);
+              if (streamingMessageIdRef.current) {
+                updateStreamingContent(activeChatIdRef.current, streamingMessageIdRef.current, (evt as ChunkEvent).content);
+              } else {
+                console.warn('[STREAM] Received chunk but no streaming message ID!');
               }
               break;
             case "complete":
@@ -355,8 +407,8 @@ export const useChatStream = (): UseChatStreamReturn => {
               const errorMessage = errorEvt.result?.mensaje || errorEvt.message || "Error en el streaming";
 
               // Update the AI message to show error (only if we have a streaming message ID)
-              if (streamingMessageId) {
-                updateMessageInCache(chatContext.chat_id, streamingMessageId, { message: `Error: ${errorMessage}` });
+              if (streamingMessageIdRef.current) {
+                updateMessageInCache(activeChatIdRef.current, streamingMessageIdRef.current, { message: `Error: ${errorMessage}` });
               }
 
               controller.abort();
@@ -370,8 +422,8 @@ export const useChatStream = (): UseChatStreamReturn => {
           const errorMessage = "Error de conexión con el servidor";
 
           // Only update if we have a streaming message ID
-          if (streamingMessageId) {
-            updateMessageInCache(chatContext.chat_id, streamingMessageId, { message: `Error: ${errorMessage}` });
+          if (streamingMessageIdRef.current) {
+            updateMessageInCache(activeChatIdRef.current, streamingMessageIdRef.current, { message: `Error: ${errorMessage}` });
           }
 
           controller.abort();
@@ -388,14 +440,15 @@ export const useChatStream = (): UseChatStreamReturn => {
 
             const currentContent = streamingContentRef.current;
             // Only update if we have a streaming message ID
-            if (streamingMessageId) {
-              updateMessageInCache(chatContext.chat_id, streamingMessageId, {
+            if (streamingMessageIdRef.current) {
+              updateMessageInCache(activeChatIdRef.current, streamingMessageIdRef.current, {
                 message: currentContent || 'Petición detenida por el usuario'
               });
             }
           }
 
           setStreamingMessageId(null);
+          streamingMessageIdRef.current = null; // Reset ref on close
         },
         () => {
           // Handle connection open

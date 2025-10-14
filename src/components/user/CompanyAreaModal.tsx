@@ -56,7 +56,6 @@ const CompanyAreaModal = ({ isOpen, onClose, user }: CompanyAreaModalProps) => {
             ...currentUserData,
             actual_company_area: selected
           };
-          console.log('Updated user data:', updatedUserData);
           queryClient.setQueryData(queryKeys.user.current(), updatedUserData);
         }
         

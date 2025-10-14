@@ -110,13 +110,7 @@ export const useLogoutMutation = () => {
             }
         },
         onSettled: () => {
-            // Clear JWT from sessionStorage
-            sessionStorage.removeItem('jwt_token');
-
-            // Clear current chat_id from sessionStorage
-            sessionStorage.removeItem('current_chat_id');
-
-            // Clear TanStack Query cache - persistence will handle storage cleanup
+            // Clear TanStack Query cache
             clearUserCache();
 
             // Clear chat cache
@@ -124,6 +118,10 @@ export const useLogoutMutation = () => {
 
             // Invalidate and remove all user-related queries
             queryClient.clear();
+
+            // Clear sessionStorage
+            sessionStorage.removeItem('jwt_token');
+            sessionStorage.removeItem('current_chat_id');
 
             // Show logout message
             toast({

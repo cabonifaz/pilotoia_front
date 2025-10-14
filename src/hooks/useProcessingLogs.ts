@@ -46,7 +46,6 @@ export const useProcessingLogs = () => {
         setIsConnected(false);
       },
       (event) => {
-        console.log('WebSocket closed:', event.code, event.reason);
         setIsConnected(false);
         
         // Show completion message based on close reason

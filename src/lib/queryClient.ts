@@ -1,22 +1,8 @@
 import { QueryClient } from '@tanstack/react-query';
-import { persistQueryClient } from '@tanstack/query-persist-client-core';
-import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 
-// Create a persister for localStorage (user data, chats list, etc)
-const localStoragePersister = createSyncStoragePersister({
-    storage: window.localStorage,
-    key: 'PILOTOIA_REACT_QUERY_OFFLINE_CACHE',
-    serialize: JSON.stringify,
-    deserialize: JSON.parse,
-});
-
-// Create a persister for sessionStorage (chat messages - cleared on tab close)
-const sessionStoragePersister = createSyncStoragePersister({
-    storage: window.sessionStorage,
-    key: 'chat_messages_cache',
-    serialize: JSON.stringify,
-    deserialize: JSON.parse,
-});
+// Note: ALL data is in-memory only with TanStack Query
+// No persistence to localStorage or sessionStorage
+// Data is cleared when tab closes or on logout
 
 // Create QueryClient with optimized defaults
 export const queryClient = new QueryClient({
@@ -41,43 +27,6 @@ export const queryClient = new QueryClient({
             onMutate: () => {
                 // Optional: Global loading state can be managed here
             },
-        },
-    },
-});
-
-// Set up persistence for localStorage (user data, chat lists)
-persistQueryClient({
-    queryClient,
-    persister: localStoragePersister,
-    maxAge: 1000 * 60 * 60 * 24, // 24 hours
-    hydrateOptions: {},
-    dehydrateOptions: {
-        shouldDehydrateQuery: (query: any) => {
-            const queryKey = query.queryKey;
-            // Don't persist chat messages to localStorage
-            if (queryKey[0] === 'chat' && queryKey[1] === 'messages') {
-                return false;
-            }
-            // Only persist successful queries that are not too fresh
-            return query.state.status === 'success' && query.state.dataUpdatedAt > Date.now() - 1000 * 60;
-        },
-    },
-});
-
-// Set up persistence for sessionStorage (chat messages only)
-persistQueryClient({
-    queryClient,
-    persister: sessionStoragePersister,
-    maxAge: 1000 * 60 * 60 * 8, // 8 hours (cleared on tab close anyway)
-    hydrateOptions: {},
-    dehydrateOptions: {
-        shouldDehydrateQuery: (query: any) => {
-            const queryKey = query.queryKey;
-            // Only persist chat messages to sessionStorage
-            if (queryKey[0] === 'chat' && queryKey[1] === 'messages') {
-                return query.state.status === 'success';
-            }
-            return false;
         },
     },
 });
