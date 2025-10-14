@@ -11,6 +11,7 @@ import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 const HomeStreamingChat = () => {
   const { user } = useQueryAuthContext();
   const [selectedChatId, setSelectedChatId] = useState<number | undefined>();
+  const [currentChatId, setCurrentChatId] = useState<number | null>(null);
 
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     similarity_threshold: 0.65,
@@ -62,6 +63,7 @@ const HomeStreamingChat = () => {
 
   const handleNewChat = () => {
     setSelectedChatId(undefined);
+    setCurrentChatId(null);
   };
 
 
@@ -93,7 +95,6 @@ const HomeStreamingChat = () => {
               <ChatComponent
                 aiConfig={aiConfig}
                 chatContext={chatContext}
-                idIaArea={chatContext.id_ia_area}
               />
             </div>
           </div>
@@ -105,6 +106,7 @@ const HomeStreamingChat = () => {
               onChatSelect={handleChatSelect}
               onNewChat={handleNewChat}
               selectedChatId={selectedChatId}
+              currentChatId={currentChatId}
             />
 
             {/* Company Info */}

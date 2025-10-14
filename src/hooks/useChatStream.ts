@@ -24,8 +24,8 @@ interface UseChatStreamReturn {
   messages: Message[];
   isLoading: boolean;
   streamingMessageId: string | null;
-  sendMessage: (message: string, config: AIConfig, chatContext: ChatContext, idIaArea: number) => Promise<void>;
-  sendAgentMessage: (message: string, config: AIConfig, chatContext: ChatContext, token: string, idIaArea: number) => Promise<void>;
+  sendMessage: (message: string, config: AIConfig, chatContext: ChatContext) => Promise<void>;
+  sendAgentMessage: (message: string, config: AIConfig, chatContext: ChatContext, token: string) => Promise<void>;
   cancelMessage: () => void;
 }
 
@@ -101,7 +101,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     };
   }, []);
 
-  const sendMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, chatContext: ChatContext, idIaArea: number) => {
+  const sendMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, chatContext: ChatContext) => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
@@ -133,13 +133,21 @@ export const useChatStream = (): UseChatStreamReturn => {
     abortRef.current = controller;
 
     try {
+      // Only send titulo when creating a new chat (chat_id === null)
+      const requestPayload = {
+        message: messageContent,
+        created_at: Date.now().toString(),
+        ...aiConfig,
+        ...chatContext
+      };
+
+      // Remove titulo if chat_id is not null (existing chat)
+      if (chatContext.chat_id !== null && 'titulo' in requestPayload) {
+        delete (requestPayload as any).titulo;
+      }
+
       await chatApi.sendStreamingMessage(
-        {
-          message: messageContent,
-          ...aiConfig,
-          ...chatContext,
-          id_ia_area: idIaArea
-        } as ChatMessageRequest,
+        requestPayload as ChatMessageRequest,
         (data) => {
           // Handle incoming SSE message
           const evt = asStreamEvent(data);
@@ -237,7 +245,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     }
   }, [updateStreamingContent]);
 
-  const sendAgentMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, chatContext: ChatContext, token: string, idIaArea: number) => {
+  const sendAgentMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, chatContext: ChatContext, token: string) => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
@@ -269,14 +277,22 @@ export const useChatStream = (): UseChatStreamReturn => {
     abortRef.current = controller;
 
     try {
+      // Only send titulo when creating a new chat (chat_id === null)
+      const requestPayload = {
+        message: messageContent,
+        created_at: Date.now().toString(),
+        external_token: token,
+        ...aiConfig,
+        ...chatContext
+      };
+
+      // Remove titulo if chat_id is not null (existing chat)
+      if (chatContext.chat_id !== null && 'titulo' in requestPayload) {
+        delete (requestPayload as any).titulo;
+      }
+
       await chatApi.sendStreamingMessageAgent(
-        {
-          message: messageContent,
-          external_token: token,
-          ...aiConfig,
-          ...chatContext,
-          id_ia_area: idIaArea
-        } as AgentMessageRequest,
+        requestPayload as AgentMessageRequest,
         (data) => {
           // Handle incoming SSE message
           const evt = asStreamEvent(data);

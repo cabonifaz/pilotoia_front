@@ -11,10 +11,9 @@ import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 interface ChatComponentProps {
   aiConfig: AIConfig;
   chatContext: ChatContext;
-  idIaArea: number;
 }
 
-const ChatComponent = ({ aiConfig, chatContext, idIaArea }: ChatComponentProps) => {
+const ChatComponent = ({ aiConfig, chatContext }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [selectedAction, setSelectedAction] = useState<'enviar' | 'agente' | 'login'>('enviar');
@@ -62,7 +61,7 @@ const ChatComponent = ({ aiConfig, chatContext, idIaArea }: ChatComponentProps) 
 
     const currentQuery = userQuery;
     setUserQuery('');
-    await sendMessage(currentQuery, aiConfig, chatContext, idIaArea);
+    await sendMessage(currentQuery, aiConfig, chatContext);
   };
 
   const cancelar = () => {
@@ -74,7 +73,7 @@ const ChatComponent = ({ aiConfig, chatContext, idIaArea }: ChatComponentProps) 
 
     const currentQuery = userQuery;
     setUserQuery('');
-    await sendAgentMessage(currentQuery, aiConfig, chatContext, token, idIaArea);
+    await sendAgentMessage(currentQuery, aiConfig, chatContext, token);
   };
 
 

@@ -8,13 +8,15 @@ import { MessageCircle, Calendar, Clock, Plus } from 'lucide-react';
 interface ChatListProps {
   onChatSelect?: (chatId: number) => void;
   onNewChat?: () => void;
-  selectedChatId?: number;
+  selectedChatId?: number | null;
+  currentChatId?: number | null;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
   onChatSelect,
   onNewChat,
-  selectedChatId
+  selectedChatId,
+  currentChatId
 }) => {
   const { data: chats, isLoading, error } = useUserChats();
 
@@ -100,10 +102,11 @@ export const ChatList: React.FC<ChatListProps> = ({
               variant="outline"
               size="sm"
               onClick={onNewChat}
+              disabled={currentChatId === null}
               className="flex items-center gap-1"
             >
               <Plus size={16} />
-              Nueva
+              Nueva Conversación
             </Button>
           )}
         </div>
@@ -117,19 +120,9 @@ export const ChatList: React.FC<ChatListProps> = ({
         {!chats || chats.length === 0 ? (
           <div className="text-center py-8">
             <MessageCircle size={48} className="mx-auto text-gray-300 mb-3" />
-            <p className="text-sm text-gray-500 mb-3">
-              No tienes conversaciones aún
+            <p className="text-sm text-gray-500">
+              No hay conversaciones guardadas
             </p>
-            {onNewChat && (
-              <Button
-                variant="outline"
-                onClick={onNewChat}
-                className="flex items-center gap-2 mx-auto"
-              >
-                <Plus size={16} />
-                Iniciar primera conversación
-              </Button>
-            )}
           </div>
         ) : (
           sortedChats.map((chat) => (
