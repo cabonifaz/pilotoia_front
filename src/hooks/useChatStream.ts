@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '../lib/queryClient';
 import { chatApi, type ChatMessageRequest, type AgentMessageRequest } from '../api/chatApi';
 import { showStreamingErrorToast } from '../utils/errorHandler';
 import { type Message } from '@/types/message';
@@ -8,25 +10,30 @@ type JsonRecord = Record<string, unknown>;
 
 export type ChunkEvent = { type: "chunk"; content: string };
 export type CompleteEvent = { type: "complete" } & JsonRecord;
-export type ErrorEvent = { 
-  type: "error"; 
-  message: string; 
-  result?: { 
-    idTipoMensaje: number; 
-    mensaje: string; 
-  }; 
+export type ErrorEvent = {
+  type: "error";
+  message: string;
+  result?: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+};
+export type AssistantMetadataEvent = {
+  type: "assistant_metadata";
+  sender: number;
+  created_at: string;
 };
 export type UnknownEvent = { type: string } & JsonRecord;
 
-export type StreamEvent = ChunkEvent | CompleteEvent | ErrorEvent | UnknownEvent;
+export type StreamEvent = ChunkEvent | CompleteEvent | ErrorEvent | AssistantMetadataEvent | UnknownEvent;
 
 interface UseChatStreamReturn {
-  messages: Message[];
   isLoading: boolean;
   streamingMessageId: string | null;
   sendMessage: (message: string, config: AIConfig, chatContext: ChatContext) => Promise<void>;
   sendAgentMessage: (message: string, config: AIConfig, chatContext: ChatContext, token: string) => Promise<void>;
   cancelMessage: () => void;
+  currentChatId: number | null;
 }
 
 function isRecord(v: unknown): v is JsonRecord {
@@ -56,24 +63,49 @@ function asStreamEvent(u: unknown): StreamEvent | undefined {
     return { type: "error", message, result };
   }
 
+  if (t === "assistant_metadata") {
+    const sender = typeof u["sender"] === "number" ? u["sender"] : 1; // default to AI
+    const created_at = isString(u["created_at"]) ? u["created_at"] : Date.now().toString();
+    return { type: "assistant_metadata", sender, created_at };
+  }
+
   // complete u otros: los aceptamos como JsonRecord
   return { ...(u as JsonRecord), type: t } as StreamEvent;
 }
 
 export const useChatStream = (): UseChatStreamReturn => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [currentChatId, setCurrentChatId] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const streamingContentRef = useRef<string>('');
   const animationFrameRef = useRef<number | null>(null);
+
+  // Helper to add messages to cache
+  const addMessagesToCache = useCallback((chatId: number | null, messages: Message[]) => {
+    queryClient.setQueryData<Message[]>(
+      queryKeys.chat.messages(chatId),
+      (old = []) => [...old, ...messages]
+    );
+  }, [queryClient]);
+
+  // Helper to update a message in cache
+  const updateMessageInCache = useCallback((chatId: number | null, messageId: string, updates: Partial<Message>) => {
+    queryClient.setQueryData<Message[]>(
+      queryKeys.chat.messages(chatId),
+      (old = []) => old.map(msg =>
+        msg.id === messageId ? { ...msg, ...updates } : msg
+      )
+    );
+  }, [queryClient]);
 
   const cancelMessage = useCallback(() => {
     abortRef.current?.abort();
   }, []);
 
   // Update streaming message content on animation frame
-  const updateStreamingContent = useCallback((messageId: string, content: string) => {
+  const updateStreamingContent = useCallback((chatId: number | null, messageId: string, content: string) => {
     streamingContentRef.current = content;
 
     // Cancel previous animation frame if exists
@@ -83,14 +115,10 @@ export const useChatStream = (): UseChatStreamReturn => {
 
     // Schedule update on next animation frame for smooth rendering
     animationFrameRef.current = requestAnimationFrame(() => {
-      setMessages(prev => prev.map(msg =>
-        msg.id === messageId
-          ? { ...msg, content: streamingContentRef.current }
-          : msg
-      ));
+      updateMessageInCache(chatId, messageId, { message: streamingContentRef.current });
       animationFrameRef.current = null;
     });
-  }, []);
+  }, [updateMessageInCache]);
 
   // Cleanup animation frame on unmount
   useEffect(() => {
@@ -112,22 +140,13 @@ export const useChatStream = (): UseChatStreamReturn => {
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
-      type: 'user',
-      content: messageContent,
-      timestamp: new Date()
+      sender: 0, // 0 = user
+      message: messageContent,
+      created_at: Date.now().toString()
     };
 
-    // Add AI message placeholder
-    const aiMessageId = (Date.now() + 1).toString();
-    const aiMessage: Message = {
-      id: aiMessageId,
-      type: 'ai',
-      content: '',
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage, aiMessage]);
-    setStreamingMessageId(aiMessageId);
+    // Add messages to TanStack Query cache (only user message initially)
+    addMessagesToCache(chatContext.chat_id, [userMessage]);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -154,8 +173,29 @@ export const useChatStream = (): UseChatStreamReturn => {
           if (!evt) return;
 
           switch (evt.type) {
+            case "metadata":
+              // Extract chat_id from metadata if present
+              if (isRecord(evt) && typeof evt.chat_id === 'number') {
+                setCurrentChatId(evt.chat_id);
+              }
+              break;
+            case "assistant_metadata":
+              // Create AI/Agent message placeholder when backend sends metadata
+              const assistantMetadataEvt = evt as AssistantMetadataEvent;
+              const assistantMessage: Message = {
+                id: assistantMetadataEvt.created_at, // Use backend timestamp as ID
+                sender: assistantMetadataEvt.sender, // Use sender from backend (1=AI, 2=Agent)
+                message: '',
+                created_at: assistantMetadataEvt.created_at // Use backend timestamp
+              };
+              addMessagesToCache(chatContext.chat_id, [assistantMessage]);
+              setStreamingMessageId(assistantMessage.id);
+              break;
             case "chunk":
-              updateStreamingContent(aiMessageId, (evt as ChunkEvent).content);
+              // Only update if we have a streaming message ID
+              if (streamingMessageId) {
+                updateStreamingContent(chatContext.chat_id, streamingMessageId, (evt as ChunkEvent).content);
+              }
               break;
             case "complete":
               controller.abort();
@@ -169,12 +209,10 @@ export const useChatStream = (): UseChatStreamReturn => {
               // Use the result message if available, otherwise use the message field
               const errorMessage = errorEvt.result?.mensaje || errorEvt.message || "Error en el streaming";
 
-              // Update the AI message to show error
-              setMessages(prev => prev.map(msg =>
-                msg.id === aiMessageId
-                  ? { ...msg, content: `Error: ${errorMessage}` }
-                  : msg
-              ));
+              // Update the AI message to show error (only if we have a streaming message ID)
+              if (streamingMessageId) {
+                updateMessageInCache(chatContext.chat_id, streamingMessageId, { message: `Error: ${errorMessage}` });
+              }
 
               controller.abort();
               break;
@@ -186,11 +224,10 @@ export const useChatStream = (): UseChatStreamReturn => {
           // Handle connection errors
           const errorMessage = "Error de conexión con el servidor";
 
-          setMessages(prev => prev.map(msg =>
-            msg.id === aiMessageId
-              ? { ...msg, content: `Error: ${errorMessage}` }
-              : msg
-          ));
+          // Only update if we have a streaming message ID
+          if (streamingMessageId) {
+            updateMessageInCache(chatContext.chat_id, streamingMessageId, { message: `Error: ${errorMessage}` });
+          }
 
           controller.abort();
         },
@@ -205,15 +242,12 @@ export const useChatStream = (): UseChatStreamReturn => {
             }
 
             const currentContent = streamingContentRef.current;
-            setMessages(prev => prev.map(msg => {
-              if (msg.id === aiMessageId) {
-                return {
-                  ...msg,
-                  content: currentContent || 'Petición detenida por el usuario'
-                };
-              }
-              return msg;
-            }));
+            // Only update if we have a streaming message ID
+            if (streamingMessageId) {
+              updateMessageInCache(chatContext.chat_id, streamingMessageId, {
+                message: currentContent || 'Petición detenida por el usuario'
+              });
+            }
           }
 
           setStreamingMessageId(null);
@@ -226,24 +260,18 @@ export const useChatStream = (): UseChatStreamReturn => {
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
         // Handled in onClose callback
-      } else if (err instanceof Error) {
-        setMessages(prev => prev.map(msg =>
-          msg.id === aiMessageId
-            ? { ...msg, content: 'Error al consultar la API' }
-            : msg
-        ));
       } else {
-        setMessages(prev => prev.map(msg =>
-          msg.id === aiMessageId
-            ? { ...msg, content: 'Error inesperado' }
-            : msg
-        ));
+        // Only update if we have a streaming message ID
+        if (streamingMessageId) {
+          const errorMsg = err instanceof Error ? 'Error al consultar la API' : 'Error inesperado';
+          updateMessageInCache(chatContext.chat_id, streamingMessageId, { message: errorMsg });
+        }
       }
     } finally {
       setIsLoading(false);
       setStreamingMessageId(null);
     }
-  }, [updateStreamingContent]);
+  }, [updateStreamingContent, addMessagesToCache, updateMessageInCache, streamingMessageId]);
 
   const sendAgentMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, chatContext: ChatContext, token: string) => {
     if (!messageContent.trim()) return;
@@ -256,22 +284,13 @@ export const useChatStream = (): UseChatStreamReturn => {
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
-      type: 'user',
-      content: messageContent,
-      timestamp: new Date()
+      sender: 0, // 0 = user
+      message: messageContent,
+      created_at: Date.now().toString()
     };
 
-    // Add AI message placeholder
-    const aiMessageId = (Date.now() + 1).toString();
-    const aiMessage: Message = {
-      id: aiMessageId,
-      type: 'ai',
-      content: '',
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage, aiMessage]);
-    setStreamingMessageId(aiMessageId);
+    // Add messages to TanStack Query cache (only user message initially)
+    addMessagesToCache(chatContext.chat_id, [userMessage]);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -299,8 +318,29 @@ export const useChatStream = (): UseChatStreamReturn => {
           if (!evt) return;
 
           switch (evt.type) {
+            case "metadata":
+              // Extract chat_id from metadata if present
+              if (isRecord(evt) && typeof evt.chat_id === 'number') {
+                setCurrentChatId(evt.chat_id);
+              }
+              break;
+            case "assistant_metadata":
+              // Create AI/Agent message placeholder when backend sends metadata
+              const assistantMetadataEvt = evt as AssistantMetadataEvent;
+              const assistantMessage: Message = {
+                id: assistantMetadataEvt.created_at, // Use backend timestamp as ID
+                sender: assistantMetadataEvt.sender, // Use sender from backend (1=AI, 2=Agent)
+                message: '',
+                created_at: assistantMetadataEvt.created_at // Use backend timestamp
+              };
+              addMessagesToCache(chatContext.chat_id, [assistantMessage]);
+              setStreamingMessageId(assistantMessage.id);
+              break;
             case "chunk":
-              updateStreamingContent(aiMessageId, (evt as ChunkEvent).content);
+              // Only update if we have a streaming message ID
+              if (streamingMessageId) {
+                updateStreamingContent(chatContext.chat_id, streamingMessageId, (evt as ChunkEvent).content);
+              }
               break;
             case "complete":
               controller.abort();
@@ -314,12 +354,10 @@ export const useChatStream = (): UseChatStreamReturn => {
               // Use the result message if available, otherwise use the message field
               const errorMessage = errorEvt.result?.mensaje || errorEvt.message || "Error en el streaming";
 
-              // Update the AI message to show error
-              setMessages(prev => prev.map(msg =>
-                msg.id === aiMessageId
-                  ? { ...msg, content: `Error: ${errorMessage}` }
-                  : msg
-              ));
+              // Update the AI message to show error (only if we have a streaming message ID)
+              if (streamingMessageId) {
+                updateMessageInCache(chatContext.chat_id, streamingMessageId, { message: `Error: ${errorMessage}` });
+              }
 
               controller.abort();
               break;
@@ -331,11 +369,10 @@ export const useChatStream = (): UseChatStreamReturn => {
           // Handle connection errors
           const errorMessage = "Error de conexión con el servidor";
 
-          setMessages(prev => prev.map(msg =>
-            msg.id === aiMessageId
-              ? { ...msg, content: `Error: ${errorMessage}` }
-              : msg
-          ));
+          // Only update if we have a streaming message ID
+          if (streamingMessageId) {
+            updateMessageInCache(chatContext.chat_id, streamingMessageId, { message: `Error: ${errorMessage}` });
+          }
 
           controller.abort();
         },
@@ -350,15 +387,12 @@ export const useChatStream = (): UseChatStreamReturn => {
             }
 
             const currentContent = streamingContentRef.current;
-            setMessages(prev => prev.map(msg => {
-              if (msg.id === aiMessageId) {
-                return {
-                  ...msg,
-                  content: currentContent || 'Petición detenida por el usuario'
-                };
-              }
-              return msg;
-            }));
+            // Only update if we have a streaming message ID
+            if (streamingMessageId) {
+              updateMessageInCache(chatContext.chat_id, streamingMessageId, {
+                message: currentContent || 'Petición detenida por el usuario'
+              });
+            }
           }
 
           setStreamingMessageId(null);
@@ -371,31 +405,25 @@ export const useChatStream = (): UseChatStreamReturn => {
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         // Handled in onClose callback
-      } else if (error instanceof Error) {
-        setMessages(prev => prev.map(msg =>
-          msg.id === aiMessageId
-            ? { ...msg, content: 'Error al consultar la API' }
-            : msg
-        ));
       } else {
-        setMessages(prev => prev.map(msg =>
-          msg.id === aiMessageId
-            ? { ...msg, content: 'Error inesperado' }
-            : msg
-        ));
+        // Only update if we have a streaming message ID
+        if (streamingMessageId) {
+          const errorMsg = error instanceof Error ? 'Error al consultar la API' : 'Error inesperado';
+          updateMessageInCache(chatContext.chat_id, streamingMessageId, { message: errorMsg });
+        }
       }
     } finally {
       setIsLoading(false);
       setStreamingMessageId(null);
     }
-  }, [updateStreamingContent]);
+  }, [updateStreamingContent, addMessagesToCache, updateMessageInCache, streamingMessageId]);
 
   return {
-    messages,
     isLoading,
     streamingMessageId,
     sendMessage,
     sendAgentMessage,
-    cancelMessage
+    cancelMessage,
+    currentChatId
   };
 };

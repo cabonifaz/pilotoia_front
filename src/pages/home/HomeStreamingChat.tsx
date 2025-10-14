@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/shadcn/card';
 import { Badge } from '@/components/shadcn/badge';
 import ChatComponent from '../../components/chat/ChatComponent';
@@ -30,6 +30,9 @@ const HomeStreamingChat = () => {
 
       // Only set context if we have valid data
       if (actualCompanyArea && user.user_id) {
+        // Check if there's a saved chat_id in sessionStorage
+        const savedChatId = sessionStorage.getItem('current_chat_id');
+
         const newChatContext = {
           user_id: user.user_id,
           user: user.user,
@@ -38,9 +41,15 @@ const HomeStreamingChat = () => {
           area_id: actualCompanyArea.ID_AREA,
           area: actualCompanyArea.AREA,
           id_ia_area: actualCompanyArea.ID_IA_AREA,
+          chat_id: savedChatId ? parseInt(savedChatId) : null,
         };
 
         setChatContext(newChatContext);
+
+        // Update currentChatId state if there's a saved chat_id
+        if (savedChatId) {
+          setCurrentChatId(parseInt(savedChatId));
+        }
       }
 
       // Update AI config if actualCompanyArea has AI parameters
@@ -64,7 +73,19 @@ const HomeStreamingChat = () => {
   const handleNewChat = () => {
     setSelectedChatId(undefined);
     setCurrentChatId(null);
+    // Clear chat_id from sessionStorage when starting a new chat
+    sessionStorage.removeItem('current_chat_id');
+    // Update chatContext to have null chat_id
+    setChatContext(prev => prev ? { ...prev, chat_id: null } : null);
   };
+
+  const handleChatIdChange = useCallback((chatId: number) => {
+    // Update chatContext with the new chat_id
+    setChatContext(prev => prev ? { ...prev, chat_id: chatId } : null);
+    setCurrentChatId(chatId);
+    // Save chat_id to sessionStorage
+    sessionStorage.setItem('current_chat_id', chatId.toString());
+  }, []);
 
 
   if (!chatContext) {
@@ -95,6 +116,7 @@ const HomeStreamingChat = () => {
               <ChatComponent
                 aiConfig={aiConfig}
                 chatContext={chatContext}
+                onChatIdChange={handleChatIdChange}
               />
             </div>
           </div>

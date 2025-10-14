@@ -2,10 +2,18 @@ import { QueryClient } from '@tanstack/react-query';
 import { persistQueryClient } from '@tanstack/query-persist-client-core';
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 
-// Create a persister for localStorage
+// Create a persister for localStorage (user data, chats list, etc)
 const localStoragePersister = createSyncStoragePersister({
     storage: window.localStorage,
     key: 'PILOTOIA_REACT_QUERY_OFFLINE_CACHE',
+    serialize: JSON.stringify,
+    deserialize: JSON.parse,
+});
+
+// Create a persister for sessionStorage (chat messages - cleared on tab close)
+const sessionStoragePersister = createSyncStoragePersister({
+    storage: window.sessionStorage,
+    key: 'chat_messages_cache',
     serialize: JSON.stringify,
     deserialize: JSON.parse,
 });
@@ -37,7 +45,7 @@ export const queryClient = new QueryClient({
     },
 });
 
-// Set up persistence
+// Set up persistence for localStorage (user data, chat lists)
 persistQueryClient({
     queryClient,
     persister: localStoragePersister,
@@ -45,8 +53,31 @@ persistQueryClient({
     hydrateOptions: {},
     dehydrateOptions: {
         shouldDehydrateQuery: (query: any) => {
+            const queryKey = query.queryKey;
+            // Don't persist chat messages to localStorage
+            if (queryKey[0] === 'chat' && queryKey[1] === 'messages') {
+                return false;
+            }
             // Only persist successful queries that are not too fresh
             return query.state.status === 'success' && query.state.dataUpdatedAt > Date.now() - 1000 * 60;
+        },
+    },
+});
+
+// Set up persistence for sessionStorage (chat messages only)
+persistQueryClient({
+    queryClient,
+    persister: sessionStoragePersister,
+    maxAge: 1000 * 60 * 60 * 8, // 8 hours (cleared on tab close anyway)
+    hydrateOptions: {},
+    dehydrateOptions: {
+        shouldDehydrateQuery: (query: any) => {
+            const queryKey = query.queryKey;
+            // Only persist chat messages to sessionStorage
+            if (queryKey[0] === 'chat' && queryKey[1] === 'messages') {
+                return query.state.status === 'success';
+            }
+            return false;
         },
     },
 });
@@ -61,10 +92,11 @@ export const queryKeys = {
     // Chat-related queries
     chat: {
         list: (userId: number) => ['chat', 'list', userId] as const,
-        history: (userId: string, companyId?: string) => 
+        messages: (chatId: number | null) => ['chat', 'messages', chatId] as const,
+        history: (userId: string, companyId?: string) =>
             ['chat', 'history', { userId, companyId }] as const,
         areas: () => ['chat', 'areas'] as const,
-        config: (userId: string, companyId: string) => 
+        config: (userId: string, companyId: string) =>
             ['chat', 'config', { userId, companyId }] as const,
     },
 } as const;

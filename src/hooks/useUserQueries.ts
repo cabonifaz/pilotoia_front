@@ -112,23 +112,26 @@ export const useLogoutMutation = () => {
         onSettled: () => {
             // Clear JWT from sessionStorage
             sessionStorage.removeItem('jwt_token');
-            
+
+            // Clear current chat_id from sessionStorage
+            sessionStorage.removeItem('current_chat_id');
+
             // Clear TanStack Query cache - persistence will handle storage cleanup
             clearUserCache();
-            
+
             // Clear chat cache
             queryClient.removeQueries({ queryKey: ['chat'] });
-            
+
             // Invalidate and remove all user-related queries
             queryClient.clear();
-            
+
             // Show logout message
             toast({
                 title: "Sesión cerrada",
                 description: "Has cerrado sesión exitosamente",
                 variant: "success"
             });
-            
+
             // Redirect to login page
             setTimeout(() => {
                 window.location.href = '/#/';

@@ -4,12 +4,12 @@ import remarkGfm from 'remark-gfm';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
 import { Badge } from '@/components/shadcn/badge';
-import { type Message } from '@/types/message';
+import { type Message, parseMessageTimestamp, getMessageType } from '@/types/message';
 
 interface MessageBubbleProps {
   message: Message;
   streamingMessageId?: string | null;
-  userId: string;
+  user: string;
 }
 
 // Simplified detection for tables and lists
@@ -155,27 +155,48 @@ const fixTableMarkdown = (text: string): string => {
   return result;
 };
 
-export const MessageBubble = memo(({ message, streamingMessageId, userId }: MessageBubbleProps) => {
-  const isTableOrList = hasTableOrList(message.content);
+export const MessageBubble = memo(({ message, streamingMessageId, user }: MessageBubbleProps) => {
+  const messageType = getMessageType(message.sender);
+  const timestamp = parseMessageTimestamp(message.created_at);
+  const isTableOrList = hasTableOrList(message.message);
+
   // Remove <br> tags
-  const cleanContent = message.content.replace(/<br\s*\/?>/gi, '');
+  const cleanContent = message.message.replace(/<br\s*\/?>/gi, '');
   const processedContent = isTableOrList ? fixTableMarkdown(cleanContent) : cleanContent;
 
+  // Get display name based on sender
+  const getDisplayName = () => {
+    if (message.sender === 0) return user; // Show actual user value from context
+    if (message.sender === 1) return 'AI';
+    if (message.sender === 2) return 'Agent';
+    // Default for any other sender types (3, 4, etc.)
+    return 'AI';
+  };
+
+  // Get emoji based on sender
+  const getEmoji = () => {
+    if (message.sender === 0) return '👤';
+    else return '🤖';
+  };
+
+  // Sender 0 (user) = right side, all others = left side
+  const isUserMessage = message.sender === 0;
+
   return (
-  <div className={`mb-6 ${message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}`}>
-    <Card className={`max-w-[80%] ${message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+  <div className={`mb-6 ${isUserMessage ? 'flex justify-end' : 'flex justify-start'}`}>
+    <Card className={`max-w-[80%] ${isUserMessage ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2 text-xs">
           <Avatar className="h-6 w-6">
             <AvatarFallback className="text-xs">
-              {message.type === 'user' ? '👤' : '🤖'}
+              {getEmoji()}
             </AvatarFallback>
           </Avatar>
           <span className="font-medium">
-            {message.type === 'user' ? userId : 'Piloto IA'}
+            {getDisplayName()}
           </span>
-          <Badge variant={message.type === 'user' ? 'default' : 'outline'} className="text-xs">
-            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          <Badge variant={isUserMessage ? 'default' : 'outline'} className="text-xs">
+            {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Badge>
         </div>
       </CardHeader>
@@ -216,12 +237,12 @@ export const MessageBubble = memo(({ message, streamingMessageId, userId }: Mess
                 p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
               }}
             >
-              {processedContent || (message.type === 'ai' ? 'Pensando...' : '')}
+              {processedContent || (messageType !== 'user' ? 'Pensando...' : '')}
             </ReactMarkdown>
           ) : (
             <>
               <span className="whitespace-pre-wrap">
-                {message.content || (message.type === 'ai' ? 'Pensando...' : '')}
+                {message.message || (messageType !== 'user' ? 'Pensando...' : '')}
               </span>
               {streamingMessageId === message.id && <SpinnerCursor />}
             </>

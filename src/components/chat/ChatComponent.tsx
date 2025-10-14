@@ -3,6 +3,7 @@ import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
 import { Card, CardContent } from '@/components/shadcn/card';
 import { useChatStream } from '../../hooks/useChatStream';
+import { useChatMessages } from '../../hooks/useChatMessages';
 import { useExternalLogin } from '../../hooks/useExternalLogin';
 import { MessageBubble } from './MessageBubble';
 import { SendButtonGroup } from './SendButtonGroup';
@@ -11,16 +12,29 @@ import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 interface ChatComponentProps {
   aiConfig: AIConfig;
   chatContext: ChatContext;
+  onChatIdChange?: (chatId: number) => void;
 }
 
-const ChatComponent = ({ aiConfig, chatContext }: ChatComponentProps) => {
+const ChatComponent = ({ aiConfig, chatContext, onChatIdChange }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [selectedAction, setSelectedAction] = useState<'enviar' | 'agente' | 'login'>('enviar');
   const currentMainActionRef = useRef<() => void>(() => {});
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const { messages, isLoading, streamingMessageId, sendMessage, sendAgentMessage, cancelMessage } = useChatStream();
+
+  // Get messages from TanStack Query cache
+  const { messages } = useChatMessages(chatContext.chat_id);
+
+  // Get streaming functions
+  const { isLoading, streamingMessageId, sendMessage, sendAgentMessage, cancelMessage, currentChatId } = useChatStream();
   const { isAuthenticated, token } = useExternalLogin();
+
+  // Update parent when chat_id is received from backend
+  useEffect(() => {
+    if (currentChatId && onChatIdChange) {
+      onChatIdChange(currentChatId);
+    }
+  }, [currentChatId, onChatIdChange]);
 
   // Debounced scroll handler
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -99,7 +113,7 @@ const ChatComponent = ({ aiConfig, chatContext }: ChatComponentProps) => {
                   key={message.id}
                   message={message}
                   streamingMessageId={streamingMessageId}
-                  userId={chatContext.user}
+                  user={chatContext.user}
                 />
               ))}
             </div>
