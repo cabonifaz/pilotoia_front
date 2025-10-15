@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/shadcn/card';
 import { Badge } from '@/components/shadcn/badge';
 import ChatComponent from '../../components/chat/ChatComponent';
@@ -12,6 +12,7 @@ const HomeStreamingChat = () => {
   const { user } = useQueryAuthContext();
   const [selectedChatId, setSelectedChatId] = useState<number | undefined>();
   const [currentChatId, setCurrentChatId] = useState<number | null>(null);
+  const chatSelectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     similarity_threshold: 0.65,
@@ -22,6 +23,7 @@ const HomeStreamingChat = () => {
   });
 
   const [chatContext, setChatContext] = useState<ChatContext | null>(null);
+  const previousCompanyAreaRef = useRef<string | null>(null);
 
   // Update context and config when user data becomes available
   useEffect(() => {
@@ -30,7 +32,21 @@ const HomeStreamingChat = () => {
 
       // Only set context if we have valid data
       if (actualCompanyArea && user.user_id) {
-        // Check if there's a saved chat_id in sessionStorage
+        // Create a unique key for the current company/area combination
+        const currentCompanyAreaKey = `${actualCompanyArea.ID_EMPRESA}-${actualCompanyArea.ID_AREA}`;
+
+        // Check if company/area has changed
+        if (previousCompanyAreaRef.current && previousCompanyAreaRef.current !== currentCompanyAreaKey) {
+          // Clear chat_id from sessionStorage when company/area changes
+          sessionStorage.removeItem('current_chat_id');
+          setSelectedChatId(undefined);
+          setCurrentChatId(null);
+        }
+
+        // Update the ref with the current company/area
+        previousCompanyAreaRef.current = currentCompanyAreaKey;
+
+        // Check if there's a saved chat_id in sessionStorage (only if company/area hasn't changed)
         const savedChatId = sessionStorage.getItem('current_chat_id');
 
         const newChatContext = {
@@ -49,6 +65,7 @@ const HomeStreamingChat = () => {
         // Update currentChatId state if there's a saved chat_id
         if (savedChatId) {
           setCurrentChatId(parseInt(savedChatId));
+          setSelectedChatId(parseInt(savedChatId));
         }
       }
 
@@ -66,14 +83,23 @@ const HomeStreamingChat = () => {
     }
   }, [user]);
 
-  const handleChatSelect = (chatId: number) => {
+  const handleChatSelect = useCallback((chatId: number) => {
+    // Immediately update selected chat ID for UI feedback (visual selection)
     setSelectedChatId(chatId);
-    setCurrentChatId(chatId);
-    // Save chat_id to sessionStorage
-    sessionStorage.setItem('current_chat_id', chatId.toString());
-    // Update chatContext with the selected chat_id
-    setChatContext(prev => prev ? { ...prev, chat_id: chatId } : null);
-  };
+
+    // Clear any pending chat change timeout
+    if (chatSelectTimeoutRef.current) {
+      clearTimeout(chatSelectTimeoutRef.current);
+    }
+
+    // Wait 500ms before actually changing the chat (loading messages, etc.)
+    // This prevents rapid backend calls if user is quickly clicking through chats
+    chatSelectTimeoutRef.current = setTimeout(() => {
+      setCurrentChatId(chatId);
+      sessionStorage.setItem('current_chat_id', chatId.toString());
+      setChatContext(prev => prev ? { ...prev, chat_id: chatId } : null);
+    }, 500);
+  }, []);
 
   const handleNewChat = () => {
     setSelectedChatId(undefined);
@@ -92,6 +118,14 @@ const HomeStreamingChat = () => {
     sessionStorage.setItem('current_chat_id', chatId.toString());
   }, []);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (chatSelectTimeoutRef.current) {
+        clearTimeout(chatSelectTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!chatContext) {
     return (

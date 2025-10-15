@@ -1,5 +1,6 @@
 import apiClient from './apiClient';
 import { createSSEConnection } from './sseClient';
+import type { Message } from './../types/message';
 import type {
     ChatMessageRequest,
     AgentMessageRequest,
@@ -8,7 +9,8 @@ import type {
     ClearHistoryResponse,
     AreasResponse,
     ChatConfigRequest,
-    ConfigValidationResponse
+    ConfigValidationResponse,
+    MessageListResponse
 } from '@/types/chat';
 
 export const chatApi = {
@@ -92,6 +94,11 @@ export const chatApi = {
     getUserChats: async (): Promise<any[]> => {
         const response = await apiClient.get<{ chats: any[] }>('/v1/chats/get_chats');
         return response.data.chats || [];
+    },
+
+    getMessagesByChat: async (chatId: string): Promise<Message[]> => {
+        const response = await apiClient.get<MessageListResponse>(`/v1/messages/chat/${chatId}`);
+        return response.data.messages;
     }
 };
 
@@ -104,5 +111,6 @@ export type {
     ClearHistoryResponse,
     AreasResponse,
     ChatConfigRequest,
-    ConfigValidationResponse
+    ConfigValidationResponse,
+    MessageListResponse
 };

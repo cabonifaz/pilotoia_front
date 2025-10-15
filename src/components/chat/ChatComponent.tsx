@@ -23,7 +23,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange }: ChatComponentP
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Get messages from TanStack Query cache
-  const { messages } = useChatMessages(chatContext.chat_id);
+  const { data: messages, isLoading: isLoadingMessages, error: errorMessages } = useChatMessages(chatContext.chat_id);
 
   // Get streaming functions
   const { isLoading, streamingMessageId, sendMessage, sendAgentMessage, cancelMessage, currentChatId } = useChatStream();
@@ -96,7 +96,15 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange }: ChatComponentP
       {/* Messages Container */}
       <Card className="flex-1 flex flex-col overflow-hidden border-2 shadow-lg bg-card/50">
         <CardContent className="flex-1 overflow-y-auto p-4 messages-container min-h-0" onScroll={handleScroll}>
-          {messages.length === 0 ? (
+          {isLoadingMessages ? (
+            <div className="flex items-center justify-center h-full">
+              <p>Cargando mensajes...</p>
+            </div>
+          ) : errorMessages ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-red-500">Error al cargar los mensajes.</p>
+            </div>
+          ) : !messages || messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <Card className="p-8 text-center bg-muted/30 border shadow-md">
                 <div className="text-6xl mb-4">💬</div>
@@ -108,7 +116,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange }: ChatComponentP
             </div>
           ) : (
             <div>
-              {messages.map(message => (
+              {messages?.map(message => (
                 <MessageBubble
                   key={message.id}
                   message={message}

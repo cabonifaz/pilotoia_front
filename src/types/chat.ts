@@ -1,4 +1,10 @@
 import type { MensajeResponse } from './Mensaje';
+import type { Message } from './message';
+
+export interface MessageListResponse {
+    messages: Message[];
+    last_evaluated_key?: Record<string, any>;
+}
 
 export interface ChatMessageRequest {
     message: string;

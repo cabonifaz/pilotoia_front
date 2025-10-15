@@ -224,27 +224,23 @@ export const useCompanyAreasQuery = () => {
 
 // Hook to fetch and update user chats
 export const useUserChatsQuery = () => {
-    const queryClient = useQueryClient();
     const { user } = useCurrentUser();
 
+    // Include actual_company_area in query key so chats refetch when company/area changes
+    const actualCompanyArea = (user as any)?.actual_company_area;
+    const companyAreaKey = actualCompanyArea
+        ? `${actualCompanyArea.ID_EMPRESA}-${actualCompanyArea.ID_AREA}`
+        : null;
+
     return useQuery({
-        queryKey: ['user', 'chats'],
+        queryKey: ['user', 'chats', companyAreaKey],
         queryFn: async (): Promise<any[]> => {
             const chats = await chatApi.getUserChats();
-
-            // Update the user cache with fresh chats
-            const currentUser = queryClient.getQueryData(queryKeys.user.current()) as DecodedUserData;
-            if (currentUser) {
-                const updatedUser = {
-                    ...currentUser,
-                    chats: chats
-                };
-                queryClient.setQueryData(queryKeys.user.current(), updatedUser);
-            }
-
+            // Don't update user cache to avoid triggering unnecessary re-renders
+            // Chats are now managed independently in their own query cache
             return chats;
         },
-        enabled: !!user, // Only run if user is authenticated
+        enabled: !!user && !!companyAreaKey, // Only run if user is authenticated and has company area
         staleTime: 5 * 60 * 1000, // 5 minutes
         gcTime: 10 * 60 * 1000, // 10 minutes
         refetchOnWindowFocus: true,

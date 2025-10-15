@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '../lib/queryClient';
 import { useCurrentUser } from './useUserQueries';
 import type { ChatData } from '../types/auth';
 
@@ -8,13 +7,19 @@ export const useUserChats = () => {
     const { user } = useCurrentUser();
     const queryClient = useQueryClient();
 
+    // Match the query key structure from useUserChatsQuery
+    const actualCompanyArea = (user as any)?.actual_company_area;
+    const companyAreaKey = actualCompanyArea
+        ? `${actualCompanyArea.ID_EMPRESA}-${actualCompanyArea.ID_AREA}`
+        : null;
+
     return useQuery({
-        queryKey: ['user', 'chats'],
+        queryKey: ['user', 'chats', companyAreaKey],
         queryFn: (): ChatData[] => {
             // Read from cache populated by useUserChatsQuery
-            return queryClient.getQueryData(['user', 'chats']) || [];
+            return queryClient.getQueryData(['user', 'chats', companyAreaKey]) || [];
         },
-        enabled: !!user, // Only run if user is authenticated
+        enabled: !!user && !!companyAreaKey, // Only run if user is authenticated and has company area
         staleTime: Infinity, // Always fresh - data managed by useUserChatsQuery
         gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
         refetchOnWindowFocus: false,
@@ -27,7 +32,7 @@ export const useUserChats = () => {
 export const useChatById = (chatId: number) => {
     const { data: chats } = useUserChats();
     
-    return chats?.find(chat => chat.CHAT_ID === chatId) || null;
+    return chats?.find(chat => chat.ID_CHAT === chatId) || null;
 };
 
 // Hook to manage chat list updates (for future use when implementing chat CRUD)
@@ -35,10 +40,16 @@ export const useChatListUpdater = () => {
     const queryClient = useQueryClient();
     const { user } = useCurrentUser();
 
+    // Match the query key structure from useUserChatsQuery
+    const actualCompanyArea = (user as any)?.actual_company_area;
+    const companyAreaKey = actualCompanyArea
+        ? `${actualCompanyArea.ID_EMPRESA}-${actualCompanyArea.ID_AREA}`
+        : null;
+
     const updateChatsList = (updater: (oldChats: ChatData[]) => ChatData[]) => {
-        if (user) {
+        if (user && companyAreaKey) {
             queryClient.setQueryData(
-                ['user', 'chats'],
+                ['user', 'chats', companyAreaKey],
                 (oldData: ChatData[] | undefined) => {
                     return updater(oldData || []);
                 }
@@ -53,7 +64,7 @@ export const useChatListUpdater = () => {
     const updateChat = (chatId: number, updatedChat: Partial<ChatData>) => {
         updateChatsList((oldChats) => 
             oldChats.map(chat => 
-                chat.CHAT_ID === chatId 
+                chat.ID_CHAT === chatId 
                     ? { ...chat, ...updatedChat }
                     : chat
             )
@@ -62,7 +73,7 @@ export const useChatListUpdater = () => {
     
     const removeChat = (chatId: number) => {
         updateChatsList((oldChats) => 
-            oldChats.filter(chat => chat.CHAT_ID !== chatId)
+            oldChats.filter(chat => chat.ID_CHAT !== chatId)
         );
     };
     
