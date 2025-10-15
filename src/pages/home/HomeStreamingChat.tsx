@@ -68,6 +68,11 @@ const HomeStreamingChat = () => {
 
   const handleChatSelect = (chatId: number) => {
     setSelectedChatId(chatId);
+    setCurrentChatId(chatId);
+    // Save chat_id to sessionStorage
+    sessionStorage.setItem('current_chat_id', chatId.toString());
+    // Update chatContext with the selected chat_id
+    setChatContext(prev => prev ? { ...prev, chat_id: chatId } : null);
   };
 
   const handleNewChat = () => {

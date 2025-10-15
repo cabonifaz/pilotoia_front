@@ -140,7 +140,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     streamingContentRef.current = '';
 
     // Initialize active chat_id with the current chat_id from context
-    activeChatIdRef.current = chatContext.chat_id;
+    activeChatIdRef.current = chatContext.chat_id ?? null;
 
     // Add user message
     const userMessage: Message = {
@@ -310,7 +310,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     streamingContentRef.current = '';
 
     // Initialize active chat_id with the current chat_id from context
-    activeChatIdRef.current = chatContext.chat_id;
+    activeChatIdRef.current = chatContext.chat_id ?? null;
 
     // Add user message
     const userMessage: Message = {
@@ -462,7 +462,7 @@ export const useChatStream = (): UseChatStreamReturn => {
         // Only update if we have a streaming message ID
         if (streamingMessageId) {
           const errorMsg = error instanceof Error ? 'Error al consultar la API' : 'Error inesperado';
-          updateMessageInCache(chatContext.chat_id, streamingMessageId, { message: errorMsg });
+          updateMessageInCache(chatContext.chat_id ?? null, streamingMessageId, { message: errorMsg });
         }
       }
     } finally {

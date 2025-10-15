@@ -12,10 +12,11 @@ export interface LoginResponse {
 }
 
 export interface ChatData {
-    CHAT_ID: number;
-    AREA_ID: number;
-    CREATED_AT: string;
-    LAST_ACTIVITY_AT?: string;
+    ID_CHAT: number;
+    ID_AREA: number;
+    ID_EMPRESA: number;
+    TITULO: string;
+    ULTIMO_MENSAJE_FECHA?: string;
 }
 
 export interface UserInfo {

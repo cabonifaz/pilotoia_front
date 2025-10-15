@@ -87,6 +87,11 @@ export const chatApi = {
     validateConfig: async (config: ChatConfigRequest): Promise<ConfigValidationResponse> => {
         const response = await apiClient.post<ConfigValidationResponse>('/v1/rag/chat/validate-config', config);
         return response.data;
+    },
+
+    getUserChats: async (): Promise<any[]> => {
+        const response = await apiClient.get<{ chats: any[] }>('/v1/chats/get_chats');
+        return response.data.chats || [];
     }
 };
 

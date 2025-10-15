@@ -1,9 +1,10 @@
 import React from 'react';
 import { useUserChats } from '../../hooks/useChatQueries';
+import { useCurrentUser } from '../../hooks/useUserQueries';
 import { Card, CardContent, CardHeader, CardTitle } from '../shadcn/card';
 import { Button } from '../shadcn/button';
 import { Badge } from '../shadcn/badge';
-import { MessageCircle, Calendar, Clock, Plus } from 'lucide-react';
+import { MessageCircle, Clock, Plus } from 'lucide-react';
 
 interface ChatListProps {
   onChatSelect?: (chatId: number) => void;
@@ -18,7 +19,19 @@ export const ChatList: React.FC<ChatListProps> = ({
   selectedChatId,
   currentChatId
 }) => {
-  const { data: chats, isLoading, error } = useUserChats();
+  const { data: allChats, isLoading, error } = useUserChats();
+  const { user } = useCurrentUser();
+
+  // Filter chats by actual company area
+  const chats = React.useMemo(() => {
+    if (!allChats || !user?.actual_company_area) return allChats || [];
+
+    const { ID_AREA, ID_EMPRESA } = user.actual_company_area;
+
+    return allChats.filter(chat =>
+      chat.ID_AREA === ID_AREA && chat.ID_EMPRESA === ID_EMPRESA
+    );
+  }, [allChats, user?.actual_company_area]);
 
   if (isLoading) {
     return (
@@ -84,8 +97,8 @@ export const ChatList: React.FC<ChatListProps> = ({
   };
 
   const sortedChats = chats ? [...chats].sort((a, b) => {
-    const dateA = new Date(a.LAST_ACTIVITY_AT || a.CREATED_AT);
-    const dateB = new Date(b.LAST_ACTIVITY_AT || b.CREATED_AT);
+    const dateA = new Date(a.ULTIMO_MENSAJE_FECHA || 0);
+    const dateB = new Date(b.ULTIMO_MENSAJE_FECHA || 0);
     return dateB.getTime() - dateA.getTime();
   }) : [];
 
@@ -127,46 +140,36 @@ export const ChatList: React.FC<ChatListProps> = ({
         ) : (
           sortedChats.map((chat) => (
             <Card
-              key={chat.CHAT_ID}
+              key={chat.ID_CHAT}
               className={`cursor-pointer transition-all hover:shadow-md ${
-                selectedChatId === chat.CHAT_ID
+                selectedChatId === chat.ID_CHAT
                   ? 'ring-2 ring-blue-500 bg-blue-50'
                   : 'hover:bg-gray-50'
               }`}
-              onClick={() => onChatSelect?.(chat.CHAT_ID)}
+              onClick={() => onChatSelect?.(chat.ID_CHAT)}
             >
               <CardContent className="p-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="text-sm font-medium truncate">
-                        Conversación #{chat.CHAT_ID}
+                        {chat.TITULO || `Conversación #${chat.ID_CHAT}`}
                       </h3>
-                      <Badge variant="outline" className="text-xs">
-                        Área {chat.AREA_ID}
-                      </Badge>
                     </div>
-                    
+
                     <div className="flex items-center gap-3 text-xs text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <Calendar size={12} />
-                        <span>
-                          Creada {formatDate(chat.CREATED_AT)}
-                        </span>
-                      </div>
-                      
-                      {chat.LAST_ACTIVITY_AT && (
+                      {chat.ULTIMO_MENSAJE_FECHA && (
                         <div className="flex items-center gap-1">
                           <Clock size={12} />
                           <span>
-                            Activa {formatDate(chat.LAST_ACTIVITY_AT)}
+                            Activa {formatDate(chat.ULTIMO_MENSAJE_FECHA)}
                           </span>
                         </div>
                       )}
                     </div>
                   </div>
-                  
-                  {selectedChatId === chat.CHAT_ID && (
+
+                  {selectedChatId === chat.ID_CHAT && (
                     <div className="ml-2">
                       <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     </div>

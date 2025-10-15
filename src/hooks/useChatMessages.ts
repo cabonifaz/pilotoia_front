@@ -9,8 +9,19 @@ import { type Message } from '@/types/message';
 export const useChatMessages = (chatId: number | null) => {
   const queryClient = useQueryClient();
 
-  // Directly read from cache - messages are added by useChatStream
-  const messages = queryClient.getQueryData<Message[]>(queryKeys.chat.messages(chatId)) || [];
+  // Use useQuery to keep the cache entry active and prevent garbage collection
+  const { data: messages = [] } = useQuery({
+    queryKey: queryKeys.chat.messages(chatId),
+    queryFn: () => {
+      // Return existing cache data or empty array
+      return queryClient.getQueryData<Message[]>(queryKeys.chat.messages(chatId)) || [];
+    },
+    staleTime: Infinity, // Messages are always fresh (managed by useChatStream)
+    gcTime: Infinity, // Never garbage collect while component is mounted
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+  });
 
   /**
    * Add a new message to the cache

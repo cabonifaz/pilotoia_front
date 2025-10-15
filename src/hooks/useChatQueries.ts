@@ -6,19 +6,20 @@ import type { ChatData } from '../types/auth';
 // Hook to get user's chats list from TanStack Query cache
 export const useUserChats = () => {
     const { user } = useCurrentUser();
-    
+    const queryClient = useQueryClient();
+
     return useQuery({
-        queryKey: queryKeys.chat.list(user?.user_id || 0),
+        queryKey: ['user', 'chats'],
         queryFn: (): ChatData[] => {
-            // Return empty array if no user - the data should come from login response
-            return [];
+            // Read from cache populated by useUserChatsQuery
+            return queryClient.getQueryData(['user', 'chats']) || [];
         },
-        enabled: !!user?.user_id, // Only run if user is authenticated
-        staleTime: 8 * 60 * 60 * 1000, // Consider fresh for 8 hours (match JWT expiration)
-        gcTime: 8 * 60 * 60 * 1000, // Keep in cache for 8 hours
-        refetchOnWindowFocus: false, // Don't refetch on focus (data comes from login)
-        refetchOnReconnect: false, // Don't refetch on reconnect
-        retry: false, // Don't retry - data should be set during login
+        enabled: !!user, // Only run if user is authenticated
+        staleTime: Infinity, // Always fresh - data managed by useUserChatsQuery
+        gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        retry: false,
     });
 };
 
@@ -33,11 +34,11 @@ export const useChatById = (chatId: number) => {
 export const useChatListUpdater = () => {
     const queryClient = useQueryClient();
     const { user } = useCurrentUser();
-    
+
     const updateChatsList = (updater: (oldChats: ChatData[]) => ChatData[]) => {
-        if (user?.user_id) {
+        if (user) {
             queryClient.setQueryData(
-                queryKeys.chat.list(user.user_id),
+                ['user', 'chats'],
                 (oldData: ChatData[] | undefined) => {
                     return updater(oldData || []);
                 }

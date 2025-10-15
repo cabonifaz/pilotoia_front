@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/authApi';
+import { chatApi } from '../api/chatApi';
 import type { LoginRequest, LoginResponse } from '../types/auth';
 import { queryKeys, clearUserCache } from '../lib/queryClient';
 import { toast } from './use-toast';
@@ -20,8 +21,8 @@ export const useUserQuery = () => {
             const userData = JWTUtils.decodeToken(token);
             return userData;
         },
-        staleTime: 8 * 60 * 60 * 1000, // Consider fresh for 8 hours (match JWT expiration)
-        gcTime: 8 * 60 * 60 * 1000, // Keep in cache for 8 hours
+        staleTime: 24 * 60 * 60 * 1000, // Consider fresh for 8 hours (match JWT expiration)
+        gcTime: 24 * 60 * 60 * 1000, // Keep in cache for 8 hours
         refetchOnWindowFocus: false, // Don't refetch user data on focus
         refetchOnReconnect: false, // Don't refetch user data on reconnect
         retry: false, // Don't retry user queries automatically
@@ -122,6 +123,8 @@ export const useLogoutMutation = () => {
             // Clear sessionStorage
             sessionStorage.removeItem('jwt_token');
             sessionStorage.removeItem('current_chat_id');
+            localStorage.removeItem('token');
+            localStorage.removeItem('PILOTOIA_REACT_QUERY_OFFLINE_CACHE');
 
             // Show logout message
             toast({
@@ -204,6 +207,9 @@ export const useCompanyAreasQuery = () => {
                     actual_company_area: companyAreas[0] || null
                 };
                 queryClient.setQueryData(queryKeys.user.current(), updatedUser);
+
+                // Trigger user chats fetch after company areas are loaded
+                queryClient.invalidateQueries({ queryKey: ['user', 'chats'] });
             }
 
             return companyAreas;
@@ -216,11 +222,50 @@ export const useCompanyAreasQuery = () => {
     });
 };
 
+// Hook to fetch and update user chats
+export const useUserChatsQuery = () => {
+    const queryClient = useQueryClient();
+    const { user } = useCurrentUser();
+
+    return useQuery({
+        queryKey: ['user', 'chats'],
+        queryFn: async (): Promise<any[]> => {
+            const chats = await chatApi.getUserChats();
+
+            // Update the user cache with fresh chats
+            const currentUser = queryClient.getQueryData(queryKeys.user.current()) as DecodedUserData;
+            if (currentUser) {
+                const updatedUser = {
+                    ...currentUser,
+                    chats: chats
+                };
+                queryClient.setQueryData(queryKeys.user.current(), updatedUser);
+            }
+
+            return chats;
+        },
+        enabled: !!user, // Only run if user is authenticated
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        gcTime: 10 * 60 * 1000, // 10 minutes
+        refetchOnWindowFocus: true,
+        retry: 2,
+    });
+};
+
 // Hook to invalidate company areas (when permissions change)
 export const useInvalidateCompanyAreas = () => {
     const queryClient = useQueryClient();
 
     return () => {
         queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
+    };
+};
+
+// Hook to invalidate user chats (when chats change)
+export const useInvalidateUserChats = () => {
+    const queryClient = useQueryClient();
+
+    return () => {
+        queryClient.invalidateQueries({ queryKey: ['user', 'chats'] });
     };
 };

@@ -25,6 +25,12 @@ export interface DecodedUserData {
     ID_AREA: number;
     AREA: string;
   }>;
+  actual_company_area?: {
+    ID_EMPRESA: number;
+    EMPRESA: string;
+    ID_AREA: number;
+    AREA: string;
+  } | null;
   status: string;
 }
 
