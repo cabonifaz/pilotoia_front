@@ -75,6 +75,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange }: ChatComponentP
 
     const currentQuery = userQuery;
     setUserQuery('');
+
     await sendMessage(currentQuery, aiConfig, chatContext);
   };
 
@@ -87,6 +88,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange }: ChatComponentP
 
     const currentQuery = userQuery;
     setUserQuery('');
+
     await sendAgentMessage(currentQuery, aiConfig, chatContext, token);
   };
 

@@ -23,9 +23,20 @@ export type AssistantMetadataEvent = {
   sender: number;
   created_at: string;
 };
+export type ChatCreatedEvent = {
+  type: "chat_created";
+  chat: {
+    ID_CHAT: number;
+    ID_AREA: number;
+    ID_EMPRESA: number;
+    TITULO: string;
+    ULTIMO_MENSAJE_FECHA: string;
+    ID_ESTADO_REGISTRO: number;
+  };
+};
 export type UnknownEvent = { type: string } & JsonRecord;
 
-export type StreamEvent = ChunkEvent | CompleteEvent | ErrorEvent | AssistantMetadataEvent | UnknownEvent;
+export type StreamEvent = ChunkEvent | CompleteEvent | ErrorEvent | AssistantMetadataEvent | ChatCreatedEvent | UnknownEvent;
 
 interface UseChatStreamReturn {
   isLoading: boolean;
@@ -84,13 +95,68 @@ export const useChatStream = (): UseChatStreamReturn => {
   const activeChatIdRef = useRef<number | null>(null); // Track the active chat_id for cache operations
   const streamingMessageIdRef = useRef<string | null>(null); // Track the streaming message ID for cache operations
 
+  // Track recently accessed chats (max 10)
+  const recentChatsRef = useRef<(number | null)[]>([]);
+
+  // Helper to manage recent chats and cleanup old message caches
+  const trackRecentChat = useCallback((chatId: number | null) => {
+    const MAX_RECENT_CHATS = 10;
+
+    // Add chat to recent list (remove if already exists to update position)
+    const updatedRecent = [chatId, ...recentChatsRef.current.filter(id => id !== chatId)];
+
+    // Keep only the MAX_RECENT_CHATS most recent
+    const chatsToKeep = updatedRecent.slice(0, MAX_RECENT_CHATS);
+    const chatsToRemove = updatedRecent.slice(MAX_RECENT_CHATS);
+
+    // Update the ref
+    recentChatsRef.current = chatsToKeep;
+
+    // Remove message caches for old chats
+    chatsToRemove.forEach(oldChatId => {
+      queryClient.removeQueries({
+        queryKey: queryKeys.chat.messages(oldChatId),
+        exact: true
+      });
+    });
+  }, [queryClient]);
+
+  // Helper to update chat's last message date in the chat list
+  const updateChatLastMessageDate = useCallback((chatId: number | null) => {
+    if (chatId === null) return; // Don't update for temp chats
+
+    // Get all chat list query keys and update the matching chat
+    const queries = queryClient.getQueriesData({ queryKey: ['user', 'chats'] });
+
+    queries.forEach(([queryKey, chatsData]) => {
+      if (Array.isArray(chatsData)) {
+        const updatedChats = chatsData.map((chat: any) => {
+          if (chat.ID_CHAT === chatId) {
+            return {
+              ...chat,
+              ULTIMO_MENSAJE_FECHA: new Date().toISOString()
+            };
+          }
+          return chat;
+        });
+        queryClient.setQueryData(queryKey, updatedChats);
+      }
+    });
+  }, [queryClient]);
+
   // Helper to add messages to cache
   const addMessagesToCache = useCallback((chatId: number | null, messages: Message[]) => {
+    // Track this chat as recently accessed
+    trackRecentChat(chatId);
+
     queryClient.setQueryData<Message[]>(
       queryKeys.chat.messages(chatId),
       (old = []) => [...old, ...messages]
     );
-  }, [queryClient]);
+
+    // Update the chat's last message date in the chat list
+    updateChatLastMessageDate(chatId);
+  }, [queryClient, trackRecentChat, updateChatLastMessageDate]);
 
   // Helper to update a message in cache
   const updateMessageInCache = useCallback((chatId: number | null, messageId: string, updates: Partial<Message>) => {
@@ -201,6 +267,23 @@ export const useChatStream = (): UseChatStreamReturn => {
                   activeChatIdRef.current = newChatId;
                 }
               }
+              break;
+            case "chat_created":
+              // Add the new chat to the chats list cache
+              const chatCreatedEvt = evt as ChatCreatedEvent;
+              console.log('💬 [chat_created] Event received:', {
+                chat: chatCreatedEvt.chat
+              });
+              queryClient.setQueryData<any[]>(
+                ['user', 'chats'],
+                (old = []) => {
+                  console.log('💬 [chat_created] Adding to cache:', {
+                    oldChatsCount: old.length,
+                    newChat: chatCreatedEvt.chat
+                  });
+                  return [chatCreatedEvt.chat, ...old];
+                }
+              );
               break;
             case "assistant_metadata":
               // Create AI/Agent message placeholder when backend sends metadata
@@ -372,6 +455,23 @@ export const useChatStream = (): UseChatStreamReturn => {
                   activeChatIdRef.current = newChatId;
                 }
               }
+              break;
+            case "chat_created":
+              // Add the new chat to the chats list cache
+              const chatCreatedEvt = evt as ChatCreatedEvent;
+              console.log('💬 [chat_created] Event received:', {
+                chat: chatCreatedEvt.chat
+              });
+              queryClient.setQueryData<any[]>(
+                ['user', 'chats'],
+                (old = []) => {
+                  console.log('💬 [chat_created] Adding to cache:', {
+                    oldChatsCount: old.length,
+                    newChat: chatCreatedEvt.chat
+                  });
+                  return [chatCreatedEvt.chat, ...old];
+                }
+              );
               break;
             case "assistant_metadata":
               // Create AI/Agent message placeholder when backend sends metadata

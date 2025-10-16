@@ -9,15 +9,13 @@ import { MessageCircle, Clock, Plus } from 'lucide-react';
 interface ChatListProps {
   onChatSelect?: (chatId: number) => void;
   onNewChat?: () => void;
-  selectedChatId?: number | null;
-  currentChatId?: number | null;
+  selectedChatId?: number;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
   onChatSelect,
   onNewChat,
-  selectedChatId,
-  currentChatId
+  selectedChatId
 }) => {
   const { data: allChats, isLoading, error } = useUserChats();
   const { user } = useCurrentUser();
@@ -32,6 +30,45 @@ export const ChatList: React.FC<ChatListProps> = ({
       chat.ID_AREA === ID_AREA && chat.ID_EMPRESA === ID_EMPRESA
     );
   }, [allChats, user?.actual_company_area]);
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+
+      if (diffDays > 0) {
+        return `hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
+      } else if (diffHours > 0) {
+        return `hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+      } else if (diffMins > 0) {
+        return `hace ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
+      } else {
+        return 'hace un momento';
+      }
+    } catch {
+      return 'Fecha no válida';
+    }
+  };
+
+  // Sort chats by date
+  const sortedChats = React.useMemo(() => {
+    if (!chats) return [];
+
+    return [...chats].sort((a, b) => {
+      const dateA = new Date(a.ULTIMO_MENSAJE_FECHA || 0);
+      const dateB = new Date(b.ULTIMO_MENSAJE_FECHA || 0);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [chats]);
+
+  // Handle new chat button click
+  const handleNewChatClick = () => {
+    onNewChat?.();
+  };
 
   if (isLoading) {
     return (
@@ -73,35 +110,6 @@ export const ChatList: React.FC<ChatListProps> = ({
     );
   }
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffMins = Math.floor(diffMs / (1000 * 60));
-
-      if (diffDays > 0) {
-        return `hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
-      } else if (diffHours > 0) {
-        return `hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
-      } else if (diffMins > 0) {
-        return `hace ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
-      } else {
-        return 'hace un momento';
-      }
-    } catch {
-      return 'Fecha no válida';
-    }
-  };
-
-  const sortedChats = chats ? [...chats].sort((a, b) => {
-    const dateA = new Date(a.ULTIMO_MENSAJE_FECHA || 0);
-    const dateB = new Date(b.ULTIMO_MENSAJE_FECHA || 0);
-    return dateB.getTime() - dateA.getTime();
-  }) : [];
-
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="pb-3">
@@ -114,8 +122,7 @@ export const ChatList: React.FC<ChatListProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={onNewChat}
-              disabled={currentChatId === null}
+              onClick={handleNewChatClick}
               className="flex items-center gap-1"
             >
               <Plus size={16} />
@@ -130,7 +137,7 @@ export const ChatList: React.FC<ChatListProps> = ({
         )}
       </CardHeader>
       <CardContent className="space-y-2 max-h-96 overflow-y-auto">
-        {!chats || chats.length === 0 ? (
+        {sortedChats.length === 0 ? (
           <div className="text-center py-8">
             <MessageCircle size={48} className="mx-auto text-gray-300 mb-3" />
             <p className="text-sm text-gray-500">
@@ -138,46 +145,50 @@ export const ChatList: React.FC<ChatListProps> = ({
             </p>
           </div>
         ) : (
-          sortedChats.map((chat) => (
-            <Card
-              key={chat.ID_CHAT}
-              className={`cursor-pointer transition-all hover:shadow-md ${
-                selectedChatId === chat.ID_CHAT
-                  ? 'ring-2 ring-blue-500 bg-blue-50'
-                  : 'hover:bg-gray-50'
-              }`}
-              onClick={() => onChatSelect?.(chat.ID_CHAT)}
-            >
-              <CardContent className="p-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-medium truncate">
-                        {chat.TITULO || `Conversación #${chat.ID_CHAT}`}
-                      </h3>
+          sortedChats.map((chat) => {
+            const isSelected = selectedChatId === chat.ID_CHAT;
+
+            return (
+              <Card
+                key={chat.ID_CHAT}
+                className={`cursor-pointer transition-all hover:shadow-md ${
+                  isSelected
+                    ? 'ring-2 ring-blue-500 bg-blue-50'
+                    : 'hover:bg-gray-50'
+                }`}
+                onClick={() => onChatSelect?.(chat.ID_CHAT)}
+              >
+                <CardContent className="p-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-sm font-medium truncate">
+                          {chat.TITULO || `Conversación #${chat.ID_CHAT}`}
+                        </h3>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                        {chat.ULTIMO_MENSAJE_FECHA && (
+                          <div className="flex items-center gap-1">
+                            <Clock size={12} />
+                            <span>
+                              Activa {formatDate(chat.ULTIMO_MENSAJE_FECHA)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                      {chat.ULTIMO_MENSAJE_FECHA && (
-                        <div className="flex items-center gap-1">
-                          <Clock size={12} />
-                          <span>
-                            Activa {formatDate(chat.ULTIMO_MENSAJE_FECHA)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                    {isSelected && (
+                      <div className="ml-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      </div>
+                    )}
                   </div>
-
-                  {selectedChatId === chat.ID_CHAT && (
-                    <div className="ml-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </CardContent>
     </Card>

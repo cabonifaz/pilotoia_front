@@ -7,19 +7,14 @@ export const useUserChats = () => {
     const { user } = useCurrentUser();
     const queryClient = useQueryClient();
 
-    // Match the query key structure from useUserChatsQuery
-    const actualCompanyArea = (user as any)?.actual_company_area;
-    const companyAreaKey = actualCompanyArea
-        ? `${actualCompanyArea.ID_EMPRESA}-${actualCompanyArea.ID_AREA}`
-        : null;
-
     return useQuery({
-        queryKey: ['user', 'chats', companyAreaKey],
+        queryKey: ['user', 'chats'],
         queryFn: (): ChatData[] => {
             // Read from cache populated by useUserChatsQuery
-            return queryClient.getQueryData(['user', 'chats', companyAreaKey]) || [];
+            const chats = queryClient.getQueryData(['user', 'chats']) || [];
+            return chats as ChatData[];
         },
-        enabled: !!user && !!companyAreaKey, // Only run if user is authenticated and has company area
+        enabled: !!user, // Only run if user is authenticated
         staleTime: Infinity, // Always fresh - data managed by useUserChatsQuery
         gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
         refetchOnWindowFocus: false,
@@ -40,43 +35,37 @@ export const useChatListUpdater = () => {
     const queryClient = useQueryClient();
     const { user } = useCurrentUser();
 
-    // Match the query key structure from useUserChatsQuery
-    const actualCompanyArea = (user as any)?.actual_company_area;
-    const companyAreaKey = actualCompanyArea
-        ? `${actualCompanyArea.ID_EMPRESA}-${actualCompanyArea.ID_AREA}`
-        : null;
-
     const updateChatsList = (updater: (oldChats: ChatData[]) => ChatData[]) => {
-        if (user && companyAreaKey) {
+        if (user) {
             queryClient.setQueryData(
-                ['user', 'chats', companyAreaKey],
+                ['user', 'chats'],
                 (oldData: ChatData[] | undefined) => {
                     return updater(oldData || []);
                 }
             );
         }
     };
-    
+
     const addChat = (newChat: ChatData) => {
         updateChatsList((oldChats) => [newChat, ...oldChats]);
     };
-    
+
     const updateChat = (chatId: number, updatedChat: Partial<ChatData>) => {
-        updateChatsList((oldChats) => 
-            oldChats.map(chat => 
-                chat.ID_CHAT === chatId 
+        updateChatsList((oldChats) =>
+            oldChats.map(chat =>
+                chat.ID_CHAT === chatId
                     ? { ...chat, ...updatedChat }
                     : chat
             )
         );
     };
-    
+
     const removeChat = (chatId: number) => {
-        updateChatsList((oldChats) => 
+        updateChatsList((oldChats) =>
             oldChats.filter(chat => chat.ID_CHAT !== chatId)
         );
     };
-    
+
     return {
         addChat,
         updateChat,

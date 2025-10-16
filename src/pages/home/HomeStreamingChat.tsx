@@ -11,7 +11,6 @@ import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 const HomeStreamingChat = () => {
   const { user } = useQueryAuthContext();
   const [selectedChatId, setSelectedChatId] = useState<number | undefined>();
-  const [currentChatId, setCurrentChatId] = useState<number | null>(null);
   const chatSelectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [aiConfig, setAiConfig] = useState<AIConfig>({
@@ -40,7 +39,6 @@ const HomeStreamingChat = () => {
           // Clear chat_id from sessionStorage when company/area changes
           sessionStorage.removeItem('current_chat_id');
           setSelectedChatId(undefined);
-          setCurrentChatId(null);
         }
 
         // Update the ref with the current company/area
@@ -62,9 +60,8 @@ const HomeStreamingChat = () => {
 
         setChatContext(newChatContext);
 
-        // Update currentChatId state if there's a saved chat_id
+        // Update selectedChatId state if there's a saved chat_id
         if (savedChatId) {
-          setCurrentChatId(parseInt(savedChatId));
           setSelectedChatId(parseInt(savedChatId));
         }
       }
@@ -95,7 +92,6 @@ const HomeStreamingChat = () => {
     // Wait 500ms before actually changing the chat (loading messages, etc.)
     // This prevents rapid backend calls if user is quickly clicking through chats
     chatSelectTimeoutRef.current = setTimeout(() => {
-      setCurrentChatId(chatId);
       sessionStorage.setItem('current_chat_id', chatId.toString());
       setChatContext(prev => prev ? { ...prev, chat_id: chatId } : null);
     }, 500);
@@ -103,7 +99,6 @@ const HomeStreamingChat = () => {
 
   const handleNewChat = () => {
     setSelectedChatId(undefined);
-    setCurrentChatId(null);
     // Clear chat_id from sessionStorage when starting a new chat
     sessionStorage.removeItem('current_chat_id');
     // Update chatContext to have null chat_id
@@ -113,9 +108,10 @@ const HomeStreamingChat = () => {
   const handleChatIdChange = useCallback((chatId: number) => {
     // Update chatContext with the new chat_id
     setChatContext(prev => prev ? { ...prev, chat_id: chatId } : null);
-    setCurrentChatId(chatId);
     // Save chat_id to sessionStorage
     sessionStorage.setItem('current_chat_id', chatId.toString());
+    // Update selected chat to show the newly created chat as selected
+    setSelectedChatId(chatId);
   }, []);
 
   // Cleanup timeout on unmount
@@ -167,7 +163,6 @@ const HomeStreamingChat = () => {
               onChatSelect={handleChatSelect}
               onNewChat={handleNewChat}
               selectedChatId={selectedChatId}
-              currentChatId={currentChatId}
             />
 
             {/* Company Info */}

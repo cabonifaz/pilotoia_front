@@ -63,12 +63,10 @@ export const useLoginMutation = () => {
 
                     // Update the query cache with decoded JWT data (without company_areas)
                     queryClient.setQueryData(queryKeys.user.current(), userDataForCache);
-                    
-                    // Store user's chats in TanStack Query cache
-                    if (data.chats && decodedUserData.user_id) {
-                        queryClient.setQueryData(queryKeys.chat.list(decodedUserData.user_id), data.chats);
-                    }
-                    
+
+                    // Note: Chats are now fetched per company/area by useUserChatsQuery
+                    // No longer storing all chats at login - they'll be fetched when needed
+
                     // Show success message
                     toast({
                         title: "Éxito",
@@ -226,21 +224,13 @@ export const useCompanyAreasQuery = () => {
 export const useUserChatsQuery = () => {
     const { user } = useCurrentUser();
 
-    // Include actual_company_area in query key so chats refetch when company/area changes
-    const actualCompanyArea = (user as any)?.actual_company_area;
-    const companyAreaKey = actualCompanyArea
-        ? `${actualCompanyArea.ID_EMPRESA}-${actualCompanyArea.ID_AREA}`
-        : null;
-
     return useQuery({
-        queryKey: ['user', 'chats', companyAreaKey],
+        queryKey: ['user', 'chats'],
         queryFn: async (): Promise<any[]> => {
             const chats = await chatApi.getUserChats();
-            // Don't update user cache to avoid triggering unnecessary re-renders
-            // Chats are now managed independently in their own query cache
             return chats;
         },
-        enabled: !!user && !!companyAreaKey, // Only run if user is authenticated and has company area
+        enabled: !!user, // Only run if user is authenticated
         staleTime: 5 * 60 * 1000, // 5 minutes
         gcTime: 10 * 60 * 1000, // 10 minutes
         refetchOnWindowFocus: true,
