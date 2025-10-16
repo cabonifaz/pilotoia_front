@@ -11,6 +11,7 @@ import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 const HomeStreamingChat = () => {
   const { user } = useQueryAuthContext();
   const [selectedChatId, setSelectedChatId] = useState<number | undefined>();
+  const [isStreaming, setIsStreaming] = useState(false);
   const chatSelectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [aiConfig, setAiConfig] = useState<AIConfig>({
@@ -114,6 +115,10 @@ const HomeStreamingChat = () => {
     setSelectedChatId(chatId);
   }, []);
 
+  const handleStreamingStateChange = useCallback((streaming: boolean) => {
+    setIsStreaming(streaming);
+  }, []);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -126,7 +131,7 @@ const HomeStreamingChat = () => {
   if (!chatContext) {
     return (
       <div className="h-screen bg-muted/30 flex flex-col">
-        <Header />
+        <Header isStreaming={isStreaming} />
         <div className="flex-1 flex items-center justify-center">
           <Card className="p-8">
             <div className="text-center">
@@ -141,7 +146,7 @@ const HomeStreamingChat = () => {
 
   return (
     <div className="h-screen bg-muted/30 flex flex-col">
-      <Header />
+      <Header isStreaming={isStreaming} />
 
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-8 p-8">
           {/* Chat Section - 70% width */}
@@ -152,6 +157,7 @@ const HomeStreamingChat = () => {
                 aiConfig={aiConfig}
                 chatContext={chatContext}
                 onChatIdChange={handleChatIdChange}
+                onStreamingStateChange={handleStreamingStateChange}
               />
             </div>
           </div>
@@ -163,6 +169,7 @@ const HomeStreamingChat = () => {
               onChatSelect={handleChatSelect}
               onNewChat={handleNewChat}
               selectedChatId={selectedChatId}
+              isDisabled={isStreaming}
             />
 
             {/* Company Info */}

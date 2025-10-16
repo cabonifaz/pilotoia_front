@@ -10,12 +10,14 @@ interface ChatListProps {
   onChatSelect?: (chatId: number) => void;
   onNewChat?: () => void;
   selectedChatId?: number;
+  isDisabled?: boolean;
 }
 
 export const ChatList: React.FC<ChatListProps> = ({
   onChatSelect,
   onNewChat,
-  selectedChatId
+  selectedChatId,
+  isDisabled = false
 }) => {
   const { data: allChats, isLoading, error } = useUserChats();
   const { user } = useCurrentUser();
@@ -67,7 +69,16 @@ export const ChatList: React.FC<ChatListProps> = ({
 
   // Handle new chat button click
   const handleNewChatClick = () => {
-    onNewChat?.();
+    if (!isDisabled) {
+      onNewChat?.();
+    }
+  };
+
+  // Handle chat selection
+  const handleChatClick = (chatId: number) => {
+    if (!isDisabled) {
+      onChatSelect?.(chatId);
+    }
   };
 
   if (isLoading) {
@@ -123,6 +134,7 @@ export const ChatList: React.FC<ChatListProps> = ({
               variant="outline"
               size="sm"
               onClick={handleNewChatClick}
+              disabled={isDisabled}
               className="flex items-center gap-1"
             >
               <Plus size={16} />
@@ -151,12 +163,16 @@ export const ChatList: React.FC<ChatListProps> = ({
             return (
               <Card
                 key={chat.ID_CHAT}
-                className={`cursor-pointer transition-all hover:shadow-md ${
+                className={`transition-all ${
+                  isDisabled
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'cursor-pointer hover:shadow-md'
+                } ${
                   isSelected
                     ? 'ring-2 ring-blue-500 bg-blue-50'
-                    : 'hover:bg-gray-50'
+                    : !isDisabled ? 'hover:bg-gray-50' : ''
                 }`}
-                onClick={() => onChatSelect?.(chat.ID_CHAT)}
+                onClick={() => handleChatClick(chat.ID_CHAT)}
               >
                 <CardContent className="p-3">
                   <div className="flex items-start justify-between">

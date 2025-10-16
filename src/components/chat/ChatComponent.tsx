@@ -13,9 +13,10 @@ interface ChatComponentProps {
   aiConfig: AIConfig;
   chatContext: ChatContext;
   onChatIdChange?: (chatId: number) => void;
+  onStreamingStateChange?: (isStreaming: boolean) => void;
 }
 
-const ChatComponent = ({ aiConfig, chatContext, onChatIdChange }: ChatComponentProps) => {
+const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingStateChange }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [selectedAction, setSelectedAction] = useState<'enviar' | 'agente' | 'login'>('enviar');
@@ -35,6 +36,13 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange }: ChatComponentP
       onChatIdChange(currentChatId);
     }
   }, [currentChatId, onChatIdChange]);
+
+  // Notify parent about streaming state changes
+  useEffect(() => {
+    if (onStreamingStateChange) {
+      onStreamingStateChange(isLoading);
+    }
+  }, [isLoading, onStreamingStateChange]);
 
   // Debounced scroll handler
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
