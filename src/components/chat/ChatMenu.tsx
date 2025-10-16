@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Button } from '../shadcn/button';
-import { Input } from '../shadcn/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,65 +20,27 @@ import { useQueryClient } from '@tanstack/react-query';
 
 interface ChatMenuProps {
   chatId: number;
-  currentTitle: string;
   isDisabled?: boolean;
   onChatDeleted?: (chatId: number) => void;
+  onRenameClick?: () => void;
 }
 
 export const ChatMenu: React.FC<ChatMenuProps> = ({
   chatId,
-  currentTitle,
   isDisabled = false,
-  onChatDeleted
+  onChatDeleted,
+  onRenameClick
 }) => {
   const queryClient = useQueryClient();
-
-  // State for rename dialog
-  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [isRenaming, setIsRenaming] = useState(false);
 
   // State for delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Handle rename
+  // Handle rename - just notify parent to enter edit mode
   const handleRenameClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setNewTitle(currentTitle);
-    setRenameDialogOpen(true);
-  };
-
-  const handleRenameSubmit = async () => {
-    if (!newTitle.trim()) return;
-
-    setIsRenaming(true);
-    try {
-      const result = await chatApi.updateChatTitle(chatId, newTitle.trim());
-
-      if (result.ID_TIPO_MENSAJE === 2) {
-        // Success - Update chat title directly in the cache
-        queryClient.setQueryData<any[]>(
-          ['user', 'chats'],
-          (oldChats = []) => oldChats.map((chat: any) =>
-            chat.ID_CHAT === chatId
-              ? { ...chat, TITULO: newTitle.trim() }
-              : chat
-          )
-        );
-
-        setRenameDialogOpen(false);
-        setNewTitle('');
-      } else {
-        // ID_TIPO_MENSAJE === 1 means failure - don't update cache, just show error
-        alert(result.MENSAJE);
-      }
-    } catch (error) {
-      console.error('Error renaming chat:', error);
-      alert('Error al renombrar la conversación');
-    } finally {
-      setIsRenaming(false);
-    }
+    onRenameClick?.();
   };
 
   // Handle delete
@@ -161,48 +122,6 @@ export const ChatMenu: React.FC<ChatMenuProps> = ({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {/* Rename Dialog */}
-      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
-        <DialogContent onClick={(e) => e.stopPropagation()}>
-          <DialogHeader>
-            <DialogTitle>Renombrar Conversación</DialogTitle>
-            <DialogDescription>
-              Ingresa un nuevo nombre para la conversación
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Nuevo título"
-            maxLength={50}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleRenameSubmit();
-              }
-            }}
-            disabled={isRenaming}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            {newTitle.length}/50 caracteres
-          </p>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRenameDialogOpen(false)}
-              disabled={isRenaming}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleRenameSubmit}
-              disabled={isRenaming || !newTitle.trim()}
-            >
-              {isRenaming ? 'Guardando...' : 'Guardar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

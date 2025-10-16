@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useUserChats } from '../../hooks/useChatQueries';
 import { useCurrentUser } from '../../hooks/useUserQueries';
 import { Card, CardContent, CardHeader, CardTitle } from '../shadcn/card';
 import { Button } from '../shadcn/button';
 import { Badge } from '../shadcn/badge';
+import { Input } from '../shadcn/input';
 import { MessageCircle, Clock, Plus } from 'lucide-react';
 import { ChatMenu } from './ChatMenu';
+import { chatApi } from '../../api/chatApi';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ChatListProps {
   onChatSelect?: (chatId: number) => void;
@@ -22,6 +25,13 @@ export const ChatList: React.FC<ChatListProps> = ({
 }) => {
   const { data: allChats, isLoading, error } = useUserChats();
   const { user } = useCurrentUser();
+  const queryClient = useQueryClient();
+
+  // State for inline editing
+  const [editingChatId, setEditingChatId] = useState<number | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Filter chats by actual company area
   const chats = React.useMemo(() => {
@@ -86,6 +96,65 @@ export const ChatList: React.FC<ChatListProps> = ({
   const handleChatDeleted = (chatId: number) => {
     if (selectedChatId === chatId) {
       onNewChat?.();
+    }
+  };
+
+  // Handle entering edit mode
+  const handleRenameStart = (chatId: number, currentTitle: string) => {
+    setEditingChatId(chatId);
+    setEditingTitle(currentTitle);
+  };
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (editingChatId && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingChatId]);
+
+  // Handle saving the title
+  const handleRenameSubmit = async (originalTitle: string) => {
+    if (!editingTitle.trim() || editingTitle.trim() === originalTitle) {
+      // No changes, just exit edit mode
+      setEditingChatId(null);
+      return;
+    }
+
+    if (!editingChatId) return;
+
+    setIsUpdating(true);
+    try {
+      const result = await chatApi.updateChatTitle(editingChatId, editingTitle.trim());
+
+      if (result.ID_TIPO_MENSAJE === 2) {
+        // Success - Update chat title directly in the cache
+        queryClient.setQueryData<any[]>(
+          ['user', 'chats'],
+          (oldChats = []) => oldChats.map((chat: any) =>
+            chat.ID_CHAT === editingChatId
+              ? { ...chat, TITULO: editingTitle.trim() }
+              : chat
+          )
+        );
+
+        setEditingChatId(null);
+      } else {
+        // ID_TIPO_MENSAJE === 1 means failure - don't update cache, just show error
+        alert(result.MENSAJE);
+      }
+    } catch (error) {
+      console.error('Error renaming chat:', error);
+      alert('Error al renombrar la conversación');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Handle click outside or blur
+  const handleRenameBlur = (originalTitle: string) => {
+    if (!isUpdating) {
+      handleRenameSubmit(originalTitle);
     }
   };
 
@@ -167,6 +236,7 @@ export const ChatList: React.FC<ChatListProps> = ({
         ) : (
           sortedChats.map((chat) => {
             const isSelected = selectedChatId === chat.ID_CHAT;
+            const isEditing = editingChatId === chat.ID_CHAT;
 
             return (
               <Card
@@ -180,41 +250,65 @@ export const ChatList: React.FC<ChatListProps> = ({
                     ? 'ring-2 ring-blue-500 bg-blue-50'
                     : !isDisabled ? 'hover:bg-gray-50' : ''
                 }`}
-                onClick={() => handleChatClick(chat.ID_CHAT)}
+                onClick={() => !isEditing && handleChatClick(chat.ID_CHAT)}
               >
                 <CardContent className="p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-medium truncate">
-                          {chat.TITULO || `Conversación #${chat.ID_CHAT}`}
-                        </h3>
-                      </div>
-
-                      <div className="flex items-center gap-3 text-xs text-gray-500">
-                        {chat.ULTIMO_MENSAJE_FECHA && (
-                          <div className="flex items-center gap-1">
-                            <Clock size={12} />
-                            <span>
-                              Activa {formatDate(chat.ULTIMO_MENSAJE_FECHA)}
-                            </span>
-                          </div>
+                        {isEditing ? (
+                          <Input
+                            ref={inputRef}
+                            value={editingTitle}
+                            onChange={(e) => setEditingTitle(e.target.value)}
+                            onBlur={() => handleRenameBlur(chat.TITULO || '')}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleRenameSubmit(chat.TITULO || '');
+                              } else if (e.key === 'Escape') {
+                                setEditingChatId(null);
+                              }
+                            }}
+                            maxLength={50}
+                            disabled={isUpdating}
+                            className="text-sm font-medium h-6 px-2 py-0"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <h3 className="text-sm font-medium truncate">
+                            {chat.TITULO || `Conversación #${chat.ID_CHAT}`}
+                          </h3>
                         )}
                       </div>
+
+                      {!isEditing && (
+                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                          {chat.ULTIMO_MENSAJE_FECHA && (
+                            <div className="flex items-center gap-1">
+                              <Clock size={12} />
+                              <span>
+                                Activa {formatDate(chat.ULTIMO_MENSAJE_FECHA)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {isSelected && (
+                      {isSelected && !isEditing && (
                         <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                       )}
 
                       {/* Menu button */}
-                      <ChatMenu
-                        chatId={chat.ID_CHAT}
-                        currentTitle={chat.TITULO || ''}
-                        isDisabled={isDisabled}
-                        onChatDeleted={handleChatDeleted}
-                      />
+                      {!isEditing && (
+                        <ChatMenu
+                          chatId={chat.ID_CHAT}
+                          isDisabled={isDisabled}
+                          onChatDeleted={handleChatDeleted}
+                          onRenameClick={() => handleRenameStart(chat.ID_CHAT, chat.TITULO || '')}
+                        />
+                      )}
                     </div>
                   </div>
                 </CardContent>
