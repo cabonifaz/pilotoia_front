@@ -99,6 +99,16 @@ export const chatApi = {
     getMessagesByChat: async (chatId: string): Promise<Message[]> => {
         const response = await apiClient.get<MessageListResponse>(`/v1/messages/chat/${chatId}`);
         return response.data.messages;
+    },
+
+    updateChatTitle: async (chatId: number, titulo: string): Promise<{ ID_TIPO_MENSAJE: number; MENSAJE: string }> => {
+        const response = await apiClient.patch(`/v1/chats/${chatId}`, { titulo });
+        return response.data;
+    },
+
+    deleteChat: async (chatId: number): Promise<{ ID_TIPO_MENSAJE: number; MENSAJE: string }> => {
+        const response = await apiClient.delete(`/v1/chats/${chatId}`);
+        return response.data;
     }
 };
 

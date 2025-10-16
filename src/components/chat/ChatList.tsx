@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../shadcn/card';
 import { Button } from '../shadcn/button';
 import { Badge } from '../shadcn/badge';
 import { MessageCircle, Clock, Plus } from 'lucide-react';
+import { ChatMenu } from './ChatMenu';
 
 interface ChatListProps {
   onChatSelect?: (chatId: number) => void;
@@ -78,6 +79,13 @@ export const ChatList: React.FC<ChatListProps> = ({
   const handleChatClick = (chatId: number) => {
     if (!isDisabled) {
       onChatSelect?.(chatId);
+    }
+  };
+
+  // Handle chat deletion - clear selection if deleted chat was selected
+  const handleChatDeleted = (chatId: number) => {
+    if (selectedChatId === chatId) {
+      onNewChat?.();
     }
   };
 
@@ -175,7 +183,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                 onClick={() => handleChatClick(chat.ID_CHAT)}
               >
                 <CardContent className="p-3">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-sm font-medium truncate">
@@ -195,11 +203,19 @@ export const ChatList: React.FC<ChatListProps> = ({
                       </div>
                     </div>
 
-                    {isSelected && (
-                      <div className="ml-2">
+                    <div className="flex items-center gap-2">
+                      {isSelected && (
                         <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      </div>
-                    )}
+                      )}
+
+                      {/* Menu button */}
+                      <ChatMenu
+                        chatId={chat.ID_CHAT}
+                        currentTitle={chat.TITULO || ''}
+                        isDisabled={isDisabled}
+                        onChatDeleted={handleChatDeleted}
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
