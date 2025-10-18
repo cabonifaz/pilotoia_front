@@ -263,6 +263,12 @@ export const useChatStream = (): UseChatStreamReturn => {
                     );
                   }
 
+                  // Clear the null cache to prevent stale messages from appearing
+                  queryClient.removeQueries({
+                    queryKey: queryKeys.chat.messages(null),
+                    exact: true
+                  });
+
                   // Update active chat_id for all subsequent operations
                   activeChatIdRef.current = newChatId;
                 }
@@ -450,6 +456,12 @@ export const useChatStream = (): UseChatStreamReturn => {
                       messagesFromNull
                     );
                   }
+
+                  // Clear the null cache to prevent stale messages from appearing
+                  queryClient.removeQueries({
+                    queryKey: queryKeys.chat.messages(null),
+                    exact: true
+                  });
 
                   // Update active chat_id for all subsequent operations
                   activeChatIdRef.current = newChatId;
