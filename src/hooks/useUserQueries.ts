@@ -202,7 +202,8 @@ export const useCompanyAreasQuery = () => {
                 const updatedUser = {
                     ...currentUser,
                     company_areas: companyAreas,
-                    actual_company_area: companyAreas[0] || null
+                    // Only set default area if actual_company_area is null, otherwise preserve user's selection
+                    actual_company_area: currentUser.actual_company_area || companyAreas[0] || null
                 };
                 queryClient.setQueryData(queryKeys.user.current(), updatedUser);
 
