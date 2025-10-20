@@ -1,10 +1,8 @@
 interface JWTPayload {
   ID_USUARIO: number;
   USUARIO: string;
-  NOMBRES: string;
-  APELLIDOS: string;
   ID_TIPO_ROL: number;
-  STRING1: string; // role name
+  ROL: string;
   company_areas: Array<{
     ID_EMPRESA: number;
     EMPRESA: string;
@@ -18,9 +16,7 @@ interface JWTPayload {
 
 export interface DecodedUserData {
   user_id: number;
-  usuario: string;
-  nombres: string;
-  apellidos: string;
+  user: string;
   id_tipo_rol: number;
   rol_nombre: string;
   company_areas: Array<{
@@ -29,8 +25,13 @@ export interface DecodedUserData {
     ID_AREA: number;
     AREA: string;
   }>;
+  actual_company_area?: {
+    ID_EMPRESA: number;
+    EMPRESA: string;
+    ID_AREA: number;
+    AREA: string;
+  } | null;
   status: string;
-  token: string;  // JWT token containing all user information
 }
 
 class JWTUtils {
@@ -66,14 +67,11 @@ class JWTUtils {
       // Transform JWT payload to LoginResponse format
       return {
         user_id: payload.ID_USUARIO,
-        usuario: payload.USUARIO,
-        nombres: payload.NOMBRES,
-        apellidos: payload.APELLIDOS,
+        user: payload.USUARIO,
         id_tipo_rol: payload.ID_TIPO_ROL,
-        rol_nombre: payload.STRING1,
+        rol_nombre: payload.ROL,
         company_areas: payload.company_areas || [],
-        status: 'success',
-        token: token
+        status: 'success'
       };
     } catch (error) {
       console.error('Error decoding JWT:', error);

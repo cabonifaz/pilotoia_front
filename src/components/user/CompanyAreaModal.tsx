@@ -39,17 +39,18 @@ const CompanyAreaModal = ({ isOpen, onClose, user }: CompanyAreaModalProps) => {
 
   const handleConfirm = async () => {
     if (!selectedValue || !user.company_areas) return;
-    
+
     setIsChanging(true);
     try {
       // Find the selected company area
       const selected = user.company_areas.find((ca: any) =>
         `${ca.ID_EMPRESA}-${ca.ID_AREA}` === selectedValue
       );
-      
+
       if (selected) {
         // Update the user data in TanStack Query cache (frontend only)
         const currentUserData = queryClient.getQueryData(queryKeys.user.current()) as any;
+
         if (currentUserData) {
           const updatedUserData = {
             ...currentUserData,

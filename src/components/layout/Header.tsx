@@ -2,7 +2,11 @@ import UserDropdown from '../user/UserDropdown';
 import CompanyAreaDropdown from '../user/CompanyAreaDropdown';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-const Header = () => {
+interface HeaderProps {
+  isStreaming?: boolean;
+}
+
+const Header = ({ isStreaming = false }: HeaderProps) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -45,7 +49,7 @@ const Header = () => {
       </div>
 
       <div className="flex items-center gap-4">
-        <CompanyAreaDropdown />
+        <CompanyAreaDropdown isDisabled={isStreaming} />
         <UserDropdown />
       </div>
     </div>

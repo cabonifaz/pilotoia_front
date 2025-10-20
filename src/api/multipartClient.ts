@@ -1,5 +1,5 @@
 import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
-import type { MensajeResponse } from './interfaces/Mensaje';
+import type { MensajeResponse } from '@/types/Mensaje';
 import { toast } from '../hooks/use-toast';
 
 // JWT is now stored in sessionStorage and sent via Authorization header

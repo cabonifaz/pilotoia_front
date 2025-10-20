@@ -11,7 +11,11 @@ import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 import CompanyAreaModal from './CompanyAreaModal';
 import type { DecodedUserData } from '../../utils/jwtUtils';
 
-const CompanyAreaDropdown = () => {
+interface CompanyAreaDropdownProps {
+  isDisabled?: boolean;
+}
+
+const CompanyAreaDropdown = ({ isDisabled = false }: CompanyAreaDropdownProps) => {
   const { user } = useQueryAuthContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -21,7 +25,9 @@ const CompanyAreaDropdown = () => {
   const areaName = actualCompanyArea?.AREA;
 
   const handleCompanyAreaChange = () => {
-    setIsModalOpen(true);
+    if (!isDisabled) {
+      setIsModalOpen(true);
+    }
   };
 
   if (!user) {
@@ -46,7 +52,8 @@ const CompanyAreaDropdown = () => {
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="flex items-center gap-2 px-3 py-1.5 h-auto text-sm text-muted-foreground hover:text-foreground"
+            disabled={isDisabled}
+            className="flex items-center gap-2 px-3 py-1.5 h-auto text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
           >
             <div className="flex items-center gap-2">
               <span className="font-medium">{companyName}</span>
