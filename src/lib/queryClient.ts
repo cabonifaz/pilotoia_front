@@ -1,14 +1,8 @@
 import { QueryClient } from '@tanstack/react-query';
-import { persistQueryClient } from '@tanstack/query-persist-client-core';
-import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 
-// Create a persister for localStorage
-const localStoragePersister = createSyncStoragePersister({
-    storage: window.localStorage,
-    key: 'PILOTOIA_REACT_QUERY_OFFLINE_CACHE',
-    serialize: JSON.stringify,
-    deserialize: JSON.parse,
-});
+// Note: ALL data is in-memory only with TanStack Query
+// No persistence to localStorage or sessionStorage
+// Data is cleared when tab closes or on logout
 
 // Create QueryClient with optimized defaults
 export const queryClient = new QueryClient({
@@ -37,20 +31,6 @@ export const queryClient = new QueryClient({
     },
 });
 
-// Set up persistence
-persistQueryClient({
-    queryClient,
-    persister: localStoragePersister,
-    maxAge: 1000 * 60 * 60 * 24, // 24 hours
-    hydrateOptions: {},
-    dehydrateOptions: {
-        shouldDehydrateQuery: (query: any) => {
-            // Only persist successful queries that are not too fresh
-            return query.state.status === 'success' && query.state.dataUpdatedAt > Date.now() - 1000 * 60;
-        },
-    },
-});
-
 // Query keys factory for better organization
 export const queryKeys = {
     // User-related queries
@@ -61,10 +41,11 @@ export const queryKeys = {
     // Chat-related queries
     chat: {
         list: (userId: number) => ['chat', 'list', userId] as const,
-        history: (userId: string, companyId?: string) => 
+        messages: (chatId: number | null) => ['chat', 'messages', chatId] as const,
+        history: (userId: string, companyId?: string) =>
             ['chat', 'history', { userId, companyId }] as const,
         areas: () => ['chat', 'areas'] as const,
-        config: (userId: string, companyId: string) => 
+        config: (userId: string, companyId: string) =>
             ['chat', 'config', { userId, companyId }] as const,
     },
 } as const;

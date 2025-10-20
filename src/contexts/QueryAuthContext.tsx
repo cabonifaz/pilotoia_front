@@ -1,14 +1,15 @@
 import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
-import { type LoginResponse } from '../api/authApi';
-import { type DecodedUserData } from '../utils/jwtUtils';
+import type { LoginResponse } from '../types/auth';
+import type { DecodedUserData } from '../utils/jwtUtils';
 import {
     useCurrentUser,
     useLoginMutation,
     useLogoutMutation,
     useRefreshUser,
     useUserRole,
-    useCompanyAreasQuery
+    useCompanyAreasQuery,
+    useUserChatsQuery
 } from '../hooks/useUserQueries';
 
 interface QueryAuthContextType {
@@ -40,6 +41,9 @@ export const QueryAuthProvider = ({ children }: QueryAuthProviderProps) => {
 
     // Automatically fetch company areas when user is authenticated
     useCompanyAreasQuery();
+
+    // Automatically fetch user chats when user is authenticated
+    useUserChatsQuery();
 
     const login = async (usuario: string, clave_acceso: string): Promise<{ success: boolean; user?: LoginResponse }> => {
         try {

@@ -3,33 +3,46 @@ import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
 import { Card, CardContent } from '@/components/shadcn/card';
 import { useChatStream } from '../../hooks/useChatStream';
+import { useChatMessages } from '../../hooks/useChatMessages';
 import { useExternalLogin } from '../../hooks/useExternalLogin';
 import { MessageBubble } from './MessageBubble';
 import { SendButtonGroup } from './SendButtonGroup';
-
-interface AIConfig {
-  user_id: string;
-  company_id: string;
-  area: string;
-  similarity_threshold: number;
-  alpha: number;
-  temperature: number;
-  max_tokens: number;
-  top_k: number;
-}
+import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 
 interface ChatComponentProps {
   aiConfig: AIConfig;
+  chatContext: ChatContext;
+  onChatIdChange?: (chatId: number) => void;
+  onStreamingStateChange?: (isStreaming: boolean) => void;
 }
 
-const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
+const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingStateChange }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [selectedAction, setSelectedAction] = useState<'enviar' | 'agente' | 'login'>('enviar');
   const currentMainActionRef = useRef<() => void>(() => {});
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const { messages, isLoading, streamingMessageId, sendMessage, sendAgentMessage, cancelMessage } = useChatStream();
+
+  // Get messages from TanStack Query cache
+  const { data: messages, isLoading: isLoadingMessages, error: errorMessages } = useChatMessages(chatContext.chat_id);
+
+  // Get streaming functions
+  const { isLoading, streamingMessageId, sendMessage, sendAgentMessage, cancelMessage, currentChatId } = useChatStream();
   const { isAuthenticated, token } = useExternalLogin();
+
+  // Update parent when chat_id is received from backend
+  useEffect(() => {
+    if (currentChatId && onChatIdChange) {
+      onChatIdChange(currentChatId);
+    }
+  }, [currentChatId, onChatIdChange]);
+
+  // Notify parent about streaming state changes
+  useEffect(() => {
+    if (onStreamingStateChange) {
+      onStreamingStateChange(isLoading);
+    }
+  }, [isLoading, onStreamingStateChange]);
 
   // Debounced scroll handler
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -70,7 +83,8 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
 
     const currentQuery = userQuery;
     setUserQuery('');
-    await sendMessage(currentQuery, aiConfig);
+
+    await sendMessage(currentQuery, aiConfig, chatContext);
   };
 
   const cancelar = () => {
@@ -82,7 +96,8 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
 
     const currentQuery = userQuery;
     setUserQuery('');
-    await sendAgentMessage(currentQuery, aiConfig, token);
+
+    await sendAgentMessage(currentQuery, aiConfig, chatContext, token);
   };
 
 
@@ -91,24 +106,32 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
       {/* Messages Container */}
       <Card className="flex-1 flex flex-col overflow-hidden border-2 shadow-lg bg-card/50">
         <CardContent className="flex-1 overflow-y-auto p-4 messages-container min-h-0" onScroll={handleScroll}>
-          {messages.length === 0 ? (
+          {isLoadingMessages ? (
+            <div className="flex items-center justify-center h-full">
+              <p>Cargando mensajes...</p>
+            </div>
+          ) : errorMessages ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-red-500">Error al cargar los mensajes.</p>
+            </div>
+          ) : !messages || messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <Card className="p-8 text-center bg-muted/30 border shadow-md">
                 <div className="text-6xl mb-4">💬</div>
                 <h3 className="text-xl font-semibold mb-2">¡Bienvenido al Piloto IA!</h3>
                 <p className="text-muted-foreground">
-                  Haz tu primera consulta sobre {aiConfig.company_id}
+                  Haz tu primera consulta sobre {chatContext.company}
                 </p>
               </Card>
             </div>
           ) : (
             <div>
-              {messages.map(message => (
+              {messages?.map(message => (
                 <MessageBubble
                   key={message.id}
                   message={message}
                   streamingMessageId={streamingMessageId}
-                  userId={aiConfig.user_id}
+                  user={chatContext.user}
                 />
               ))}
             </div>
@@ -121,7 +144,7 @@ const ChatComponent = ({ aiConfig }: ChatComponentProps) => {
             <Textarea
               value={userQuery}
               onChange={(e) => setUserQuery(e.target.value)}
-              placeholder={`Escribe tu consulta sobre ${aiConfig.company_id}...`}
+              placeholder={`Escribe tu consulta sobre ${chatContext.company}...`}
               disabled={isLoading}
               rows={2}
               className="resize-none"
