@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/authApi';
 import { chatApi } from '../api/chatApi';
-import type { LoginRequest, LoginResponse } from '../types/auth';
+import type { LoginRequest, LoginResponse, DecodedUserData } from '../types/auth';
 import { queryKeys, clearUserCache } from '../lib/queryClient';
 import { toast } from './use-toast';
-import JWTUtils, { type DecodedUserData } from '../utils/jwtUtils';
+import JWTUtils from '../utils/jwtUtils';
 
 // Custom hook for user authentication state
 export const useUserQuery = () => {

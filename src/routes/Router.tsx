@@ -2,7 +2,8 @@ import { createHashRouter } from "react-router-dom";
 import { LoginPage } from "../pages/login/Login";
 import { App } from "../App";
 import { GuardRoute } from "./GuardRoute";
-import HomeStreamingChat from "../pages/home/HomeStreamingChat";
+import ProtectedLayout from "../components/layout/ProtectedLayout";
+import StreamingChat from "../pages/home/StreamingChat";
 import DocumentUpload from "../pages/upload/DocumentUpload";
 
 export const router = createHashRouter([
@@ -15,20 +16,21 @@ export const router = createHashRouter([
         element: <LoginPage />,
       },
       {
-        path: "rag",
         element: (
           <GuardRoute>
-            <HomeStreamingChat />
+            <ProtectedLayout />
           </GuardRoute>
         ),
-      },
-      {
-        path: "upload",
-        element: (
-          <GuardRoute>
-            <DocumentUpload />
-          </GuardRoute>
-        ),
+        children: [
+          {
+            path: "rag",
+            element: <StreamingChat />,
+          },
+          {
+            path: "upload",
+            element: <DocumentUpload />,
+          },
+        ],
       },
     ],
   },

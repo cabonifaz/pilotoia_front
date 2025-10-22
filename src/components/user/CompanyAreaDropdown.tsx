@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { ChevronDown, Building2 } from 'lucide-react';
+import { ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import {
   DropdownMenu,
@@ -8,8 +7,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/shadcn/dropdown-menu';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
-import CompanyAreaModal from './CompanyAreaModal';
-import type { DecodedUserData } from '../../utils/jwtUtils';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '../../lib/queryClient';
+import { toast } from '../../hooks/use-toast';
 
 interface CompanyAreaDropdownProps {
   isDisabled?: boolean;
@@ -17,16 +17,39 @@ interface CompanyAreaDropdownProps {
 
 const CompanyAreaDropdown = ({ isDisabled = false }: CompanyAreaDropdownProps) => {
   const { user } = useQueryAuthContext();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   // Get actual company and area info
   const actualCompanyArea = (user as any)?.actual_company_area;
   const companyName = actualCompanyArea?.EMPRESA;
   const areaName = actualCompanyArea?.AREA;
 
-  const handleCompanyAreaChange = () => {
-    if (!isDisabled) {
-      setIsModalOpen(true);
+  const currentKey = actualCompanyArea ?
+    `${actualCompanyArea.ID_EMPRESA}-${actualCompanyArea.ID_AREA}` : '';
+
+  const handleCompanyAreaChange = async (selectedCompanyArea: any) => {
+    try {
+      const currentUserData = queryClient.getQueryData(queryKeys.user.current()) as any;
+
+      if (currentUserData) {
+        const updatedUserData = {
+          ...currentUserData,
+          actual_company_area: selectedCompanyArea
+        };
+        queryClient.setQueryData(queryKeys.user.current(), updatedUserData);
+      }
+
+      toast({
+        title: "Éxito",
+        description: `Empresa/área cambiada a ${selectedCompanyArea.EMPRESA} - ${selectedCompanyArea.AREA}`,
+        variant: "success"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo cambiar la empresa/área. Inténtalo de nuevo.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -47,51 +70,49 @@ const CompanyAreaDropdown = ({ isDisabled = false }: CompanyAreaDropdownProps) =
   }
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            disabled={isDisabled}
-            className="flex items-center gap-2 px-3 py-1.5 h-auto text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
-          >
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{companyName}</span>
-              {areaName && (
-                <>
-                  <span>•</span>
-                  <span>{areaName}</span>
-                </>
-              )}
-              {canChangeCompanyArea && (
-                <ChevronDown className="h-3 w-3" />
-              )}
-            </div>
-          </Button>
-        </DropdownMenuTrigger>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          disabled={isDisabled}
+          className="flex items-center gap-2 px-3 py-1.5 h-auto text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{companyName}</span>
+            {areaName && (
+              <>
+                <span>•</span>
+                <span>{areaName}</span>
+              </>
+            )}
+            {canChangeCompanyArea && (
+              <ChevronsUpDown className="h-3 w-3" />
+            )}
+          </div>
+        </Button>
+      </DropdownMenuTrigger>
 
-        {canChangeCompanyArea && (
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem
-              onClick={handleCompanyAreaChange}
-              className="cursor-pointer"
-            >
-              <Building2 className="h-4 w-4 mr-2" />
-              Cambiar Empresa/Area
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        )}
-      </DropdownMenu>
-
-      {/* Company/Area Selection Modal */}
       {canChangeCompanyArea && (
-        <CompanyAreaModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          user={user as DecodedUserData}
-        />
+        <DropdownMenuContent align="end" className="w-56">
+          {user.company_areas?.map((companyArea: any) => {
+            const key = `${companyArea.ID_EMPRESA}-${companyArea.ID_AREA}`;
+            const isCurrent = key === currentKey;
+
+            return (
+              !isCurrent && (
+                <DropdownMenuItem
+                  key={key}
+                  onClick={() => handleCompanyAreaChange(companyArea)}
+                  className="cursor-pointer"
+                >
+                  <span>{companyArea.EMPRESA} • {companyArea.AREA}</span>
+                </DropdownMenuItem>
+              )
+            );
+          })}
+        </DropdownMenuContent>
       )}
-    </>
+    </DropdownMenu>
   );
 };
 

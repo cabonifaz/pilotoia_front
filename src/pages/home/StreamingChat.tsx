@@ -4,11 +4,10 @@ import { Badge } from '@/components/shadcn/badge';
 import ChatComponent from '../../components/chat/ChatComponent';
 import ChatList from '../../components/chat/ChatList';
 import AIConfigPanel from '../../components/aiConfigPanel/AIConfigPanel';
-import Header from '../../components/layout/Header';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 
-const HomeStreamingChat = () => {
+const StreamingChat = () => {
   const { user } = useQueryAuthContext();
   const [selectedChatId, setSelectedChatId] = useState<number | undefined>();
   const [isStreaming, setIsStreaming] = useState(false);
@@ -130,73 +129,66 @@ const HomeStreamingChat = () => {
 
   if (!chatContext) {
     return (
-      <div className="h-screen bg-muted/30 flex flex-col">
-        <Header isStreaming={isStreaming} />
-        <div className="flex-1 flex items-center justify-center">
-          <Card className="p-8">
-            <div className="text-center">
-              <div className="text-4xl mb-4">⏳</div>
-              <p className="text-lg">Cargando configuración...</p>
-            </div>
-          </Card>
-        </div>
+      <div className="flex-1 flex items-center justify-center">
+        <Card className="p-8">
+          <div className="text-center">
+            <div className="text-4xl mb-4">⏳</div>
+            <p className="text-lg">Cargando configuración...</p>
+          </div>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-muted/30 flex flex-col">
-      <Header isStreaming={isStreaming} />
-
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-8 p-8">
-          {/* Chat Section - 70% width */}
-          <div className="flex-1 lg:w-[70%] flex flex-col gap-4 min-h-0">
-            <h1 className="text-3xl font-bold text-foreground">Piloto IA</h1>
-            <div className="flex-1 bg-background rounded-lg min-h-0">
-              <ChatComponent
-                aiConfig={aiConfig}
-                chatContext={chatContext}
-                onChatIdChange={handleChatIdChange}
-                onStreamingStateChange={handleStreamingStateChange}
-              />
-            </div>
-          </div>
-
-          {/* Right Sidebar - 30% width */}
-          <div className="lg:w-[30%] flex-shrink-0 space-y-4 overflow-y-auto">
-            {/* Chat List */}
-            <ChatList
-              onChatSelect={handleChatSelect}
-              onNewChat={handleNewChat}
-              selectedChatId={selectedChatId}
-              isDisabled={isStreaming}
-            />
-
-            {/* Company Info */}
-            <Card className="bg-muted/50 border shadow-sm">
-              <CardContent className="pt-3 pb-3">
-                <div className="text-center">
-                  <Badge variant="secondary" className="text-sm">
-                    {chatContext.company} • {chatContext.area}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* AI Configuration Panel - Only show for SuperAdmin and Admin */}
-            {user?.id_tipo_rol !== 3 && (
-              <AIConfigPanel
-                config={aiConfig}
-                chatContext={chatContext}
-                onConfigChange={setAiConfig}
-                onChatContextChange={setChatContext}
-              />
-            )}
-          </div>
+    <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-8 p-8">
+      {/* Chat Section - 70% width */}
+      <div className="flex-1 lg:w-[70%] flex flex-col gap-4 min-h-0">
+        <h1 className="text-3xl font-bold text-foreground">Piloto IA</h1>
+        <div className="flex-1 bg-background rounded-lg min-h-0">
+          <ChatComponent
+            aiConfig={aiConfig}
+            chatContext={chatContext}
+            onChatIdChange={handleChatIdChange}
+            onStreamingStateChange={handleStreamingStateChange}
+          />
         </div>
+      </div>
+
+      {/* Right Sidebar - 30% width */}
+      <div className="lg:w-[30%] flex-shrink-0 space-y-4 overflow-y-auto">
+        {/* Chat List */}
+        <ChatList
+          onChatSelect={handleChatSelect}
+          onNewChat={handleNewChat}
+          selectedChatId={selectedChatId}
+          isDisabled={isStreaming}
+        />
+
+        {/* Company Info */}
+        <Card className="bg-muted/50 border shadow-sm">
+          <CardContent className="pt-3 pb-3">
+            <div className="text-center">
+              <Badge variant="secondary" className="text-sm">
+                {chatContext.company} • {chatContext.area}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* AI Configuration Panel - Only show for SuperAdmin and Admin */}
+        {user?.id_tipo_rol !== 3 && (
+          <AIConfigPanel
+            config={aiConfig}
+            chatContext={chatContext}
+            onConfigChange={setAiConfig}
+            onChatContextChange={setChatContext}
+          />
+        )}
+      </div>
     </div>
   );
 };
 
 
-export default HomeStreamingChat;
+export default StreamingChat;

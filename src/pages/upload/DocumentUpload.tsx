@@ -5,7 +5,6 @@ import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
 import { Badge } from '@/components/shadcn/badge';
-import Header from '@/components/layout/Header';
 import { useDocumentUpload } from '@/hooks/useDocumentUpload';
 import { useProcessingLogs } from '@/hooks/useProcessingLogs';
 
@@ -108,10 +107,7 @@ const DocumentUpload = () => {
   };
 
   return (
-    <div className="h-screen bg-muted/30 flex flex-col">
-      <Header />
-      
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-8 p-8">
+    <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-8 p-8">
         {/* Upload Section - 60% width */}
         <div className="flex-1 lg:w-[60%] flex flex-col gap-4 min-h-0">
           <h1 className="text-3xl font-bold text-foreground">Carga de Documentos</h1>
@@ -315,8 +311,6 @@ const DocumentUpload = () => {
             </CardContent>
           </Card>
         </div>
-      </div>
-
     </div>
   );
 };

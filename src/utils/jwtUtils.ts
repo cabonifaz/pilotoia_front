@@ -1,38 +1,4 @@
-interface JWTPayload {
-  ID_USUARIO: number;
-  USUARIO: string;
-  ID_TIPO_ROL: number;
-  ROL: string;
-  company_areas: Array<{
-    ID_EMPRESA: number;
-    EMPRESA: string;
-    ID_AREA: number;
-    AREA: string;
-  }>;
-  exp: number;
-  iat: number;
-  iss: string;
-}
-
-export interface DecodedUserData {
-  user_id: number;
-  user: string;
-  id_tipo_rol: number;
-  rol_nombre: string;
-  company_areas: Array<{
-    ID_EMPRESA: number;
-    EMPRESA: string;
-    ID_AREA: number;
-    AREA: string;
-  }>;
-  actual_company_area?: {
-    ID_EMPRESA: number;
-    EMPRESA: string;
-    ID_AREA: number;
-    AREA: string;
-  } | null;
-  status: string;
-}
+import type { JWTPayload, DecodedUserData } from '../types/auth';
 
 class JWTUtils {
   private static base64UrlDecode(str: string): string {
@@ -68,6 +34,8 @@ class JWTUtils {
       return {
         user_id: payload.ID_USUARIO,
         user: payload.USUARIO,
+        nombres: payload.NOMBRES,
+        apellidos: payload.APELLIDOS,
         id_tipo_rol: payload.ID_TIPO_ROL,
         rol_nombre: payload.ROL,
         company_areas: payload.company_areas || [],
