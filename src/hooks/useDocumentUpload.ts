@@ -38,7 +38,27 @@ export const useDocumentUpload = () => {
       if (currentTask && (currentTask.status === 'completed' || currentTask.status === 'failed')) {
         setCurrentTask(null);
       }
-      return [...prev, ...newFiles];
+
+      // Check for duplicate files by name and size
+      const filteredNewFiles = newFiles.filter(newFile => {
+        const isDuplicate = prev.some(
+          existingFile =>
+            existingFile.file.name === newFile.file.name &&
+            existingFile.file.size === newFile.file.size
+        );
+
+        if (isDuplicate) {
+          toast({
+            title: "Archivo duplicado",
+            description: `${newFile.file.name} ya ha sido agregado`,
+            variant: "destructive"
+          });
+        }
+
+        return !isDuplicate;
+      });
+
+      return [...prev, ...filteredNewFiles];
     });
   }, [currentTask]);
 
