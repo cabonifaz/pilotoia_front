@@ -141,11 +141,11 @@ const StreamingChat = () => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-8 p-8">
+    <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-8 p-8 h-full">
       {/* Chat Section - 70% width */}
-      <div className="flex-1 lg:w-[70%] flex flex-col gap-4 min-h-0">
+      <div className="flex-1 lg:w-[70%] flex flex-col gap-4 min-h-0 overflow-hidden">
         <h1 className="text-3xl font-bold text-foreground">Piloto IA</h1>
-        <div className="flex-1 bg-background rounded-lg min-h-0">
+        <div className="flex-1 bg-background rounded-lg min-h-0 overflow-hidden">
           <ChatComponent
             aiConfig={aiConfig}
             chatContext={chatContext}
@@ -156,7 +156,7 @@ const StreamingChat = () => {
       </div>
 
       {/* Right Sidebar - 30% width */}
-      <div className="lg:w-[30%] flex-shrink-0 space-y-4 overflow-y-auto">
+      <div className="lg:w-[30%] flex-shrink-0 space-y-4 overflow-y-auto min-h-0">
         {/* Chat List */}
         <ChatList
           onChatSelect={handleChatSelect}
