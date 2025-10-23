@@ -3,7 +3,7 @@ import { LoginPage } from "../pages/login/Login";
 import { App } from "../App";
 import { GuardRoute } from "./GuardRoute";
 import ProtectedLayout from "../components/layout/ProtectedLayout";
-import StreamingChat from "../pages/home/StreamingChat";
+import StreamingChat from "../pages/rag/StreamingChat";
 import DocumentUpload from "../pages/upload/DocumentUpload";
 
 export const router = createHashRouter([
