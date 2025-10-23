@@ -4,7 +4,6 @@ import type { Message } from './../types/message';
 import type {
     ChatMessageRequest,
     AgentMessageRequest,
-    ChatMessageResponse,
     ChatHistoryResponse,
     ClearHistoryResponse,
     AreasResponse,
@@ -14,11 +13,6 @@ import type {
 } from '@/types/chat';
 
 export const chatApi = {
-    sendMessage: async (messageRequest: ChatMessageRequest): Promise<ChatMessageResponse> => {
-        const response = await apiClient.post<ChatMessageResponse>('/v1/rag/chat', messageRequest);
-        return response.data;
-    },
-
     // For streaming chat using SSE client with integrated config
     sendStreamingMessage: async (
         messageRequest: ChatMessageRequest,
@@ -116,7 +110,6 @@ export const chatApi = {
 export type {
     ChatMessageRequest,
     AgentMessageRequest,
-    ChatMessageResponse,
     ChatHistoryResponse,
     ClearHistoryResponse,
     AreasResponse,
