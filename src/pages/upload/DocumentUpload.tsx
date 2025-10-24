@@ -1,34 +1,11 @@
 import { useState } from 'react';
 import { DocumentsTable, UploadSidebar } from '@/components/upload';
-import { useDocumentUpload } from '@/hooks/useDocumentUpload';
 
 const DocumentUpload = () => {
-  const [companyName, setCompanyName] = useState('');
-  const [areaName, setAreaName] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  const {
-    files,
-    isUploading,
-    addFiles,
-    removeFile,
-    clearAllFiles,
-    uploadAndCreateTask,
-  } = useDocumentUpload();
-
-  const handleUpload = async () => {
-    await uploadAndCreateTask(companyName, areaName);
-    setIsSidebarOpen(false);
-    clearAllFiles();
-    setCompanyName('');
-    setAreaName('');
-  };
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
-    clearAllFiles();
-    setCompanyName('');
-    setAreaName('');
   };
 
   return (
@@ -58,15 +35,6 @@ const DocumentUpload = () => {
       <UploadSidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
-        files={files}
-        isUploading={isUploading}
-        companyName={companyName}
-        areaName={areaName}
-        onCompanyNameChange={setCompanyName}
-        onAreaNameChange={setAreaName}
-        onAddFiles={addFiles}
-        onRemoveFile={removeFile}
-        onUpload={handleUpload}
       />
     </div>
   );

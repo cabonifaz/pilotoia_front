@@ -1,9 +1,11 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import { Upload, FileText, X, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
+import { usePresignedUrls } from '@/hooks/usePresignedUrls';
+import { useCurrentUser } from '@/hooks/useUserQueries';
 
 interface UploadedFile {
   file: File;
@@ -13,49 +15,93 @@ interface UploadedFile {
 interface UploadSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  files: UploadedFile[];
-  isUploading: boolean;
-  companyName: string;
-  areaName: string;
-  onCompanyNameChange: (value: string) => void;
-  onAreaNameChange: (value: string) => void;
-  onAddFiles: (files: FileList | null) => void;
-  onRemoveFile: (fileId: string) => void;
-  onUpload: () => void;
 }
 
 export const UploadSidebar = ({
   isOpen,
   onClose,
-  files,
-  isUploading,
-  companyName,
-  areaName,
-  onCompanyNameChange,
-  onAreaNameChange,
-  onAddFiles,
-  onRemoveFile,
-  onUpload,
 }: UploadSidebarProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [companyId, setCompanyId] = useState<number | ''>('');
+  const [areaId, setAreaId] = useState<number | ''>('');
+  const [embeddingModel, setEmbeddingModel] = useState('cohere.embed-multilingual-v3');
+  const { user } = useCurrentUser();
+  const { mutate: generatePresignedUrls, isPending: isGeneratingUrls } = usePresignedUrls();
 
-  const handleFileSelect = useCallback(
+  // Update values when user area changes or sidebar opens
+  useEffect(() => {
+    if (isOpen && user?.actual_company_area) {
+      setCompanyId(user.actual_company_area.ID_EMPRESA);
+      setAreaId(user.actual_company_area.ID_AREA);
+      setEmbeddingModel('cohere.embed-multilingual-v3');
+    }
+  }, [isOpen, user?.actual_company_area]);
+
+  // Reset state when sidebar closes
+  useEffect(() => {
+    if (!isOpen) {
+      setFiles([]);
+      setCompanyId('');
+      setAreaId('');
+      setEmbeddingModel('cohere.embed-multilingual-v3');
+    }
+  }, [isOpen]);
+
+  const handleAddFiles = useCallback(
     (selectedFiles: FileList | null) => {
-      onAddFiles(selectedFiles);
+      if (!selectedFiles) return;
+
+      const newFiles = Array.from(selectedFiles).map((file) => ({
+        file,
+        id: `${file.name}-${Date.now()}-${Math.random()}`,
+      }));
+
+      setFiles((prev) => [...prev, ...newFiles]);
+
       // Reset file input value so the same file can be selected again
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     },
-    [onAddFiles]
+    []
   );
+
+  const handleRemoveFile = useCallback((fileId: string) => {
+    setFiles((prev) => prev.filter((f) => f.id !== fileId));
+  }, []);
+
+  const handleUpload = () => {
+    if (!user || companyId === '' || areaId === '' || files.length === 0) {
+      return;
+    }
+
+    generatePresignedUrls(
+      {
+        request: {
+          company_id: companyId as number,
+          area_id: areaId as number,
+          user_id: user.user_id,
+          embedding_model: embeddingModel,
+          pdf_keys: files.map((f) => f.file.name),
+        },
+        files: files.map((f) => f.file),
+      },
+      {
+        onSuccess: () => {
+          setFiles([]);
+          onClose();
+        },
+      }
+    );
+  };
 
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
-      handleFileSelect(e.dataTransfer.files);
+      handleAddFiles(e.dataTransfer.files);
     },
-    [handleFileSelect]
+    [handleAddFiles]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -88,25 +134,42 @@ export const UploadSidebar = ({
 
         {/* Contenido scrollable con altura definida */}
         <CardContent className="flex-1 overflow-y-auto py-4 space-y-4">
-          {/* Company Input */}
+          {/* Company ID Input */}
           <div className="space-y-2">
-            <Label htmlFor="company">Nombre de la Empresa</Label>
+            <Label htmlFor="company-id">ID Empresa</Label>
             <Input
-              id="company"
-              placeholder="EMPR"
-              value={companyName}
-              onChange={(e) => onCompanyNameChange(e.target.value)}
+              id="company-id"
+              type="number"
+              placeholder="ID Empresa"
+              value={companyId}
+              onChange={(e) => setCompanyId(e.target.value ? parseInt(e.target.value) : '')}
+              disabled={isGeneratingUrls}
             />
           </div>
 
-          {/* Area Input */}
+          {/* Area ID Input */}
           <div className="space-y-2">
-            <Label htmlFor="area">Área</Label>
+            <Label htmlFor="area-id">ID Área</Label>
             <Input
-              id="area"
-              placeholder="AREA"
-              value={areaName}
-              onChange={(e) => onAreaNameChange(e.target.value)}
+              id="area-id"
+              type="number"
+              placeholder="ID Área"
+              value={areaId}
+              onChange={(e) => setAreaId(e.target.value ? parseInt(e.target.value) : '')}
+              disabled={isGeneratingUrls}
+            />
+          </div>
+
+          {/* Embedding Model Input */}
+          <div className="space-y-2">
+            <Label htmlFor="embedding-model">Modelo de Embedding</Label>
+            <Input
+              id="embedding-model"
+              type="text"
+              placeholder="cohere.embed-multilingual-v3"
+              value={embeddingModel}
+              onChange={(e) => setEmbeddingModel(e.target.value)}
+              disabled={isGeneratingUrls}
             />
           </div>
 
@@ -148,8 +211,8 @@ export const UploadSidebar = ({
                       </div>
                     </div>
                     <button
-                      onClick={() => onRemoveFile(file.id)}
-                      disabled={isUploading}
+                      onClick={() => handleRemoveFile(file.id)}
+                      disabled={isGeneratingUrls}
                       className="text-red-500 hover:text-red-700 flex-shrink-0"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -165,9 +228,9 @@ export const UploadSidebar = ({
             type="file"
             multiple
             accept=".pdf"
-            onChange={(e) => handleFileSelect(e.target.files)}
+            onChange={(e) => handleAddFiles(e.target.files)}
             className="hidden"
-            disabled={isUploading}
+            disabled={isGeneratingUrls}
           />
         </CardContent>
 
@@ -175,17 +238,17 @@ export const UploadSidebar = ({
           <Button
             variant="outline"
             onClick={onClose}
-            disabled={isUploading}
+            disabled={isGeneratingUrls}
             className="flex-1"
           >
             Cancelar
           </Button>
           <Button
-            onClick={onUpload}
-            disabled={isUploading || !companyName.trim() || !areaName.trim() || files.length === 0}
+            onClick={handleUpload}
+            disabled={isGeneratingUrls || companyId === '' || areaId === '' || !embeddingModel.trim() || files.length === 0 || !user}
             className="flex-1 bg-blue-600 hover:bg-blue-700"
           >
-            {isUploading ? 'Subiendo...' : 'Agregar'}
+            {isGeneratingUrls ? 'Subiendo...' : 'Agregar'}
           </Button>
         </div>
       </Card>

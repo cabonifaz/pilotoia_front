@@ -36,6 +36,7 @@ const CompanyAreaDropdown = ({ isDisabled = false }: CompanyAreaDropdownProps) =
           ...currentUserData,
           actual_company_area: selectedCompanyArea
         };
+        // Update the cache with the new company area (optimistic update)
         queryClient.setQueryData(queryKeys.user.current(), updatedUserData);
       }
 
