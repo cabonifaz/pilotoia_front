@@ -31,6 +31,10 @@ export const queryClient = new QueryClient({
     },
 });
 
+// Note: Import ReactQueryDevtools component in your App or main component when needed
+// Example: import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+// Then conditionally render: {import.meta.env.VITE_ENVIRONMENT === 'development' && <ReactQueryDevtools />}
+
 // Query keys factory for better organization
 export const queryKeys = {
     // User-related queries

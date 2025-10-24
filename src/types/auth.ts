@@ -48,7 +48,6 @@ export interface LoginRequest {
 export interface LoginResponse {
     token: string;  // JWT token containing all user information
     status: string;
-    chats: ChatData[];  // User's chats data for TanStack storage
 }
 
 export interface ChatData {
