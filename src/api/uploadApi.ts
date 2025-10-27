@@ -11,6 +11,20 @@ export const getPresignedUrls = async (
   return response.data;
 };
 
+export const getCompanyUploads = async (
+  companyId: number,
+  limit: number = 100
+): Promise<PresignedUrlResponse[]> => {
+  const response = await apiClient.post<PresignedUrlResponse[]>(
+    '/v1/uploads/get_company_uploads',
+    {
+      company_id: companyId,
+      limit: limit
+    }
+  );
+  return response.data;
+};
+
 export const uploadPdfToS3 = async (
   presignedUrl: string,
   file: File

@@ -11,6 +11,7 @@ export interface PresignedUrlResponse {
   pdf_key: string;
   presigned_url: string;
   process_stage: number;
+  is_error: boolean;
   is_text_based: boolean;
   uploaded_by_id: number;
   company_id: number;
