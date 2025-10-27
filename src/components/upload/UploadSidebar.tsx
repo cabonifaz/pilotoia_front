@@ -72,6 +72,11 @@ export const UploadSidebar = ({
   }, []);
 
   const handleUpload = () => {
+    // Prevent duplicate calls if already in progress
+    if (isGeneratingUrls) {
+      return;
+    }
+
     if (!user || companyId === '' || areaId === '' || files.length === 0) {
       return;
     }

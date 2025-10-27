@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+/*import { useState, useCallback, useEffect, useRef } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { createWebSocketConnection, type ProcessingLogMessage } from '@/api/uploadApi';
 
@@ -93,4 +93,4 @@ export const useProcessingLogs = () => {
     clearLogs,
     addLog,
   };
-};
+};*/

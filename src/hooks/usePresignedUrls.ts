@@ -15,7 +15,6 @@ export const usePresignedUrls = () => {
     mutationFn: async ({ request, files }: UploadPdfsParams): Promise<PresignedUrlResponse[]> => {
       // Get presigned URLs
       const presignedUrls = await getPresignedUrls(request);
-      console.log(presignedUrls);
 
       // Upload each file to S3 using presigned URLs
       const uploadPromises = presignedUrls.map((response, index) => {
@@ -26,6 +25,8 @@ export const usePresignedUrls = () => {
 
       return presignedUrls;
     },
+    // Disable automatic retry for uploads to prevent duplicates
+    retry: false,
     onSuccess: () => {
       toast({
         title: 'Éxito',
