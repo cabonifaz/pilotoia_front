@@ -2,9 +2,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
 import { Card, CardContent } from '@/components/shadcn/card';
+import { Mic, Square } from 'lucide-react';
 import { useChatStream } from '../../hooks/useChatStream';
 import { useChatMessages } from '../../hooks/useChatMessages';
 import { useExternalLogin } from '../../hooks/useExternalLogin';
+import { useTranscribe } from '../../hooks/useTranscribe';
 import { MessageBubble } from './MessageBubble';
 import { SendButtonGroup } from './SendButtonGroup';
 import { type AIConfig, type ChatContext } from '@/types/aiConfig';
@@ -29,6 +31,17 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
   // Get streaming functions
   const { isLoading, streamingMessageId, sendMessage, sendAgentMessage, cancelMessage, currentChatId } = useChatStream();
   const { isAuthenticated, token } = useExternalLogin();
+
+  // Get transcription functions
+  const {
+    isRecording,
+    isConnecting,
+    transcript,
+    partialTranscript,
+    startRecording,
+    stopRecording,
+    clearTranscript
+  } = useTranscribe();
 
   // Update parent when chat_id is received from backend
   useEffect(() => {
@@ -77,6 +90,23 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
       }
     };
   }, []);
+
+  // Update textarea with transcript (final or partial)
+  useEffect(() => {
+    const currentTranscript = transcript || partialTranscript;
+    if (currentTranscript) {
+      setUserQuery(currentTranscript);
+    }
+  }, [transcript, partialTranscript]);
+
+  const handleMicrophoneClick = async () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      clearTranscript();
+      await startRecording({ language_code: 'es-ES' });
+    }
+  };
 
   const chatQuery = async () => {
     if (!userQuery.trim()) return;
@@ -141,20 +171,41 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
         {/* Input Section */}
         <div className="border-t p-4">
           <div className="flex gap-2">
-            <Textarea
-              value={userQuery}
-              onChange={(e) => setUserQuery(e.target.value)}
-              placeholder={`Escribe tu consulta sobre ${chatContext.company}...`}
-              disabled={isLoading}
-              rows={2}
-              className="resize-none"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  currentMainActionRef.current();
-                }
-              }}
-            />
+            <div className="relative flex-1">
+              <Textarea
+                value={userQuery}
+                onChange={(e) => setUserQuery(e.target.value)}
+                placeholder={`Escribe tu consulta sobre ${chatContext.company}...`}
+                disabled={isLoading}
+                rows={2}
+                className="resize-none pr-12"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    currentMainActionRef.current();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleMicrophoneClick}
+                disabled={isLoading || isConnecting}
+                className={`absolute right-2 bottom-2 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+                  isRecording
+                    ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                    : 'bg-primary hover:bg-primary/90'
+                } disabled:bg-muted disabled:cursor-not-allowed`}
+                title={isRecording ? "Detener grabación" : "Grabar audio"}
+              >
+                {isConnecting ? (
+                  <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                ) : isRecording ? (
+                  <Square className="w-4 h-4 text-white" />
+                ) : (
+                  <Mic className="w-4 h-4 text-primary-foreground" />
+                )}
+              </button>
+            </div>
             <div className="flex gap-2">
               {isLoading && (
                 <Button onClick={cancelar} variant="destructive" size="sm">
