@@ -12,15 +12,15 @@ const getStatusFromStage = (stage: number, isError: boolean) => {
     return { label: 'Error', variant: 'destructive' as const };
   }
 
-  const stages: Record<number, { label: string; variant: 'info' | 'purple' | 'gray' | 'warning' | 'orange' | 'success' }> = {
+  const stages: Record<number, { label: string; variant: 'info' | 'purple' | 'gray' | 'warning' | 'orange' | 'success' | 'teal' | 'cyan' | 'pink' }> = {
     0: { label: 'Subiendo', variant: 'info' },
     1: { label: 'Evaluando', variant: 'purple' },
     2: { label: 'En cola', variant: 'gray' },
-    3: { label: 'Extrayendo datos', variant: 'warning' },
-    4: { label: 'Normalizando', variant: 'warning' },
+    3: { label: 'Extrayendo datos', variant: 'cyan' },
+    4: { label: 'Normalizando', variant: 'teal' },
     5: { label: 'Dividiendo en partes', variant: 'warning' },
     6: { label: 'Generando representaciones', variant: 'orange' },
-    7: { label: 'Guardando en la base de datos', variant: 'success' },
+    7: { label: 'Guardando en la base de datos', variant: 'pink' },
     8: { label: 'Completado', variant: 'success' },
   };
 

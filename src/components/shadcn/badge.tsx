@@ -16,17 +16,23 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
         outline: "text-foreground",
         success:
-          "border-transparent bg-green-100 text-green-800 hover:bg-green-200",
+          "border-transparent bg-success text-success-foreground shadow hover:bg-success/80",
         warning:
-          "border-transparent bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
+          "border-transparent bg-warning text-warning-foreground shadow hover:bg-warning/80",
         info:
-          "border-transparent bg-blue-100 text-blue-800 hover:bg-blue-200",
+          "border-transparent bg-info text-info-foreground shadow hover:bg-info/80",
         purple:
-          "border-transparent bg-purple-100 text-purple-800 hover:bg-purple-200",
+          "border-transparent bg-purple text-purple-foreground shadow hover:bg-purple/80",
         orange:
-          "border-transparent bg-orange-100 text-orange-800 hover:bg-orange-200",
+          "border-transparent bg-orange text-orange-foreground shadow hover:bg-orange/80",
         gray:
-          "border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200",
+          "border-transparent bg-gray text-gray-foreground shadow hover:bg-gray/80",
+        teal:
+          "border-transparent bg-teal text-teal-foreground shadow hover:bg-teal/80",
+        cyan:
+          "border-transparent bg-cyan text-cyan-foreground shadow hover:bg-cyan/80",
+        pink:
+          "border-transparent bg-pink text-pink-foreground shadow hover:bg-pink/80",
       },
     },
     defaultVariants: {
