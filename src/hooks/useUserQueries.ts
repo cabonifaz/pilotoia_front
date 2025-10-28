@@ -101,14 +101,14 @@ export const useLoginMutation = () => {
 // Logout mutation hook
 export const useLogoutMutation = () => {
     const queryClient = useQueryClient();
-    
+
     return useMutation({
         mutationFn: async (userId?: number): Promise<void> => {
             if (userId) {
                 await authApi.logout(userId);
             }
         },
-        onSettled: () => {
+        onSuccess: () => {
             // Clear TanStack Query cache
             clearUserCache();
 
@@ -131,14 +131,17 @@ export const useLogoutMutation = () => {
                 variant: "success"
             });
 
-            // Redirect to login page
-            setTimeout(() => {
-                window.location.href = '/#/';
-            }, 1000);
+            // Redirect to login page immediately after logout completes
+            window.location.href = '/#/';
         },
         onError: (error: Error) => {
             console.error('Logout error:', error);
-            // Note: onSettled will still run, so user will be logged out locally
+            // Don't clear user data on error, but show error message
+            toast({
+                title: "Error al cerrar sesión",
+                description: "Hubo un problema al cerrar sesión en el servidor",
+                variant: "destructive"
+            });
         },
     });
 };
@@ -206,9 +209,6 @@ export const useCompanyAreasQuery = () => {
                     actual_company_area: currentUser.actual_company_area || companyAreas[0] || null
                 };
                 queryClient.setQueryData(queryKeys.user.current(), updatedUser);
-
-                // Trigger user chats fetch after company areas are loaded
-                queryClient.invalidateQueries({ queryKey: ['user', 'chats'] });
             }
 
             return companyAreas;

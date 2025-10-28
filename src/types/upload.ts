@@ -20,3 +20,14 @@ export interface PresignedUrlResponse {
   created_at: string;
 }
 
+export interface KnowledgeLogsResponse {
+  process_id: string;
+  pdf_key: string;
+  process_stage: number;
+  is_error: boolean;
+  uploaded_by_id: number;
+  company_id: number;
+  area_id: number;
+  embedding_model: string;
+  created_at: string;
+}

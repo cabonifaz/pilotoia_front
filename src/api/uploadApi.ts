@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import type { PresignedUrlRequest, PresignedUrlResponse } from '@/types/upload';
+import type { PresignedUrlRequest, PresignedUrlResponse, KnowledgeLogsResponse } from '@/types/upload';
 
 export const getPresignedUrls = async (
   request: PresignedUrlRequest
@@ -13,13 +13,15 @@ export const getPresignedUrls = async (
 
 export const getCompanyUploads = async (
   companyId: number,
-  limit: number = 100
-): Promise<PresignedUrlResponse[]> => {
-  const response = await apiClient.post<PresignedUrlResponse[]>(
+  limit: number = 100,
+  areaId: number
+): Promise<KnowledgeLogsResponse[]> => {
+  const response = await apiClient.post<KnowledgeLogsResponse[]>(
     '/v1/uploads/get_company_uploads',
     {
       company_id: companyId,
-      limit: limit
+      limit: limit,
+      area_id: areaId
     }
   );
   return response.data;
