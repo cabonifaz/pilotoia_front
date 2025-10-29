@@ -1,52 +1,13 @@
 import { toast } from '../hooks/use-toast';
+import type {
+    TranscribeConfig,
+    TranscriptResult,
+    TranscribeResponse,
+    TranscribeCallbacks,
+} from '../types/transcribe';
 
 // Base WebSocket URL configuration (reuse from wsClient pattern)
 const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL?.replace('http', 'ws')}/api`;
-
-export interface TranscribeConfig {
-    language_code?: string;
-    sample_rate?: number;
-    media_encoding?: string;
-    vocabulary_name?: string;
-    enable_partial_results?: boolean;
-    show_speaker_label?: boolean;
-    enable_channel_identification?: boolean;
-    number_of_channels?: number;
-}
-
-export interface TranscriptResult {
-    transcript: string;
-    is_partial: boolean;
-    start_time: number;
-    end_time: number;
-    confidence?: number;
-    alternatives?: any[];
-    speaker_label?: string;
-}
-
-export interface TranscribeResponse {
-    type: 'partial' | 'final' | 'error' | 'status' | 'complete';
-    result?: TranscriptResult;
-    error?: string;
-    status?: string;
-    summary?: {
-        duration_seconds: number;
-        total_words: number;
-        average_confidence?: number;
-        full_transcript?: string;
-        segment_count?: number;
-    };
-}
-
-export interface TranscribeCallbacks {
-    onPartialResult?: (result: TranscriptResult) => void;
-    onFinalResult?: (result: TranscriptResult) => void;
-    onError?: (error: string) => void;
-    onStatus?: (status: string) => void;
-    onComplete?: (summary: any) => void;
-    onOpen?: () => void;
-    onClose?: () => void;
-}
 
 /**
  * Transcribe WebSocket client adapted from wsClient pattern
@@ -70,7 +31,7 @@ class TranscribeWebSocketClient {
 
             // Handle connection open
             this.websocket.onopen = () => {
-                console.log('✅ WebSocket Transcribe conectado');
+                // Connection established
             };
 
             // Handle incoming messages
@@ -79,13 +40,13 @@ class TranscribeWebSocketClient {
                     const response: TranscribeResponse = JSON.parse(event.data);
                     this.handleMessage(response, config);
                 } catch (parseError) {
-                    console.error('Error parseando mensaje:', parseError);
+                    console.error('Error parsing message:', parseError);
                 }
             };
 
             // Handle errors
             this.websocket.onerror = (error) => {
-                console.error('❌ Error WebSocket:', error);
+                console.error('WebSocket error:', error);
                 toast({
                     title: "Error de conexión",
                     description: "Error al conectar con el servicio de transcripción",
@@ -95,7 +56,7 @@ class TranscribeWebSocketClient {
 
             // Handle connection close
             this.websocket.onclose = (event) => {
-                console.log('🔌 WebSocket cerrado:', event.code, event.reason);
+                // Connection closed
 
                 if (event.code === 1006) {
                     toast({
@@ -119,7 +80,7 @@ class TranscribeWebSocketClient {
             };
 
         } catch (error) {
-            console.error('Error creando WebSocket:', error);
+            console.error('Error creating WebSocket:', error);
             toast({
                 title: "Error de WebSocket",
                 description: "Error al crear la conexión de transcripción",
@@ -135,11 +96,12 @@ class TranscribeWebSocketClient {
     private handleMessage(response: TranscribeResponse, config: TranscribeConfig): void {
         switch (response.type) {
             case 'status':
-                console.log(`📡 Estado: ${response.status}`);
-
                 if (response.status === 'connected') {
                     this.sendConfiguration(config);
                 } else if (response.status === 'configured') {
+                    // Config confirmed, wait for streaming status
+                } else if (response.status === 'streaming') {
+                    // Server is ready to receive audio, start recording
                     if (this.callbacks.onOpen) {
                         this.callbacks.onOpen();
                     }
@@ -163,7 +125,7 @@ class TranscribeWebSocketClient {
                 break;
 
             case 'error':
-                console.error('❌ Error de transcripción:', response.error);
+                console.error('Transcription error:', response.error);
                 if (this.callbacks.onError) {
                     this.callbacks.onError(response.error!);
                 } else {
@@ -176,14 +138,13 @@ class TranscribeWebSocketClient {
                 break;
 
             case 'complete':
-                console.log('✅ Sesión completada');
                 if (this.callbacks.onComplete && response.summary) {
                     this.callbacks.onComplete(response.summary);
                 }
                 break;
 
             default:
-                console.warn('Tipo de mensaje desconocido:', response.type);
+                console.warn('Unknown message type:', response.type);
         }
     }
 
@@ -207,7 +168,6 @@ class TranscribeWebSocketClient {
             }
         };
 
-        console.log('📤 Enviando configuración:', configMessage);
         this.websocket!.send(JSON.stringify(configMessage));
     }
 
@@ -216,12 +176,28 @@ class TranscribeWebSocketClient {
      */
     sendAudioChunk(audioChunk: Blob): void {
         if (!this.isConnected()) {
-            console.error('WebSocket no está conectado');
             return;
         }
 
-        // Send binary data directly (no JSON stringify)
-        this.websocket!.send(audioChunk);
+        // Convert Blob to ArrayBuffer using FileReader (more compatible)
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+            const result = event.target?.result;
+            if (result instanceof ArrayBuffer && this.isConnected()) {
+                try {
+                    this.websocket!.send(result);
+                } catch (error) {
+                    console.error('Error sending audio chunk:', error);
+                }
+            }
+        };
+
+        reader.onerror = (error) => {
+            console.error('Error reading audio chunk:', error);
+        };
+
+        reader.readAsArrayBuffer(audioChunk);
     }
 
     /**
@@ -230,7 +206,12 @@ class TranscribeWebSocketClient {
     sendStop(): void {
         if (this.isConnected()) {
             const stopMessage = { type: 'stop' };
-            this.websocket!.send(JSON.stringify(stopMessage));
+            const messageStr = JSON.stringify(stopMessage);
+            try {
+                this.websocket!.send(messageStr);
+            } catch (error) {
+                console.error('Error sending stop message:', error);
+            }
         }
     }
 
@@ -279,3 +260,6 @@ export const transcribeApi = {
 };
 
 export default transcribeApi;
+
+// Re-export types for backward compatibility
+export type { TranscribeConfig, TranscriptResult, TranscribeResponse, TranscribeCallbacks };
