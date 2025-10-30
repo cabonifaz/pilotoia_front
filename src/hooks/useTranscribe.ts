@@ -30,10 +30,12 @@ export const useTranscribe = (): UseTranscribeReturn => {
     const [isConnecting, setIsConnecting] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [partialTranscript, setPartialTranscript] = useState('');
-    const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>('es-ES');
+    const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>(
+        (import.meta.env.VITE_TRANSCRIBE_DEFAULT_LANGUAGE || 'es-ES') as LanguageCode
+    );
 
     const audioContextRef = useRef<AudioContext | null>(null);
-    const processorRef = useRef<ScriptProcessorNode | null>(null);
+    const workletNodeRef = useRef<AudioWorkletNode | null>(null);
     const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const detectionFrameIdRef = useRef<number | null>(null);
@@ -59,19 +61,23 @@ export const useTranscribe = (): UseTranscribeReturn => {
                 return;
             }
 
+            // Get default values from environment
+            const defaultSampleRate = parseInt(import.meta.env.VITE_TRANSCRIBE_SAMPLE_RATE || '16000', 10);
+            const defaultAudioEncoding = import.meta.env.VITE_TRANSCRIBE_AUDIO_ENCODING || 'ogg-opus';
+
             // Request microphone access
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     channelCount: 1,
-                    sampleRate: config.sample_rate || 16000,
+                    sampleRate: config.sample_rate || defaultSampleRate,
                     echoCancellation: true,
                     noiseSuppression: true
                 }
             });
 
             // Determine audio format based on what MediaRecorder supports
-            let audioEncoding = 'ogg-opus';
-            let audioSampleRate = 48000;
+            let audioEncoding = defaultAudioEncoding;
+            let audioSampleRate = defaultAudioEncoding === 'pcm' ? 16000 : 48000;
 
             if (MediaRecorder.isTypeSupported('audio/wav')) {
                 audioEncoding = 'pcm'; // WAV is PCM
@@ -79,12 +85,15 @@ export const useTranscribe = (): UseTranscribeReturn => {
             }
 
             // Default configuration
+            const defaultEnablePartialResults = import.meta.env.VITE_TRANSCRIBE_ENABLE_PARTIAL_RESULTS === 'true';
+            const defaultShowSpeakerLabel = import.meta.env.VITE_TRANSCRIBE_SHOW_SPEAKER_LABEL === 'true';
+
             const transcribeConfig: TranscribeConfig = {
                 language_code: config.language_code || currentLanguage,
                 sample_rate: config.sample_rate || audioSampleRate,
                 media_encoding: config.media_encoding || audioEncoding,
-                enable_partial_results: config.enable_partial_results ?? true,
-                show_speaker_label: config.show_speaker_label ?? false,
+                enable_partial_results: config.enable_partial_results ?? defaultEnablePartialResults,
+                show_speaker_label: config.show_speaker_label ?? defaultShowSpeakerLabel,
                 ...config
             };
 
@@ -93,32 +102,36 @@ export const useTranscribe = (): UseTranscribeReturn => {
                 token,
                 transcribeConfig,
                 {
-                    onOpen: () => {
-                        console.log('🎙️ Transcripción iniciada - onOpen callback ejecutado');
+                    onOpen: async () => {
                         setIsConnecting(false);
                         setIsRecording(true);
 
                         try {
-                            // Capture raw PCM from microphone using Web Audio API
+                            // Capture raw PCM from microphone using Web Audio API with AudioWorklet
                             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+                            // Load AudioWorklet processor module
+                            await audioContext.audioWorklet.addModule('/audio-processor.js');
 
                             const source = audioContext.createMediaStreamSource(stream);
 
-                            const processor = audioContext.createScriptProcessor(4096, 1, 1);
+                            // Create AudioWorklet node (modern replacement for ScriptProcessorNode)
+                            const workletNode = new AudioWorkletNode(audioContext, 'pcm-audio-processor');
 
                         // Store refs for cleanup
                         audioContextRef.current = audioContext;
                         sourceRef.current = source;
-                        processorRef.current = processor;
+                        workletNodeRef.current = workletNode;
 
-                        source.connect(processor);
-                        processor.connect(audioContext.destination);
+                        // Connect source to worklet node
+                        source.connect(workletNode);
+                        workletNode.connect(audioContext.destination);
 
                         // Variables para tracking de silencio
                         let silenceTimeoutId: NodeJS.Timeout | null = null;
                         let stopSignalSent = false;
-                        const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '5000', 10); // Stop after N milliseconds of silence
-                        const SILENCE_LEVEL = parseInt(import.meta.env.VITE_SILENCE_LEVEL || '15', 10); // Volume threshold for silence detection (byte frequency average: 0-20 = silence, 20+ = speech)
+                        const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '5000', 10);
+                        const SILENCE_LEVEL = parseInt(import.meta.env.VITE_SILENCE_LEVEL || '15', 10);
 
                         // Create analyser for silence detection
                         const analyser = audioContext.createAnalyser();
@@ -127,25 +140,16 @@ export const useTranscribe = (): UseTranscribeReturn => {
                         analyserRef.current = analyser;
 
                         const dataArray = new Uint8Array(analyser.frequencyBinCount);
-                        let audioProcessCount = 0;
 
-                        // Process raw PCM data
-                        processor.onaudioprocess = (event) => {
+                        // Listen to messages from AudioWorklet (PCM audio data)
+                        workletNode.port.onmessage = (event) => {
                             if (!client.isConnected()) return;
 
-                            audioProcessCount++;
-
-                            const inputData = event.inputBuffer.getChannelData(0);
-                            // Convert float32 to int16 PCM (little-endian)
-                            const pcmData = new Int16Array(inputData.length);
-                            for (let i = 0; i < inputData.length; i++) {
-                                const s = Math.max(-1, Math.min(1, inputData[i]));
-                                pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                            if (event.data.type === 'audio') {
+                                // Send raw PCM bytes as binary (including silence)
+                                const blob = new Blob([event.data.data], { type: 'application/octet-stream' });
+                                client.sendAudioChunk(blob);
                             }
-
-                            // Send raw PCM bytes as binary (including silence)
-                            const blob = new Blob([pcmData.buffer], { type: 'application/octet-stream' });
-                            client.sendAudioChunk(blob);
                         };
 
                         const detectSilence = () => {
@@ -159,13 +163,13 @@ export const useTranscribe = (): UseTranscribeReturn => {
                                     silenceTimeoutId = setTimeout(() => {
                                         if (!stopSignalSent) {
                                             stopSignalSent = true;
-                                            // Send stop signal but keep processor running briefly
+                                            // Send stop signal but keep worklet running briefly
                                             // to ensure server receives it
                                             client.sendStop();
 
                                             // Cleanup after a brief delay to ensure stop signal is sent
                                             setTimeout(() => {
-                                                processor.disconnect();
+                                                workletNode.disconnect();
                                                 source.disconnect();
                                             }, 500);
                                         }
@@ -258,9 +262,9 @@ export const useTranscribe = (): UseTranscribeReturn => {
             detectionFrameIdRef.current = null;
         }
 
-        if (processorRef.current) {
-            processorRef.current.disconnect();
-            processorRef.current = null;
+        if (workletNodeRef.current) {
+            workletNodeRef.current.disconnect();
+            workletNodeRef.current = null;
         }
 
         if (sourceRef.current) {

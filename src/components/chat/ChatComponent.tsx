@@ -2,13 +2,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
 import { Card, CardContent } from '@/components/shadcn/card';
-import { Mic, Square } from 'lucide-react';
 import { useChatStream } from '../../hooks/useChatStream';
 import { useChatMessages } from '../../hooks/useChatMessages';
 import { useExternalLogin } from '../../hooks/useExternalLogin';
 import { useTranscribe } from '../../hooks/useTranscribe';
 import { MessageBubble } from './MessageBubble';
 import { SendButtonGroup } from './SendButtonGroup';
+import { VoiceRecordButton } from './VoiceRecordButton';
 import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 
 interface ChatComponentProps {
@@ -186,25 +186,12 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
                   }
                 }}
               />
-              <button
-                type="button"
+              <VoiceRecordButton
+                isRecording={isRecording}
+                isConnecting={isConnecting}
+                isDisabled={isLoading}
                 onClick={handleMicrophoneClick}
-                disabled={isLoading || isConnecting}
-                className={`absolute right-2 bottom-2 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
-                  isRecording
-                    ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                    : 'bg-primary hover:bg-primary/90'
-                } disabled:bg-muted disabled:cursor-not-allowed`}
-                title={isRecording ? "Detener grabación" : "Grabar audio"}
-              >
-                {isConnecting ? (
-                  <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                ) : isRecording ? (
-                  <Square className="w-4 h-4 text-white" />
-                ) : (
-                  <Mic className="w-4 h-4 text-primary-foreground" />
-                )}
-              </button>
+              />
             </div>
             <div className="flex gap-2">
               {isLoading && (
