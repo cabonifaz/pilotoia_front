@@ -1,24 +1,24 @@
 import UserDropdown from '../user/UserDropdown';
 import CompanyAreaDropdown from '../user/CompanyAreaDropdown';
-import { useLocation, useNavigate } from 'react-router-dom';
+//import { useLocation, useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   isStreaming?: boolean;
 }
 
 const Header = ({ isStreaming = false }: HeaderProps) => {
-  const location = useLocation();
+  /*const location = useLocation();
   const navigate = useNavigate();
 
   // Navigation options
-  const navigationItems = [
+  /*const navigationItems = [
     { path: '/rag', label: 'Chat', icon: '💬' },
     { path: '/upload', label: 'Upload', icon: '📁' }
   ];
 
-  const handleNavigation = (path: string) => {
+  /*const handleNavigation = (path: string) => {
     navigate(path);
-  };
+  };*/
 
   return (
     <div className="flex justify-between items-center px-6 py-2 bg-background border-b">
@@ -31,7 +31,7 @@ const Header = ({ isStreaming = false }: HeaderProps) => {
 
         {/* Navigation Router */}
         <nav className="flex items-center gap-1">
-          {navigationItems.map((item) => (
+          {/*navigationItems.map((item) => (
             <button
               key={item.path}
               onClick={() => handleNavigation(item.path)}
@@ -44,7 +44,7 @@ const Header = ({ isStreaming = false }: HeaderProps) => {
               <span>{item.icon}</span>
               <span>{item.label}</span>
             </button>
-          ))}
+          ))*/}
         </nav>
       </div>
 
