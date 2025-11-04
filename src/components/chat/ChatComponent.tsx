@@ -6,9 +6,11 @@ import { useChatStream } from '../../hooks/useChatStream';
 import { useChatMessages } from '../../hooks/useChatMessages';
 import { useExternalLogin } from '../../hooks/useExternalLogin';
 import { useTranscribe } from '../../hooks/useTranscribe';
+import { useFileTranscribe } from '../../hooks/useFileTranscribe';
 import { MessageBubble } from './MessageBubble';
 import { SendButtonGroup } from './SendButtonGroup';
 import { VoiceRecordButton } from './VoiceRecordButton';
+import { FileTranscribeButton } from './FileTranscribeButton';
 import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 
 interface ChatComponentProps {
@@ -32,7 +34,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
   const { isLoading, streamingMessageId, sendMessage, sendAgentMessage, cancelMessage, currentChatId } = useChatStream();
   const { isAuthenticated, token } = useExternalLogin();
 
-  // Get transcription functions
+  // Get transcription functions (streaming - AWS)
   const {
     isRecording,
     isConnecting,
@@ -42,6 +44,15 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
     stopRecording,
     clearTranscript
   } = useTranscribe();
+
+  // Get file transcription functions (OpenAI)
+  const {
+    isRecording: isFileRecording,
+    isTranscribing: isFileTranscribing,
+    transcriptionResult: fileTranscriptionResult,
+    startRecording: startFileRecording,
+    stopRecording: stopFileRecording
+  } = useFileTranscribe();
 
   // Update parent when chat_id is received from backend
   useEffect(() => {
@@ -91,13 +102,20 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
     };
   }, []);
 
-  // Update textarea with transcript (final or partial)
+  // Update textarea with transcript (final or partial) - AWS streaming
   useEffect(() => {
     const currentTranscript = transcript || partialTranscript;
     if (currentTranscript) {
       setUserQuery(currentTranscript);
     }
   }, [transcript, partialTranscript]);
+
+  // Update textarea with file transcription result - OpenAI
+  useEffect(() => {
+    if (fileTranscriptionResult?.transcript) {
+      setUserQuery(fileTranscriptionResult.transcript);
+    }
+  }, [fileTranscriptionResult]);
 
   const handleMicrophoneClick = async () => {
     if (isRecording) {
@@ -178,13 +196,20 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
                 placeholder={`Escribe tu consulta sobre ${chatContext.company}...`}
                 disabled={isLoading}
                 rows={2}
-                className="resize-none pr-12"
+                className="resize-none pr-28"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     currentMainActionRef.current();
                   }
                 }}
+              />
+              <FileTranscribeButton
+                isRecording={isFileRecording}
+                isTranscribing={isFileTranscribing}
+                isDisabled={isLoading}
+                onStartRecording={startFileRecording}
+                onStopRecording={stopFileRecording}
               />
               <VoiceRecordButton
                 isRecording={isRecording}
