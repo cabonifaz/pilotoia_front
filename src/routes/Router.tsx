@@ -21,8 +21,8 @@ export const router = createHashRouter([
             <HomeStreamingChat />
           </GuardRoute>
         ),
-      },
-      /*{
+      }/*,
+      {
         path: "upload",
         element: (
           <GuardRoute>
