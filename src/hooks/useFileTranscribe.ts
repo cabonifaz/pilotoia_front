@@ -19,6 +19,8 @@ interface UseFileTranscribeReturn {
     transcriptionResult: TranscriptionResult | null;
     currentLanguage: LanguageCode;
     setLanguage: (language: LanguageCode) => void;
+    prepareRecording: () => void;
+    cancelPrepareRecording: () => Promise<void>;
     startRecording: () => Promise<void>;
     stopRecording: () => void;
     transcribeFile: (file: File) => Promise<void>;
@@ -44,6 +46,9 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
     const detectionFrameIdRef = useRef<number | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const recordingStartTimeRef = useRef<number>(0);
+    const pendingStreamRequestRef = useRef<Promise<MediaStream> | null>(null);
+    const shouldStartRecordingRef = useRef<boolean>(false);
+    const stopRecordingRef = useRef<(() => void) | null>(null);
 
     /**
      * Transcribe an audio file using OpenAI API
@@ -71,12 +76,6 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
 
             setTranscriptionResult(result);
 
-            toast({
-                title: "Transcripción completada",
-                description: `${result.transcript.substring(0, 50)}${result.transcript.length > 50 ? '...' : ''}`,
-                variant: "default"
-            });
-
         } catch (error) {
             console.error('Error transcribing file:', error);
 
@@ -88,6 +87,50 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
             setIsTranscribing(false);
         }
     }, [currentLanguage]);
+
+    /**
+     * Prepare recording by requesting microphone access early.
+     * This is called immediately on button press to reduce latency.
+     */
+    const prepareRecording = useCallback(() => {
+        // Don't prepare if already recording or transcribing
+        if (isRecording || isTranscribing) {
+            return;
+        }
+
+        // Don't create duplicate requests
+        if (pendingStreamRequestRef.current) {
+            return;
+        }
+
+        // Start requesting microphone access immediately
+        pendingStreamRequestRef.current = navigator.mediaDevices.getUserMedia({
+            audio: {
+                channelCount: 1,
+                sampleRate: 16000,
+                echoCancellation: true,
+                noiseSuppression: true
+            }
+        });
+    }, [isRecording, isTranscribing]);
+
+    /**
+     * Cancel prepared recording if user decides not to record
+     */
+    const cancelPrepareRecording = useCallback(async () => {
+        shouldStartRecordingRef.current = false;
+
+        // If there's a pending stream request, wait for it and clean up
+        if (pendingStreamRequestRef.current) {
+            try {
+                const stream = await pendingStreamRequestRef.current;
+                stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                // Ignore errors (user might have denied permission)
+            }
+            pendingStreamRequestRef.current = null;
+        }
+    }, []);
 
     /**
      * Start recording from microphone
@@ -106,15 +149,35 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
                 return;
             }
 
-            // Request microphone access
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    channelCount: 1,
-                    sampleRate: 16000,
-                    echoCancellation: true,
-                    noiseSuppression: true
-                }
-            });
+            // Mark that we want to record
+            shouldStartRecordingRef.current = true;
+
+            // Use pending stream request if available, otherwise create new one
+            let streamPromise = pendingStreamRequestRef.current;
+            if (!streamPromise) {
+                streamPromise = navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 1,
+                        sampleRate: 16000,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+            }
+
+            // Wait for stream to be ready
+            const stream = await streamPromise;
+
+            // Clear pending request
+            pendingStreamRequestRef.current = null;
+
+            // Check again if we should still record (user might have cancelled)
+            if (!shouldStartRecordingRef.current) {
+                // User cancelled, clean up stream
+                stream.getTracks().forEach(track => track.stop());
+                return;
+            }
+
 
             streamRef.current = stream;
             audioChunksRef.current = [];
@@ -256,6 +319,9 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
             mediaRecorder.start(100); // Collect data every 100ms
             setIsRecording(true);
 
+            // Reset the flag since we're now recording
+            shouldStartRecordingRef.current = false;
+
             // Setup silence detection
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
             const analyser = audioContext.createAnalyser();
@@ -286,7 +352,10 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
                     if (!silenceTimeoutRef.current) {
                         silenceTimeoutRef.current = setTimeout(() => {
                             // Stop recording after 5 seconds of silence
-                            stopRecording();
+                            // Use ref to always get the latest stopRecording function
+                            if (stopRecordingRef.current) {
+                                stopRecordingRef.current();
+                            }
                         }, SILENCE_THRESHOLD);
                     }
                 } else {
@@ -375,9 +444,16 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
         // Reset recording start time - CRITICAL for subsequent recordings
         // Note: audioChunksRef is cleared by the onstop handler, not here
         recordingStartTimeRef.current = 0;
+        shouldStartRecordingRef.current = false;
+        pendingStreamRequestRef.current = null;
 
         setIsRecording(false);
     }, []);
+
+    // Update ref whenever stopRecording changes
+    useEffect(() => {
+        stopRecordingRef.current = stopRecording;
+    }, [stopRecording]);
 
     /**
      * Clear transcription result
@@ -399,6 +475,8 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
         transcriptionResult,
         currentLanguage,
         setLanguage: setCurrentLanguage,
+        prepareRecording,
+        cancelPrepareRecording,
         startRecording,
         stopRecording,
         transcribeFile,

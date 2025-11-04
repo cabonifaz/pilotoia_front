@@ -7,6 +7,8 @@ interface FileTranscribeButtonProps {
   isRecording: boolean;
   isTranscribing: boolean;
   isDisabled?: boolean;
+  onPrepareRecording: () => void;
+  onCancelPrepareRecording: () => void;
   onStartRecording: () => void | Promise<void>;
   onStopRecording: () => void;
 }
@@ -15,6 +17,8 @@ export const FileTranscribeButton = ({
   isRecording,
   isTranscribing,
   isDisabled = false,
+  onPrepareRecording,
+  onCancelPrepareRecording,
   onStartRecording,
   onStopRecording
 }: FileTranscribeButtonProps) => {
@@ -29,9 +33,12 @@ export const FileTranscribeButton = ({
     mouseDownTimeRef.current = Date.now();
     justStoppedPushToTalkRef.current = false; // Reset flag
 
-    // Don't start immediately - wait to see if it's a hold (push-to-talk) or click (toggle)
-    // If user holds for > 100ms, start push-to-talk mode
     if (!isRecording) {
+      // Immediately start preparing (request mic access in background)
+      onPrepareRecording();
+
+      // Wait to see if it's a hold (push-to-talk) or click (toggle)
+      // If user holds for > 100ms, start push-to-talk mode
       pushToTalkTimeoutRef.current = setTimeout(() => {
         // User is holding - start push-to-talk mode
         isPushToTalkRef.current = true;
@@ -49,6 +56,9 @@ export const FileTranscribeButton = ({
     if (pushToTalkTimeoutRef.current) {
       clearTimeout(pushToTalkTimeoutRef.current);
       pushToTalkTimeoutRef.current = null;
+
+      // User released before timeout - this will be toggle mode
+      // DON'T cancel the prepared recording - we'll use it in the click handler!
     }
 
     // If was in push-to-talk mode, stop recording
@@ -68,6 +78,9 @@ export const FileTranscribeButton = ({
     if (pushToTalkTimeoutRef.current) {
       clearTimeout(pushToTalkTimeoutRef.current);
       pushToTalkTimeoutRef.current = null;
+
+      // User dragged away - they abandoned the action, cancel prepared recording
+      onCancelPrepareRecording();
     }
 
     // If in push-to-talk mode and user drags away, stop recording
@@ -94,6 +107,8 @@ export const FileTranscribeButton = ({
       if (isRecording) {
         onStopRecording();
       } else {
+        // Start recording for toggle mode
+        // Note: stream was already prepared in mouseDown, so just start!
         onStartRecording();
       }
     }
@@ -107,6 +122,9 @@ export const FileTranscribeButton = ({
 
     // Same logic as mouse: wait to see if it's a hold or tap
     if (!isRecording) {
+      // Immediately start preparing (request mic access in background)
+      onPrepareRecording();
+
       pushToTalkTimeoutRef.current = setTimeout(() => {
         isPushToTalkRef.current = true;
         onStartRecording();
@@ -121,6 +139,9 @@ export const FileTranscribeButton = ({
     if (pushToTalkTimeoutRef.current) {
       clearTimeout(pushToTalkTimeoutRef.current);
       pushToTalkTimeoutRef.current = null;
+
+      // User released before timeout - will be toggle mode
+      // DON'T cancel the prepared recording - tap handler will use it!
     }
 
     // If was in push-to-talk mode, stop recording

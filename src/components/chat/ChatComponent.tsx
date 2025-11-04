@@ -50,6 +50,8 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
     isRecording: isFileRecording,
     isTranscribing: isFileTranscribing,
     transcriptionResult: fileTranscriptionResult,
+    prepareRecording: prepareFileRecording,
+    cancelPrepareRecording: cancelPrepareFileRecording,
     startRecording: startFileRecording,
     stopRecording: stopFileRecording
   } = useFileTranscribe();
@@ -208,6 +210,8 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
                 isRecording={isFileRecording}
                 isTranscribing={isFileTranscribing}
                 isDisabled={isLoading}
+                onPrepareRecording={prepareFileRecording}
+                onCancelPrepareRecording={cancelPrepareFileRecording}
                 onStartRecording={startFileRecording}
                 onStopRecording={stopFileRecording}
               />
