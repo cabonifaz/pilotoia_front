@@ -38,6 +38,12 @@ const CompanyAreaDropdown = ({ isDisabled = false }: CompanyAreaDropdownProps) =
         };
         // Update the cache with the new company area (optimistic update)
         queryClient.setQueryData(queryKeys.user.current(), updatedUserData);
+
+        // Save only the IDs to sessionStorage for persistence across page reloads
+        sessionStorage.setItem('selected_company_area_ids', JSON.stringify({
+          idEmpresa: selectedCompanyArea.ID_EMPRESA,
+          idArea: selectedCompanyArea.ID_AREA
+        }));
       }
 
       toast({

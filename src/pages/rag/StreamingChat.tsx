@@ -144,7 +144,6 @@ const StreamingChat = () => {
     <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-8 p-8 h-full">
       {/* Chat Section - 70% width */}
       <div className="flex-1 lg:w-[70%] flex flex-col gap-4 min-h-0 overflow-hidden">
-        <h1 className="text-3xl font-bold text-foreground">Piloto IA</h1>
         <div className="flex-1 bg-background rounded-lg min-h-0 overflow-hidden">
           <ChatComponent
             aiConfig={aiConfig}

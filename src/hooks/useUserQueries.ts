@@ -202,11 +202,29 @@ export const useCompanyAreasQuery = () => {
             // Update the user cache with fresh company areas
             const currentUser = queryClient.getQueryData(queryKeys.user.current()) as DecodedUserData;
             if (currentUser) {
+                let actualCompanyArea = currentUser.actual_company_area;
+
+                // If no current selection, check sessionStorage for previously selected company area IDs
+                if (!actualCompanyArea) {
+                    const savedCompanyAreaIds = sessionStorage.getItem('selected_company_area_ids');
+                    if (savedCompanyAreaIds) {
+                        const { idEmpresa, idArea } = JSON.parse(savedCompanyAreaIds);
+                        // Find the matching company area from the fresh list
+                        actualCompanyArea = companyAreas.find(
+                            ca => ca.ID_EMPRESA === idEmpresa && ca.ID_AREA === idArea
+                        ) || null;
+                    }
+                }
+
+                // Fall back to first item if still no selection
+                if (!actualCompanyArea) {
+                    actualCompanyArea = companyAreas[0] || null;
+                }
+
                 const updatedUser = {
                     ...currentUser,
                     company_areas: companyAreas,
-                    // Only set default area if actual_company_area is null, otherwise preserve user's selection
-                    actual_company_area: currentUser.actual_company_area || companyAreas[0] || null
+                    actual_company_area: actualCompanyArea
                 };
                 queryClient.setQueryData(queryKeys.user.current(), updatedUser);
             }
