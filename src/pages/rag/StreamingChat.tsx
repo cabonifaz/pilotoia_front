@@ -1,16 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/shadcn/card';
 import { Badge } from '@/components/shadcn/badge';
+import { useOutletContext } from 'react-router-dom';
 import ChatComponent from '../../components/chat/ChatComponent';
 import ChatList from '../../components/chat/ChatList';
 import AIConfigPanel from '../../components/aiConfigPanel/AIConfigPanel';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
+import { useChatState } from '../../contexts/ChatStateContext';
 import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 
 const StreamingChat = () => {
   const { user } = useQueryAuthContext();
-  const [selectedChatId, setSelectedChatId] = useState<number | undefined>();
-  const [isStreaming, setIsStreaming] = useState(false);
+  const { onStreamingStateChange } = useOutletContext<any>();
+  const { selectedChatId, setSelectedChatId, isStreaming, setIsStreaming, setHandlers } = useChatState();
   const chatSelectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [aiConfig, setAiConfig] = useState<AIConfig>({
@@ -95,15 +97,15 @@ const StreamingChat = () => {
       sessionStorage.setItem('current_chat_id', chatId.toString());
       setChatContext(prev => prev ? { ...prev, chat_id: chatId } : null);
     }, 500);
-  }, []);
+  }, [setSelectedChatId]);
 
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     setSelectedChatId(undefined);
     // Clear chat_id from sessionStorage when starting a new chat
     sessionStorage.removeItem('current_chat_id');
     // Update chatContext to have null chat_id
     setChatContext(prev => prev ? { ...prev, chat_id: null } : null);
-  };
+  }, [setSelectedChatId]);
 
   const handleChatIdChange = useCallback((chatId: number) => {
     // Update chatContext with the new chat_id
@@ -116,7 +118,16 @@ const StreamingChat = () => {
 
   const handleStreamingStateChange = useCallback((streaming: boolean) => {
     setIsStreaming(streaming);
-  }, []);
+    onStreamingStateChange(streaming);
+  }, [onStreamingStateChange, setIsStreaming]);
+
+  // Register handlers with context
+  useEffect(() => {
+    setHandlers?.({
+      onChatSelect: handleChatSelect,
+      onNewChat: handleNewChat,
+    });
+  }, [handleChatSelect, handleNewChat, setHandlers]);
 
   // Cleanup timeout on unmount
   useEffect(() => {

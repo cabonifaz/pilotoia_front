@@ -1,25 +1,24 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCurrentUser } from './useUserQueries';
+import { chatApi } from '../api/chatApi';
 import type { ChatData } from '../types/auth';
 
 // Hook to get user's chats list from TanStack Query cache
 export const useUserChats = () => {
     const { user } = useCurrentUser();
-    const queryClient = useQueryClient();
 
     return useQuery({
         queryKey: ['user', 'chats'],
-        queryFn: (): ChatData[] => {
-            // Read from cache populated by useUserChatsQuery
-            const chats = queryClient.getQueryData(['user', 'chats']) || [];
+        queryFn: async (): Promise<ChatData[]> => {
+            const chats = await chatApi.getUserChats();
             return chats as ChatData[];
         },
         enabled: !!user, // Only run if user is authenticated
-        staleTime: Infinity, // Always fresh - data managed by useUserChatsQuery
+        staleTime: 1000 * 60 * 5, // Stale after 5 minutes
         gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
-        refetchOnWindowFocus: false,
-        refetchOnReconnect: false,
-        retry: false,
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
+        retry: true,
     });
 };
 

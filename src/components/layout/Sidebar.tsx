@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MessageCircle, Clipboard } from 'lucide-react';
+import { MessageCircle, Clipboard, Menu } from 'lucide-react';
 import { Button } from '../shadcn/button';
+import { cn } from '@/lib/utils';
+import { ChatListSidebar } from './ChatListSidebar';
 
 interface SidebarProps {
   isStreaming?: boolean;
@@ -9,6 +12,7 @@ interface SidebarProps {
 const Sidebar = ({ isStreaming = false }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navigationItems = [
     { path: '/rag', label: 'Chat', icon: MessageCircle },
@@ -18,8 +22,24 @@ const Sidebar = ({ isStreaming = false }: SidebarProps) => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <aside className="w-[250px] bg-background border-r border-border shadow-sm flex flex-col">
-      <nav className="flex-1 p-4 space-y-2">
+    <aside className={cn(
+      "bg-background border-r border-border flex flex-col transition-all duration-300",
+      isCollapsed ? "w-14" : "w-60"
+    )}>
+      {/* Collapse/Expand Button */}
+      <div className="border-b border-border p-1.5 flex justify-center flex-shrink-0">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          title={isCollapsed ? "Expandir" : "Contraer"}
+        >
+          <Menu className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      <nav className="p-1.5 space-y-0.5 flex flex-col flex-shrink-0">
         {navigationItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
@@ -27,16 +47,28 @@ const Sidebar = ({ isStreaming = false }: SidebarProps) => {
             <Button
               key={item.path}
               variant={active ? 'default' : 'ghost'}
-              className="w-full justify-start gap-3"
+              className={cn(
+                "transition-all duration-300 h-8",
+                isCollapsed ? "w-full justify-center px-1.5" : "w-full justify-start gap-2 px-2"
+              )}
               onClick={() => navigate(item.path)}
               disabled={isStreaming}
+              title={isCollapsed ? item.label : undefined}
             >
-              <Icon className="h-4 w-4" />
-              <span>{item.label}</span>
+              <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+              {!isCollapsed && <span>{item.label}</span>}
             </Button>
           );
         })}
       </nav>
+
+      {/* Separator */}
+      <div className="border-t border-border flex-shrink-0"></div>
+
+      {/* Chat List - Only on /rag route */}
+      {location.pathname === '/rag' && (
+        <ChatListSidebar isStreaming={isStreaming} isCollapsed={isCollapsed} />
+      )}
     </aside>
   );
 };

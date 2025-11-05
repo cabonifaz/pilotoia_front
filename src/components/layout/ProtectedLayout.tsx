@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { useState, useCallback } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import { ChatStateProvider } from '../../contexts/ChatStateContext';
 
 const ProtectedLayout = () => {
   const [isStreaming, setIsStreaming] = useState(false);
@@ -15,11 +16,15 @@ const ProtectedLayout = () => {
       <Header isStreaming={isStreaming} />
 
       <div className="flex-1 overflow-hidden flex">
-        <Sidebar isStreaming={isStreaming} />
+        <ChatStateProvider>
+          <Sidebar isStreaming={isStreaming} />
 
-        <div className="flex-1 overflow-hidden">
-          <Outlet context={{ onStreamingStateChange: handleStreamingStateChange }} />
-        </div>
+          <div className="flex-1 overflow-hidden">
+            <Outlet context={{
+              onStreamingStateChange: handleStreamingStateChange,
+            }} />
+          </div>
+        </ChatStateProvider>
       </div>
     </div>
   );
