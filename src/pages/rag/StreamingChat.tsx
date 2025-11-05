@@ -157,7 +157,7 @@ const StreamingChat = () => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-8 p-8 h-full">
+    <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-2 px-8 py-8 pr-8 h-full">
       {/* Chat Section */}
       <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
         <div className="flex-1 bg-background rounded-lg min-h-0 overflow-hidden">
@@ -171,7 +171,7 @@ const StreamingChat = () => {
       </div>
 
       {/* Right Sidebar Area */}
-      <div className="flex-shrink-0 flex flex-col gap-2 min-h-0">
+      <div className="flex-shrink-0 flex flex-col gap-0 min-h-0">
         {/* Settings Button */}
         {user?.id_tipo_rol !== 3 && (
           <Button
