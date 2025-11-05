@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Button } from '@/components/shadcn/button';
-import { Textarea } from '@/components/shadcn/textarea';
 import { Card, CardContent } from '@/components/shadcn/card';
 import { useChatStream } from '../../hooks/useChatStream';
 import { useChatMessages } from '../../hooks/useChatMessages';
@@ -8,9 +6,7 @@ import { useExternalLogin } from '../../hooks/useExternalLogin';
 import { useTranscribe } from '../../hooks/useTranscribe';
 import { useFileTranscribe } from '../../hooks/useFileTranscribe';
 import { MessageBubble } from './MessageBubble';
-import { SendButtonGroup } from './SendButtonGroup';
-import { VoiceRecordButton } from './VoiceRecordButton';
-import { FileTranscribeButton } from './FileTranscribeButton';
+import { QueryInputSection } from './QueryInputSection';
 import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 
 interface ChatComponentProps {
@@ -23,7 +19,6 @@ interface ChatComponentProps {
 const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingStateChange }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
-  const [selectedAction, setSelectedAction] = useState<'enviar' | 'agente' | 'login'>('enviar');
   const currentMainActionRef = useRef<() => void>(() => {});
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -192,64 +187,29 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
         </CardContent>
         
         {/* Input Section */}
-        <div className="border-t p-4">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Textarea
-                value={userQuery}
-                onChange={(e) => setUserQuery(e.target.value)}
-                placeholder={`Escribe tu consulta sobre ${chatContext.company}...`}
-                disabled={isLoading}
-                rows={2}
-                className="resize-none pr-28"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    currentMainActionRef.current();
-                  }
-                }}
-              />
-              {transcribeProvider === 'aws' ? (
-                <VoiceRecordButton
-                  isRecording={isRecording}
-                  isConnecting={isConnecting}
-                  isDisabled={isLoading}
-                  onClick={handleMicrophoneClick}
-                />
-              ) : (
-                <FileTranscribeButton
-                  isRecording={isFileRecording}
-                  isTranscribing={isFileTranscribing}
-                  isDisabled={isLoading}
-                  onPrepareRecording={prepareFileRecording}
-                  onCancelPrepareRecording={cancelPrepareFileRecording}
-                  onStartRecording={startFileRecording}
-                  onStopRecording={stopFileRecording}
-                />
-              )}
-            </div>
-            <div className="flex gap-2">
-              {isLoading && (
-                <Button onClick={cancelar} variant="destructive" size="sm">
-                  ⏹️ Detener
-                </Button>
-              )}
-              {!isLoading && (
-                <SendButtonGroup
-                  onSend={chatQuery}
-                  onAgentSend={agentQuery}
-                  disabled={!userQuery.trim()}
-                  isAuthenticated={isAuthenticated}
-                  selectedAction={selectedAction}
-                  onSelectedActionChange={setSelectedAction}
-                  onMainActionChange={(action) => {
-                    currentMainActionRef.current = action;
-                  }}
-                />
-              )}
-            </div>
-          </div>
-        </div>
+        <QueryInputSection
+          userQuery={userQuery}
+          onQueryChange={setUserQuery}
+          isLoading={isLoading}
+          onCancel={cancelar}
+          company={chatContext.company}
+          transcribeProvider={transcribeProvider}
+          isAuthenticated={isAuthenticated}
+          onMainActionChange={(action) => {
+            currentMainActionRef.current = action;
+          }}
+          isRecording={isRecording}
+          isConnecting={isConnecting}
+          onMicrophoneClick={handleMicrophoneClick}
+          isFileRecording={isFileRecording}
+          isFileTranscribing={isFileTranscribing}
+          onPrepareRecording={prepareFileRecording}
+          onCancelPrepareRecording={cancelPrepareFileRecording}
+          onStartRecording={startFileRecording}
+          onStopRecording={stopFileRecording}
+          onSend={chatQuery}
+          onAgentSend={agentQuery}
+        />
       </Card>
     </div>
   );
