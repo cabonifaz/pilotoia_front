@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
-import { Square } from 'lucide-react';
+import { Square, Settings } from 'lucide-react';
 import { VoiceRecordButton } from './VoiceRecordButton';
 import { FileTranscribeButton } from './FileTranscribeButton';
 import { CommandMenu } from './CommandMenu';
@@ -10,9 +10,10 @@ import { useTranscription } from '../../contexts/TranscriptionContext';
 
 interface QueryInputSectionProps {
   company: string;
+  onOpenConfigSidebar?: () => void;
 }
 
-export const QueryInputSection = ({ company }: QueryInputSectionProps) => {
+export const QueryInputSection = ({ company, onOpenConfigSidebar }: QueryInputSectionProps) => {
   const currentMainActionRef = useRef<() => void>(() => {});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -56,6 +57,20 @@ export const QueryInputSection = ({ company }: QueryInputSectionProps) => {
   return (
     <div className="border-t p-4">
       <div className="flex gap-2 items-end">
+        {/* Settings Button */}
+        {!isLoading && onOpenConfigSidebar && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onOpenConfigSidebar}
+            className="rounded-full hover:bg-transparent"
+            title="Configuración"
+          >
+            <Settings className="h-5 w-5 text-primary" />
+          </Button>
+        )}
+
         {/* Input with Transcribe Buttons and Command Menu */}
         <div className="relative flex-1">
           {/* Command Menu (Left side inside textarea) */}

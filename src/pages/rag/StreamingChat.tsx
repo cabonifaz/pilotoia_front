@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, CardContent } from '@/components/shadcn/card';
-import { Badge } from '@/components/shadcn/badge';
+import { Card } from '@/components/shadcn/card';
+import { Button } from '@/components/shadcn/button';
+import { Settings } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import ChatComponent from '../../components/chat/ChatComponent';
-import AIConfigPanel from '../../components/aiConfigPanel/AIConfigPanel';
+import { AIConfigSidebar } from '../../components/aiConfigPanel/AIConfigSidebar';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 import { useChatState } from '../../contexts/ChatStateContext';
 import { type AIConfig, type ChatContext } from '@/types/aiConfig';
@@ -13,6 +14,11 @@ const StreamingChat = () => {
   const { onStreamingStateChange } = useOutletContext<any>();
   const { setSelectedChatId, setIsStreaming, setHandlers } = useChatState();
   const chatSelectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isConfigSidebarOpen, setIsConfigSidebarOpen] = useState(false);
+
+  const closeConfigSidebar = () => {
+    setIsConfigSidebarOpen(false);
+  };
 
   const [aiConfig, setAiConfig] = useState<AIConfig>({
     similarity_threshold: 0.65,
@@ -152,8 +158,8 @@ const StreamingChat = () => {
 
   return (
     <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-8 p-8 h-full">
-      {/* Chat Section - 70% width */}
-      <div className="flex-1 lg:w-[70%] flex flex-col gap-4 min-h-0 overflow-hidden">
+      {/* Chat Section */}
+      <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
         <div className="flex-1 bg-background rounded-lg min-h-0 overflow-hidden">
           <ChatComponent
             aiConfig={aiConfig}
@@ -164,24 +170,28 @@ const StreamingChat = () => {
         </div>
       </div>
 
-      {/* Right Sidebar - 30% width */}
-      <div className="lg:w-[30%] flex-shrink-0 space-y-4 overflow-y-auto min-h-0">
-        {/* Company Info */}
-        <Card className="bg-muted/50 border shadow-sm">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center">
-              <Badge variant="secondary" className="text-sm">
-                {chatContext.company} • {chatContext.area}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* AI Configuration Panel - Only show for SuperAdmin and Admin */}
+      {/* Right Sidebar Area */}
+      <div className="flex-shrink-0 flex flex-col gap-2 min-h-0">
+        {/* Settings Button */}
         {user?.id_tipo_rol !== 3 && (
-          <AIConfigPanel
+          <Button
+            onClick={() => setIsConfigSidebarOpen(true)}
+            variant="ghost"
+            size="icon"
+            className="rounded-full self-end"
+            title="Configuración"
+          >
+            <Settings className="h-5 w-5 text-primary" />
+          </Button>
+        )}
+
+        {/* Right Sidebar - Config Panel */}
+        {user?.id_tipo_rol !== 3 && (
+          <AIConfigSidebar
+            isOpen={isConfigSidebarOpen}
             config={aiConfig}
             chatContext={chatContext}
+            onClose={closeConfigSidebar}
             onConfigChange={setAiConfig}
             onChatContextChange={setChatContext}
           />

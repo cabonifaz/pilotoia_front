@@ -16,9 +16,10 @@ interface ChatComponentProps {
   chatContext: ChatContext;
   onChatIdChange?: (chatId: number) => void;
   onStreamingStateChange?: (isStreaming: boolean) => void;
+  onOpenConfigSidebar?: () => void;
 }
 
-const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingStateChange }: ChatComponentProps) => {
+const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingStateChange, onOpenConfigSidebar }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const currentMainActionRef = useRef<() => void>(() => {});
@@ -218,7 +219,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
             </CardContent>
 
             {/* Input Section */}
-            <QueryInputSection company={chatContext.company} />
+            <QueryInputSection company={chatContext.company} onOpenConfigSidebar={onOpenConfigSidebar} />
           </Card>
         </div>
       </TranscriptionProvider>
