@@ -81,11 +81,15 @@ export const QueryInputSection = ({ company }: QueryInputSectionProps) => {
 
           {/* Stop Button (Right side inside textarea when loading) */}
           {isLoading && (
-            <div className="absolute right-2 bottom-2 z-10">
-              <Button onClick={onCancel} variant="destructive" size="icon" className="rounded-full">
-                <Square className="w-4 h-4" />
-              </Button>
-            </div>
+            <Button
+              onClick={onCancel}
+              variant="destructive"
+              size="icon"
+              className="absolute right-0.5 bottom-0.5 rounded-full"
+              title="Detener"
+            >
+              <Square className="w-4 h-4" />
+            </Button>
           )}
 
           {/* Transcribe Buttons (Right side when not loading) */}

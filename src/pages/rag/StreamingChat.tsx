@@ -3,7 +3,6 @@ import { Card, CardContent } from '@/components/shadcn/card';
 import { Badge } from '@/components/shadcn/badge';
 import { useOutletContext } from 'react-router-dom';
 import ChatComponent from '../../components/chat/ChatComponent';
-import ChatList from '../../components/chat/ChatList';
 import AIConfigPanel from '../../components/aiConfigPanel/AIConfigPanel';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 import { useChatState } from '../../contexts/ChatStateContext';
@@ -12,7 +11,7 @@ import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 const StreamingChat = () => {
   const { user } = useQueryAuthContext();
   const { onStreamingStateChange } = useOutletContext<any>();
-  const { selectedChatId, setSelectedChatId, isStreaming, setIsStreaming, setHandlers } = useChatState();
+  const { setSelectedChatId, setIsStreaming, setHandlers } = useChatState();
   const chatSelectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [aiConfig, setAiConfig] = useState<AIConfig>({
@@ -167,14 +166,6 @@ const StreamingChat = () => {
 
       {/* Right Sidebar - 30% width */}
       <div className="lg:w-[30%] flex-shrink-0 space-y-4 overflow-y-auto min-h-0">
-        {/* Chat List */}
-        <ChatList
-          onChatSelect={handleChatSelect}
-          onNewChat={handleNewChat}
-          selectedChatId={selectedChatId}
-          isDisabled={isStreaming}
-        />
-
         {/* Company Info */}
         <Card className="bg-muted/50 border shadow-sm">
           <CardContent className="pt-3 pb-3">

@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useState, useCallback } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
@@ -6,6 +6,8 @@ import { ChatStateProvider } from '../../contexts/ChatStateContext';
 
 const ProtectedLayout = () => {
   const [isStreaming, setIsStreaming] = useState(false);
+  const { pathname } = useLocation();
+  const isRagRoute = pathname === '/rag';
 
   const handleStreamingStateChange = useCallback((streaming: boolean) => {
     setIsStreaming(streaming);
@@ -16,15 +18,27 @@ const ProtectedLayout = () => {
       <Header isStreaming={isStreaming} />
 
       <div className="flex-1 overflow-hidden flex">
-        <ChatStateProvider>
-          <Sidebar isStreaming={isStreaming} />
+        {isRagRoute ? (
+          <ChatStateProvider>
+            <Sidebar isStreaming={isStreaming} />
 
-          <div className="flex-1 overflow-hidden">
-            <Outlet context={{
-              onStreamingStateChange: handleStreamingStateChange,
-            }} />
-          </div>
-        </ChatStateProvider>
+            <div className="flex-1 overflow-hidden">
+              <Outlet context={{
+                onStreamingStateChange: handleStreamingStateChange,
+              }} />
+            </div>
+          </ChatStateProvider>
+        ) : (
+          <>
+            <Sidebar isStreaming={isStreaming} />
+
+            <div className="flex-1 overflow-hidden">
+              <Outlet context={{
+                onStreamingStateChange: handleStreamingStateChange,
+              }} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

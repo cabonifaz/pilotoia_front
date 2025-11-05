@@ -25,7 +25,7 @@ export const CommandMenu = ({ disabled = false }: CommandMenuProps) => {
             "absolute left-0.5 bottom-0.5 rounded-full hover:bg-transparent z-10"
           )}
         >
-          <Plus className="h-5 w-5 text-slate-500" />
+          <Plus className="h-5 w-5 text-primary" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">

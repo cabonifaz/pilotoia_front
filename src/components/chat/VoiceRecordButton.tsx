@@ -28,11 +28,11 @@ export const VoiceRecordButton = ({
       title={isRecording ? "Detener grabación" : "Grabar audio"}
     >
       {isConnecting ? (
-        <Loader2 className={cn("w-4 h-4 animate-spin", isRecording && "text-red-500")} />
+        <Loader2 className={cn("w-4 h-4 animate-spin", isRecording && "text-destructive")} />
       ) : isRecording ? (
-        <Square className={cn("w-4 h-4 text-red-500", isRecording && "animate-pulse")} />
+        <Square className={cn("w-4 h-4 text-destructive", isRecording && "animate-pulse")} />
       ) : (
-        <Mic className="w-4 h-4 text-slate-500" />
+        <Mic className="w-4 h-4 text-primary" />
       )}
     </Button>
   );
