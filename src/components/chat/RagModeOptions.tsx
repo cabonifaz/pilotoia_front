@@ -1,6 +1,7 @@
 import {
   DropdownMenuItem,
 } from '@/components/shadcn/dropdown-menu';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/shadcn/tooltip';
 import { Send, /*Bot, Lock*/ } from 'lucide-react';
 import { useCommand } from '../../contexts/CommandContext';
 //import { LoginModal } from '../external-api/LoginModal';
@@ -11,17 +12,27 @@ export const RagModeOptions = () => {
 
   return (
     <>
-      <DropdownMenuItem
-        onSelect={() => onSelectedActionChange('enviar')}
-        className={selectedAction === 'enviar' ? 'bg-accent' : ''}
-      >
-        <Send className="h-4 w-4 mr-2" />
-        Enviar
-      </DropdownMenuItem>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuItem
+            onSelect={() => onSelectedActionChange('vectorial')}
+            className={selectedAction === 'vectorial' ? 'border-l-4 border-primary' : ''}
+          >
+            <Send className="h-4 w-4 mr-2" />
+            Búsqueda inteligente
+          </DropdownMenuItem>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          Búsqueda en la base de conocimiento
+        </TooltipContent>
+      </Tooltip>
       {/* {isAuthenticated && (
-        <DropdownMenuItem onSelect={() => onSelectedActionChange('agente')}>
+        <DropdownMenuItem
+          onSelect={() => onSelectedActionChange('vectorial+sql')}
+          className={selectedAction === 'vectorial+sql' ? 'bg-primary text-primary-foreground' : ''}
+        >
           <Bot className="h-4 w-4 mr-2" />
-          Agente
+          Búsqueda avanzada
         </DropdownMenuItem>
       )} */}
       {/* {!isAuthenticated && (

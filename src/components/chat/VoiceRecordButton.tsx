@@ -20,20 +20,19 @@ export const VoiceRecordButton = ({
       type="button"
       onClick={onClick}
       disabled={isDisabled || isConnecting}
-      variant={isRecording ? "destructive" : "default"}
+      variant="ghost"
       size="icon"
       className={cn(
-        "absolute right-2 bottom-2 rounded-full",
-        isRecording && "animate-pulse"
+        "absolute right-0.5 bottom-0.5 rounded-full hover:bg-transparent"
       )}
       title={isRecording ? "Detener grabación" : "Grabar audio"}
     >
       {isConnecting ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
+        <Loader2 className={cn("w-4 h-4 animate-spin", isRecording && "text-red-500")} />
       ) : isRecording ? (
-        <Square className="w-4 h-4" />
+        <Square className={cn("w-4 h-4 text-red-500", isRecording && "animate-pulse")} />
       ) : (
-        <Mic className="w-4 h-4" />
+        <Mic className="w-4 h-4 text-slate-500" />
       )}
     </Button>
   );

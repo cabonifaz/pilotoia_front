@@ -1,5 +1,6 @@
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,8 +21,11 @@ export const CommandMenu = ({ disabled = false }: CommandMenuProps) => {
           variant="ghost"
           size="icon"
           disabled={disabled}
+          className={cn(
+            "absolute left-0.5 bottom-0.5 rounded-full hover:bg-transparent z-10"
+          )}
         >
-          <Plus className="h-5 w-5" />
+          <Plus className="h-5 w-5 text-slate-500" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">

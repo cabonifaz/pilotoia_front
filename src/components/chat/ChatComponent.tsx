@@ -7,6 +7,8 @@ import { useTranscribe } from '../../hooks/useTranscribe';
 import { useFileTranscribe } from '../../hooks/useFileTranscribe';
 import { MessageBubble } from './MessageBubble';
 import { QueryInputSection } from './QueryInputSection';
+import { CommandProvider } from '../../contexts/CommandContext';
+import { TranscriptionProvider } from '../../contexts/TranscriptionContext';
 import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 
 interface ChatComponentProps {
@@ -29,7 +31,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
   const { data: messages, isLoading: isLoadingMessages, error: errorMessages } = useChatMessages(chatContext.chat_id);
 
   // Get streaming functions
-  const { isLoading, streamingMessageId, sendMessage, sendAgentMessage, cancelMessage, currentChatId } = useChatStream();
+  const { isLoading, streamingMessageId, searchVectorial, searchVectorialSQL, cancelMessage, currentChatId } = useChatStream();
   const { isAuthenticated, token } = useExternalLogin();
 
   // Get transcription functions (streaming - AWS)
@@ -132,7 +134,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
     const currentQuery = userQuery;
     setUserQuery('');
 
-    await sendMessage(currentQuery, aiConfig, chatContext);
+    await searchVectorial(currentQuery, aiConfig, chatContext);
   };
 
   const cancelar = () => {
@@ -145,73 +147,78 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
     const currentQuery = userQuery;
     setUserQuery('');
 
-    await sendAgentMessage(currentQuery, aiConfig, chatContext, token);
+    await searchVectorialSQL(currentQuery, aiConfig, chatContext, token);
   };
 
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Messages Container */}
-      <Card className="flex-1 flex flex-col overflow-hidden border-2 shadow-lg bg-card/50">
-        <CardContent className="flex-1 overflow-y-auto p-4 messages-container min-h-0" onScroll={handleScroll}>
-          {isLoadingMessages ? (
-            <div className="flex items-center justify-center h-full">
-              <p>Cargando mensajes...</p>
-            </div>
-          ) : errorMessages ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-red-500">Error al cargar los mensajes.</p>
-            </div>
-          ) : !messages || messages.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
-              <Card className="p-8 text-center bg-muted/30 border shadow-md">
-                <div className="text-6xl mb-4">💬</div>
-                <h3 className="text-xl font-semibold mb-2">¡Bienvenido al Piloto IA!</h3>
-                <p className="text-muted-foreground">
-                  Haz tu primera consulta sobre {chatContext.company}
-                </p>
-              </Card>
-            </div>
-          ) : (
-            <div>
-              {messages?.map(message => (
-                <MessageBubble
-                  key={message.id}
-                  message={message}
-                  streamingMessageId={streamingMessageId}
-                  user={chatContext.user}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-        
-        {/* Input Section */}
-        <QueryInputSection
-          userQuery={userQuery}
-          onQueryChange={setUserQuery}
-          isLoading={isLoading}
-          onCancel={cancelar}
-          company={chatContext.company}
-          transcribeProvider={transcribeProvider}
-          isAuthenticated={isAuthenticated}
-          onMainActionChange={(action) => {
-            currentMainActionRef.current = action;
-          }}
-          isRecording={isRecording}
-          isConnecting={isConnecting}
-          onMicrophoneClick={handleMicrophoneClick}
-          isFileRecording={isFileRecording}
-          isFileTranscribing={isFileTranscribing}
-          onPrepareRecording={prepareFileRecording}
-          onCancelPrepareRecording={cancelPrepareFileRecording}
-          onStartRecording={startFileRecording}
-          onStopRecording={stopFileRecording}
-          onSend={chatQuery}
-          onAgentSend={agentQuery}
-        />
-      </Card>
-    </div>
+    <CommandProvider
+      userQuery={userQuery}
+      onQueryChange={setUserQuery}
+      isLoading={isLoading}
+      onCancel={cancelar}
+      isAuthenticated={isAuthenticated}
+      token={token || undefined}
+      onSearchVectorial={chatQuery}
+      onSearchVectorialSQL={agentQuery}
+      onMainActionChange={(action) => {
+        currentMainActionRef.current = action;
+      }}
+    >
+      <TranscriptionProvider
+        transcribeProvider={transcribeProvider}
+        isRecording={isRecording}
+        isConnecting={isConnecting}
+        onMicrophoneClick={handleMicrophoneClick}
+        isFileRecording={isFileRecording}
+        isFileTranscribing={isFileTranscribing}
+        onPrepareRecording={prepareFileRecording}
+        onCancelPrepareRecording={cancelPrepareFileRecording}
+        onStartRecording={startFileRecording}
+        onStopRecording={stopFileRecording}
+      >
+        <div className="h-full flex flex-col">
+          {/* Messages Container */}
+          <Card className="flex-1 flex flex-col overflow-hidden border-2 shadow-lg bg-card/50">
+            <CardContent className="flex-1 overflow-y-auto p-4 messages-container min-h-0" onScroll={handleScroll}>
+              {isLoadingMessages ? (
+                <div className="flex items-center justify-center h-full">
+                  <p>Cargando mensajes...</p>
+                </div>
+              ) : errorMessages ? (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-red-500">Error al cargar los mensajes.</p>
+                </div>
+              ) : !messages || messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <Card className="p-8 text-center bg-muted/30 border shadow-md">
+                    <div className="text-6xl mb-4">💬</div>
+                    <h3 className="text-xl font-semibold mb-2">¡Bienvenido al Piloto IA!</h3>
+                    <p className="text-muted-foreground">
+                      Haz tu primera consulta sobre {chatContext.company}
+                    </p>
+                  </Card>
+                </div>
+              ) : (
+                <div>
+                  {messages?.map(message => (
+                    <MessageBubble
+                      key={message.id}
+                      message={message}
+                      streamingMessageId={streamingMessageId}
+                      user={chatContext.user}
+                    />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+
+            {/* Input Section */}
+            <QueryInputSection company={chatContext.company} />
+          </Card>
+        </div>
+      </TranscriptionProvider>
+    </CommandProvider>
   );
 };
 

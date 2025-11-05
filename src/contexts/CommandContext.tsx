@@ -3,12 +3,12 @@ import type { ReactNode } from 'react';
 
 interface CommandContextType {
   // Command selection
-  selectedAction: 'enviar' | 'agente' | 'login';
-  onSelectedActionChange: (action: 'enviar' | 'agente' | 'login') => void;
+  selectedAction: 'vectorial' | 'vectorial+sql' | 'login';
+  onSelectedActionChange: (action: 'vectorial' | 'vectorial+sql' | 'login') => void;
 
   // Command execution
-  onSend: () => void;
-  onAgentSend: () => void;
+  onSearchVectorial: () => void;
+  onSearchVectorialSQL: () => void;
   onCancel: () => void;
   onMainActionChange: (action: () => void) => void;
 
@@ -36,8 +36,8 @@ interface CommandProviderProps {
   onCancel: () => void;
 
   // Command execution
-  onSend: () => void;
-  onAgentSend: () => void;
+  onSearchVectorial: () => void;
+  onSearchVectorialSQL: () => void;
 
   // Auth
   isAuthenticated: boolean;
@@ -53,37 +53,37 @@ export const CommandProvider = ({
   onQueryChange,
   isLoading,
   onCancel,
-  onSend,
-  onAgentSend,
+  onSearchVectorial,
+  onSearchVectorialSQL,
   isAuthenticated,
   token,
   onMainActionChange,
 }: CommandProviderProps) => {
-  const [selectedAction, setSelectedAction] = useState<'enviar' | 'agente' | 'login'>('enviar');
+  const [selectedAction, setSelectedAction] = useState<'vectorial' | 'vectorial+sql' | 'login'>('vectorial');
 
   // Create main action handler based on selectedAction
   useEffect(() => {
     const handleMainButtonClick = () => {
-      if (selectedAction === 'enviar') {
-        onSend();
+      if (selectedAction === 'vectorial') {
+        onSearchVectorial();
+      } /*else if (selectedAction === 'vectorial+sql') {
+        onSearchVectorialSQL();
       }
-      // else if (selectedAction === 'agente') {
-      //   onAgentSend();
-      // } else if (selectedAction === 'login') {
-      //   // handle login
-      // }
+      else if (selectedAction === 'login') {
+          handle login
+      }*/
     };
 
     onMainActionChange(handleMainButtonClick);
-  }, [selectedAction, isAuthenticated, onSend, onAgentSend, onMainActionChange]);
+  }, [selectedAction, isAuthenticated, onSearchVectorial, onSearchVectorialSQL, onMainActionChange]);
 
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<CommandContextType>(
     () => ({
       selectedAction,
       onSelectedActionChange: setSelectedAction,
-      onSend,
-      onAgentSend,
+      onSearchVectorial,
+      onSearchVectorialSQL,
       onCancel,
       onMainActionChange,
       isLoading,
@@ -92,7 +92,7 @@ export const CommandProvider = ({
       userQuery,
       onQueryChange,
     }),
-    [selectedAction, onSend, onAgentSend, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange]
+    [selectedAction, onSearchVectorial, onSearchVectorialSQL, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange]
   );
 
   return (

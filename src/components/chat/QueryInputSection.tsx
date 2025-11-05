@@ -1,98 +1,76 @@
 import { useRef, useEffect } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
+import { Square } from 'lucide-react';
 import { VoiceRecordButton } from './VoiceRecordButton';
 import { FileTranscribeButton } from './FileTranscribeButton';
 import { CommandMenu } from './CommandMenu';
-import { CommandProvider } from '../../contexts/CommandContext';
+import { useCommand } from '../../contexts/CommandContext';
+import { useTranscription } from '../../contexts/TranscriptionContext';
 
 interface QueryInputSectionProps {
-  // Query state
-  userQuery: string;
-  onQueryChange: (value: string) => void;
-
-  // Loading state
-  isLoading: boolean;
-  onCancel: () => void;
-
-  // Context
   company: string;
-  transcribeProvider: string;
-  isAuthenticated: boolean;
-  onMainActionChange: (action: () => void) => void;
-
-  // VoiceRecordButton props
-  isRecording: boolean;
-  isConnecting: boolean;
-  onMicrophoneClick: () => void;
-
-  // FileTranscribeButton props
-  isFileRecording: boolean;
-  isFileTranscribing: boolean;
-  onPrepareRecording: () => void;
-  onCancelPrepareRecording: () => void;
-  onStartRecording: () => void;
-  onStopRecording: () => void;
-
-  // Command context props
-  onSend: () => void;
-  onAgentSend: () => void;
 }
 
-export const QueryInputSection = ({
-  userQuery,
-  onQueryChange,
-  isLoading,
-  onCancel,
-  company,
-  transcribeProvider,
-  onMainActionChange,
-  isRecording,
-  isConnecting,
-  onMicrophoneClick,
-  isFileRecording,
-  isFileTranscribing,
-  onPrepareRecording,
-  onCancelPrepareRecording,
-  onStartRecording,
-  onStopRecording,
-  isAuthenticated,
-  onSend,
-  onAgentSend,
-}: QueryInputSectionProps) => {
+export const QueryInputSection = ({ company }: QueryInputSectionProps) => {
   const currentMainActionRef = useRef<() => void>(() => {});
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Get command state from context
+  const { userQuery, onQueryChange, isLoading, onCancel, onSearchVectorial, selectedAction, onSearchVectorialSQL } = useCommand();
+
+  // Auto-grow textarea
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onQueryChange(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollHeight = Math.min(textareaRef.current.scrollHeight, 80); // 80px = ~3 rows
+      textareaRef.current.style.height = scrollHeight + 'px';
+    }
+  };
+
+  // Get transcription state from context
+  const {
+    transcribeProvider,
+    isRecording,
+    isConnecting,
+    onMicrophoneClick,
+    isFileRecording,
+    isFileTranscribing,
+    onPrepareRecording,
+    onCancelPrepareRecording,
+    onStartRecording,
+    onStopRecording,
+  } = useTranscription();
+
+  // Update ref based on selected action
   useEffect(() => {
-    onMainActionChange(currentMainActionRef.current);
-  }, [onMainActionChange]);
+    if (selectedAction === 'vectorial') {
+      currentMainActionRef.current = onSearchVectorial;
+    } /*else if (selectedAction === 'vectorial+sql') {
+      currentMainActionRef.current = onSearchVectorialSQL;
+    }
+    else login - handle when implemented*/
+  }, [selectedAction, onSearchVectorial, onSearchVectorialSQL]);
 
   return (
-    <CommandProvider
-      onSend={onSend}
-      onAgentSend={onAgentSend}
-      isAuthenticated={isAuthenticated}
-      onMainActionChange={(action) => {
-        currentMainActionRef.current = action;
-      }}
-    >
-      <div className="border-t p-4">
+    <div className="border-t p-4">
       <div className="flex gap-2 items-end">
         {/* Input with Transcribe Buttons and Command Menu */}
         <div className="relative flex-1">
           {/* Command Menu (Left side inside textarea) */}
           {!isLoading && (
-            <div className="absolute left-2 bottom-2 z-10">
-              <CommandMenu disabled={isLoading} />
-            </div>
+            <CommandMenu disabled={isLoading} />
           )}
 
           <Textarea
+            ref={textareaRef}
             value={userQuery}
-            onChange={(e) => onQueryChange(e.target.value)}
+            onChange={handleInput}
             placeholder={`Escribe tu consulta sobre ${company}...`}
             disabled={isLoading}
-            rows={2}
-            className="resize-none pr-28 pl-12"
+            rows={1}
+            className="resize-none pr-9 pl-9 min-h-[2.5rem] max-h-[5rem] overflow-y-auto"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -100,34 +78,41 @@ export const QueryInputSection = ({
               }
             }}
           />
-          {transcribeProvider === 'aws' ? (
-            <VoiceRecordButton
-              isRecording={isRecording}
-              isConnecting={isConnecting}
-              isDisabled={isLoading}
-              onClick={onMicrophoneClick}
-            />
-          ) : (
-            <FileTranscribeButton
-              isRecording={isFileRecording}
-              isTranscribing={isFileTranscribing}
-              isDisabled={isLoading}
-              onPrepareRecording={onPrepareRecording}
-              onCancelPrepareRecording={onCancelPrepareRecording}
-              onStartRecording={onStartRecording}
-              onStopRecording={onStopRecording}
-            />
+
+          {/* Stop Button (Right side inside textarea when loading) */}
+          {isLoading && (
+            <div className="absolute right-2 bottom-2 z-10">
+              <Button onClick={onCancel} variant="destructive" size="icon" className="rounded-full">
+                <Square className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
+          {/* Transcribe Buttons (Right side when not loading) */}
+          {!isLoading && (
+            <>
+              {transcribeProvider === 'aws' ? (
+                <VoiceRecordButton
+                  isRecording={isRecording}
+                  isConnecting={isConnecting}
+                  isDisabled={isLoading}
+                  onClick={onMicrophoneClick}
+                />
+              ) : (
+                <FileTranscribeButton
+                  isRecording={isFileRecording}
+                  isTranscribing={isFileTranscribing}
+                  isDisabled={isLoading}
+                  onPrepareRecording={onPrepareRecording}
+                  onCancelPrepareRecording={onCancelPrepareRecording}
+                  onStartRecording={onStartRecording}
+                  onStopRecording={onStopRecording}
+                />
+              )}
+            </>
           )}
         </div>
-
-        {/* Cancel Button */}
-        {isLoading && (
-          <Button onClick={onCancel} variant="destructive" size="sm">
-            ⏹️ Detener
-          </Button>
-        )}
       </div>
     </div>
-    </CommandProvider>
   );
 };
