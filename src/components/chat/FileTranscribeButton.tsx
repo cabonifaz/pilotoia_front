@@ -50,8 +50,6 @@ export const FileTranscribeButton = ({
   const handleMouseUp = (e: React.MouseEvent) => {
     if (isDisabled || isTranscribing) return;
 
-    const holdDuration = Date.now() - mouseDownTimeRef.current;
-
     // Cancel push-to-talk timeout if not yet fired
     if (pushToTalkTimeoutRef.current) {
       clearTimeout(pushToTalkTimeoutRef.current);
@@ -175,7 +173,7 @@ export const FileTranscribeButton = ({
       variant={isRecording ? "destructive" : "default"}
       size="icon"
       className={cn(
-        "absolute right-14 bottom-2 rounded-full",
+        "absolute right-2 bottom-2 rounded-full",
         isRecording && "animate-pulse"
       )}
       title={

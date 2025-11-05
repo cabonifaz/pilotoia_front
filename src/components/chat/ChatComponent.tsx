@@ -27,6 +27,9 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
   const currentMainActionRef = useRef<() => void>(() => {});
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // Get transcription provider from environment
+  const transcribeProvider = import.meta.env.VITE_TRANSCRIBE_PROVIDER;
+
   // Get messages from TanStack Query cache
   const { data: messages, isLoading: isLoadingMessages, error: errorMessages } = useChatMessages(chatContext.chat_id);
 
@@ -206,21 +209,24 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
                   }
                 }}
               />
-              <FileTranscribeButton
-                isRecording={isFileRecording}
-                isTranscribing={isFileTranscribing}
-                isDisabled={isLoading}
-                onPrepareRecording={prepareFileRecording}
-                onCancelPrepareRecording={cancelPrepareFileRecording}
-                onStartRecording={startFileRecording}
-                onStopRecording={stopFileRecording}
-              />
-              <VoiceRecordButton
-                isRecording={isRecording}
-                isConnecting={isConnecting}
-                isDisabled={isLoading}
-                onClick={handleMicrophoneClick}
-              />
+              {transcribeProvider === 'aws' ? (
+                <VoiceRecordButton
+                  isRecording={isRecording}
+                  isConnecting={isConnecting}
+                  isDisabled={isLoading}
+                  onClick={handleMicrophoneClick}
+                />
+              ) : (
+                <FileTranscribeButton
+                  isRecording={isFileRecording}
+                  isTranscribing={isFileTranscribing}
+                  isDisabled={isLoading}
+                  onPrepareRecording={prepareFileRecording}
+                  onCancelPrepareRecording={cancelPrepareFileRecording}
+                  onStartRecording={startFileRecording}
+                  onStopRecording={stopFileRecording}
+                />
+              )}
             </div>
             <div className="flex gap-2">
               {isLoading && (
