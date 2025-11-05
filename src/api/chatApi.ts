@@ -90,8 +90,12 @@ export const chatApi = {
         return response.data.chats || [];
     },
 
-    getMessagesByChat: async (chatId: string): Promise<Message[]> => {
-        const response = await apiClient.get<MessageListResponse>(`/v1/messages/chat/${chatId}`);
+    getMessagesByChat: async (chatId: string, company_id: number, area_id: number): Promise<Message[]> => {
+        const response = await apiClient.post<MessageListResponse>('/v1/messages/chat', {
+            chat_id: chatId,
+            company_id,
+            area_id
+        });
         return response.data.messages;
     },
 

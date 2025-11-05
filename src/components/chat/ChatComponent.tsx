@@ -28,7 +28,11 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
   const transcribeProvider = import.meta.env.VITE_TRANSCRIBE_PROVIDER;
 
   // Get messages from TanStack Query cache
-  const { data: messages, isLoading: isLoadingMessages, error: errorMessages } = useChatMessages(chatContext.chat_id);
+  const { data: messages, isLoading: isLoadingMessages, error: errorMessages } = useChatMessages(
+    chatContext.chat_id,
+    chatContext.company_id,
+    chatContext.area_id
+  );
 
   // Get streaming functions
   const { isLoading, streamingMessageId, searchVectorial, searchVectorialSQL, cancelMessage, currentChatId } = useChatStream();
