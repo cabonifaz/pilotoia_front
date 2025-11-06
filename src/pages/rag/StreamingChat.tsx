@@ -167,7 +167,7 @@ const StreamingChat = () => {
 
 
         {/* Chat Section */}
-        <div className="flex-1 flex flex-col px-8 pb-8 overflow-hidden min-h-0 h-full">
+        <div className="flex-1 flex flex-col pb-8 pl-8 pt-8 overflow-hidden min-h-0 h-full">
           <div className="flex-1 bg-background rounded-lg overflow-hidden min-h-0 h-full">
             <ChatComponent
               aiConfig={aiConfig}
@@ -180,7 +180,7 @@ const StreamingChat = () => {
       </div>
 
       {/* Header with Settings Button */}
-      <div className="flex items-center justify-end px-8 py-4 flex-shrink-0">
+      <div className="flex items-center justify-start pl-8 pr-2 py-4 flex-shrink-0">
         {user?.id_tipo_rol !== 3 && (
           <Button
             onClick={() => setIsConfigSidebarOpen(true)}

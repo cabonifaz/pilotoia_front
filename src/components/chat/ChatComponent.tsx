@@ -184,7 +184,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
       >
 <div className="h-full flex flex-col">
   {/* Área de mensajes con scroll */}
-  <div className="flex-1 min-h-0 overflow-hidden mb-4">
+  <div className="flex-1 min-h-0 overflow-hidden">
     <Card className="h-full overflow-hidden border-2 shadow-lg bg-card/50">
       <CardContent className="h-full overflow-y-auto p-4" onScroll={handleScroll}>
         {isLoadingMessages ? (
