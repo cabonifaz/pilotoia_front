@@ -55,9 +55,8 @@ export const QueryInputSection = ({ company, onOpenConfigSidebar }: QueryInputSe
   }, [selectedAction, onSearchVectorial, onSearchVectorialSQL]);
 
   return (
-    <div className="border-t p-4">
+    <div className="p-4">
       <div className="flex gap-2 items-end">
-        {/* Settings Button */}
         {!isLoading && onOpenConfigSidebar && (
           <Button
             type="button"
@@ -70,8 +69,6 @@ export const QueryInputSection = ({ company, onOpenConfigSidebar }: QueryInputSe
             <Settings className="h-5 w-5 text-primary" />
           </Button>
         )}
-
-        {/* Input with Transcribe Buttons and Command Menu */}
         <div className="relative flex-1">
           {/* Command Menu (Left side inside textarea) */}
           {!isLoading && (
@@ -93,8 +90,6 @@ export const QueryInputSection = ({ company, onOpenConfigSidebar }: QueryInputSe
               }
             }}
           />
-
-          {/* Stop Button (Right side inside textarea when loading) */}
           {isLoading && (
             <Button
               onClick={onCancel}
@@ -106,8 +101,6 @@ export const QueryInputSection = ({ company, onOpenConfigSidebar }: QueryInputSe
               <Square className="w-4 h-4" />
             </Button>
           )}
-
-          {/* Transcribe Buttons (Right side when not loading) */}
           {!isLoading && (
             <>
               {transcribeProvider === 'aws' ? (
