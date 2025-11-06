@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, CardContent } from '@/components/shadcn/card';
 import { useQuery } from '@tanstack/react-query';
 import { useChatStream } from '../../hooks/useChatStream';
 import { useChatMessages } from '../../hooks/useChatMessages';
