@@ -1,6 +1,7 @@
 import { memo, useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { User, Bot } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
 import { Badge } from '@/components/shadcn/badge';
@@ -173,10 +174,10 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
     return 'AI';
   };
 
-  // Get emoji based on sender
-  const getEmoji = () => {
-    if (message.sender === 0) return '👤';
-    else return '🤖';
+  // Get icon based on sender
+  const getIcon = () => {
+    if (message.sender === 0) return <User className="h-4 w-4" />;
+    else return <Bot className="h-4 w-4" />;
   };
 
   // Sender 0 (user) = right side, all others = left side
@@ -184,18 +185,18 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
 
   return (
   <div className={`mb-6 ${isUserMessage ? 'flex justify-end' : 'flex justify-start'}`}>
-    <Card className={`max-w-[80%] border-2 ${isUserMessage ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted border-muted-foreground'}`}>
+    <Card className={`max-w-[80%] border-0 shadow-none ${isUserMessage ? 'bg-muted' : 'bg-background'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2 text-xs">
           <Avatar className="h-6 w-6">
             <AvatarFallback className="text-xs">
-              {getEmoji()}
+              {getIcon()}
             </AvatarFallback>
           </Avatar>
           <span className="font-medium">
             {getDisplayName()}
           </span>
-          <Badge variant={isUserMessage ? 'default' : 'outline'} className="text-xs">
+          <Badge variant={isUserMessage ? 'secondary' : 'outline'} className="text-xs">
             {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Badge>
         </div>

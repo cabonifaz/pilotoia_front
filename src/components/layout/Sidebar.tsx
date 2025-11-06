@@ -23,7 +23,7 @@ const Sidebar = ({ isStreaming = false }: SidebarProps) => {
 
   return (
     <aside className={cn(
-      "bg-muted/30 border-r border-border flex flex-col transition-all duration-300",
+      "bg-muted border-r border-border flex flex-col transition-all duration-300",
       isCollapsed ? "w-14" : "w-60"
     )}>
       {/* Collapse/Expand Button */}

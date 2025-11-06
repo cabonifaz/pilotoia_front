@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/shadcn/card';
+import { useQuery } from '@tanstack/react-query';
 import { useChatStream } from '../../hooks/useChatStream';
 import { useChatMessages } from '../../hooks/useChatMessages';
 import { useExternalLogin } from '../../hooks/useExternalLogin';
@@ -24,6 +25,11 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const currentMainActionRef = useRef<() => void>(() => {});
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // Get current user data
+  const { data: currentUser } = useQuery({
+    queryKey: ['user', 'current']
+  });
 
   // Get transcription provider from environment
   const transcribeProvider = import.meta.env.VITE_TRANSCRIBE_PROVIDER;
@@ -193,30 +199,38 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
           </div>
         ) : !messages || messages.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="w-full max-w-4xl px-4">
+            <div className="w-full max-w-4xl px-4 flex flex-col gap-3">
+              <div className="flex items-center justify-center mb-2">
+                <img
+                  src="/fractal-logo.svg"
+                  className="h-6 w-auto"
+                  alt="Logo Fractal"
+                />
+              </div>
+              <h3 className="text-3xl font-semibold text-center">
+                Bueno verte, {(currentUser as any)?.nombres || 'Usuario'}
+              </h3>
               <QueryInputSection company={chatContext.company} area={chatContext.area} onOpenConfigSidebar={onOpenConfigSidebar} />
             </div>
           </div>
         ) : (
           <>
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <Card className="h-full overflow-hidden bg-transparent border-none">
-                <CardContent className="h-full overflow-y-auto p-4 bg-transparent" onScroll={handleScroll}>
-                  <div>
-                    {messages?.map(message => (
-                      <MessageBubble
-                        key={message.id}
-                        message={message}
-                        streamingMessageId={streamingMessageId}
-                        user={chatContext.user}
-                      />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
+              <div className="w-full max-w-4xl h-full overflow-y-auto p-4 messages-container" onScroll={handleScroll}>
+                {messages?.map(message => (
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    streamingMessageId={streamingMessageId}
+                    user={chatContext.user}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="flex-shrink-0">
-              <QueryInputSection company={chatContext.company} area={chatContext.area} onOpenConfigSidebar={onOpenConfigSidebar} />
+            <div className="flex-shrink-0 flex justify-center">
+              <div className="w-full max-w-4xl">
+                <QueryInputSection company={chatContext.company} area={chatContext.area} onOpenConfigSidebar={onOpenConfigSidebar} />
+              </div>
             </div>
           </>
         )}

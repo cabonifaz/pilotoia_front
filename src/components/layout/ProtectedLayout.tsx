@@ -14,7 +14,7 @@ const ProtectedLayout = () => {
   }, []);
 
   return (
-  <div className="h-screen bg-muted/30 flex flex-col">
+  <div className="h-screen bg-background flex flex-col">
     <Header isStreaming={isStreaming} />
 
     <div className="flex-1 overflow-hidden flex min-h-0">

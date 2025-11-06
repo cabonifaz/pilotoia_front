@@ -64,13 +64,8 @@ const CompanyAreaDropdown = ({ isDisabled = false }: CompanyAreaDropdownProps) =
     return null;
   }
 
-  // Check if user has multiple company areas and role permissions
+  // Check if user has multiple company areas
   const hasMultipleCompanyAreas = user.company_areas && user.company_areas.length > 1;
-  const isSuperAdmin = user.id_tipo_rol === 1;
-  const isAdmin = user.id_tipo_rol === 2;
-
-  // SuperAdmin and Admin can change areas if they have multiple, User cannot
-  const canChangeCompanyArea = hasMultipleCompanyAreas && (isSuperAdmin || isAdmin);
 
   if (!companyName) {
     return null;
@@ -92,14 +87,14 @@ const CompanyAreaDropdown = ({ isDisabled = false }: CompanyAreaDropdownProps) =
                 <span>{areaName}</span>
               </>
             )}
-            {canChangeCompanyArea && (
+            {hasMultipleCompanyAreas && (
               <ChevronsUpDown className="h-3 w-3" />
             )}
           </div>
         </Button>
       </DropdownMenuTrigger>
 
-      {canChangeCompanyArea && (
+      {hasMultipleCompanyAreas && (
         <DropdownMenuContent align="end" className="w-56">
           {user.company_areas?.map((companyArea: any) => {
             const key = `${companyArea.ID_EMPRESA}-${companyArea.ID_AREA}`;
