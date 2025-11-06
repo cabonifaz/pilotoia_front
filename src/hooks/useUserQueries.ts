@@ -121,6 +121,7 @@ export const useLogoutMutation = () => {
             // Clear sessionStorage
             sessionStorage.removeItem('jwt_token');
             sessionStorage.removeItem('current_chat_id');
+            sessionStorage.removeItem('selected_company_area_ids');
             localStorage.removeItem('token');
             localStorage.removeItem('PILOTOIA_REACT_QUERY_OFFLINE_CACHE');
 
@@ -199,41 +200,46 @@ export const useCompanyAreasQuery = () => {
                 AREA: string;
             }>> }).getCompanyAreas();
 
-            // Update the user cache with fresh company areas
+            // Get current user ONCE at the start
             const currentUser = queryClient.getQueryData(queryKeys.user.current()) as DecodedUserData;
-            if (currentUser) {
-                let actualCompanyArea = currentUser.actual_company_area;
+            if (!currentUser) return companyAreas;
 
-                // If no current selection, check sessionStorage for previously selected company area IDs
-                if (!actualCompanyArea) {
-                    const savedCompanyAreaIds = sessionStorage.getItem('selected_company_area_ids');
-                    if (savedCompanyAreaIds) {
+            // ========= COMPUTE EVERYTHING FIRST (NO CACHE UPDATES YET) =========
+            let actualCompanyArea = currentUser.actual_company_area;
+
+            // If no current selection, determine it now
+            if (!actualCompanyArea) {
+                // Try sessionStorage first
+                const savedCompanyAreaIds = sessionStorage.getItem('selected_company_area_ids');
+                if (savedCompanyAreaIds) {
+                    try {
                         const { idEmpresa, idArea } = JSON.parse(savedCompanyAreaIds);
-                        // Find the matching company area from the fresh list
                         actualCompanyArea = companyAreas.find(
                             ca => ca.ID_EMPRESA === idEmpresa && ca.ID_AREA === idArea
                         ) || null;
+                    } catch (e) {
+                        console.error('Error parsing sessionStorage:', e);
                     }
                 }
 
                 // Fall back to first item if still no selection
-                if (!actualCompanyArea) {
-                    actualCompanyArea = companyAreas[0] || null;
+                if (!actualCompanyArea && companyAreas.length > 0) {
+                    actualCompanyArea = companyAreas[0];
                 }
-
-                const updatedUser = {
-                    ...currentUser,
-                    company_areas: companyAreas,
-                    actual_company_area: actualCompanyArea
-                };
-                queryClient.setQueryData(queryKeys.user.current(), updatedUser);
             }
+
+            // ========= UPDATE CACHE ONCE with complete data =========
+            queryClient.setQueryData(queryKeys.user.current(), {
+                ...currentUser,
+                company_areas: companyAreas,
+                actual_company_area: actualCompanyArea
+            });
 
             return companyAreas;
         },
         enabled: !!user, // Only run if user is authenticated
-        staleTime: 24 * 60 * 60 * 1000, // 24 hours
-        gcTime: 24 * 60 * 60 * 1000, // 24 hours
+        staleTime: 60 * 60 * 1000, // 1 hour
+        gcTime: 2 * 60 * 60 * 1000, // 2 hours
         refetchOnWindowFocus: false,
         retry: 2,
     });
