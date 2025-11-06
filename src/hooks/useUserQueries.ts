@@ -280,3 +280,26 @@ export const useInvalidateUserChats = () => {
         queryClient.invalidateQueries({ queryKey: ['user', 'chats'] });
     };
 };
+
+// Hook to change company area
+export const useChangeCompanyArea = () => {
+    const queryClient = useQueryClient();
+
+    return (selectedCompanyArea: any) => {
+        const currentUserData = queryClient.getQueryData(queryKeys.user.current()) as any;
+
+        if (currentUserData) {
+            // Save to sessionStorage FIRST
+            sessionStorage.setItem('selected_company_area_ids', JSON.stringify({
+                idEmpresa: selectedCompanyArea.ID_EMPRESA,
+                idArea: selectedCompanyArea.ID_AREA
+            }));
+
+            // Update cache ONCE with new company area
+            queryClient.setQueryData(queryKeys.user.current(), {
+                ...currentUserData,
+                actual_company_area: selectedCompanyArea
+            });
+        }
+    };
+};

@@ -225,6 +225,7 @@ export const ChatListSidebar = ({ isStreaming = false, isCollapsed = false }: Ch
                         <ChatMenu
                           chatId={chat.ID_CHAT}
                           isDisabled={isStreaming}
+                          isSelected={isSelected}
                           onChatDeleted={handleChatDeleted}
                           onRenameClick={() => handleRenameStart(chat.ID_CHAT, chat.TITULO || '')}
                         />

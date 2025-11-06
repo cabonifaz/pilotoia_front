@@ -7,8 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/shadcn/dropdown-menu';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
-import { useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '../../lib/queryClient';
+import { useChangeCompanyArea } from '../../hooks/useUserQueries';
 import { toast } from '../../hooks/use-toast';
 
 interface CompanyAreaDropdownProps {
@@ -17,7 +16,7 @@ interface CompanyAreaDropdownProps {
 
 const CompanyAreaDropdown = ({ isDisabled = false }: CompanyAreaDropdownProps) => {
   const { user } = useQueryAuthContext();
-  const queryClient = useQueryClient();
+  const changeCompanyArea = useChangeCompanyArea();
 
   // Get actual company and area info
   const actualCompanyArea = (user as any)?.actual_company_area;
@@ -27,24 +26,9 @@ const CompanyAreaDropdown = ({ isDisabled = false }: CompanyAreaDropdownProps) =
   const currentKey = actualCompanyArea ?
     `${actualCompanyArea.ID_EMPRESA}-${actualCompanyArea.ID_AREA}` : '';
 
-  const handleCompanyAreaChange = async (selectedCompanyArea: any) => {
+  const handleCompanyAreaChange = (selectedCompanyArea: any) => {
     try {
-      const currentUserData = queryClient.getQueryData(queryKeys.user.current()) as any;
-
-      if (currentUserData) {
-        const updatedUserData = {
-          ...currentUserData,
-          actual_company_area: selectedCompanyArea
-        };
-        // Update the cache with the new company area (optimistic update)
-        queryClient.setQueryData(queryKeys.user.current(), updatedUserData);
-
-        // Save only the IDs to sessionStorage for persistence across page reloads
-        sessionStorage.setItem('selected_company_area_ids', JSON.stringify({
-          idEmpresa: selectedCompanyArea.ID_EMPRESA,
-          idArea: selectedCompanyArea.ID_AREA
-        }));
-      }
+      changeCompanyArea(selectedCompanyArea);
 
       toast({
         title: "Éxito",
