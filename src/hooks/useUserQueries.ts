@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/authApi';
 import { chatApi } from '../api/chatApi';
-import type { LoginRequest, LoginResponse } from '../types/auth';
+import type { LoginRequest, LoginResponse, DecodedUserData } from '../types/auth';
 import { queryKeys, clearUserCache } from '../lib/queryClient';
 import { toast } from './use-toast';
-import JWTUtils, { type DecodedUserData } from '../utils/jwtUtils';
+import JWTUtils from '../utils/jwtUtils';
 
 // Custom hook for user authentication state
 export const useUserQuery = () => {
+    const queryClient = useQueryClient();
+
     return useQuery({
         queryKey: queryKeys.user.current(),
         queryFn: async (): Promise<DecodedUserData | null> => {
@@ -16,9 +18,21 @@ export const useUserQuery = () => {
             if (!token) {
                 return null;
             }
-            
+
             // Decode JWT to get user data
             const userData = JWTUtils.decodeToken(token);
+
+            // Preserve company_areas and actual_company_area from existing cache
+            // This prevents wiping out data populated by useCompanyAreasQuery
+            const existingData = queryClient.getQueryData(queryKeys.user.current()) as any;
+            if (existingData && userData) {
+                return {
+                    ...userData,
+                    company_areas: existingData.company_areas || [],
+                    actual_company_area: existingData.actual_company_area || null
+                };
+            }
+
             return userData;
         },
         staleTime: 24 * 60 * 60 * 1000, // Consider fresh for 8 hours (match JWT expiration)
@@ -101,14 +115,14 @@ export const useLoginMutation = () => {
 // Logout mutation hook
 export const useLogoutMutation = () => {
     const queryClient = useQueryClient();
-    
+
     return useMutation({
         mutationFn: async (userId?: number): Promise<void> => {
             if (userId) {
                 await authApi.logout(userId);
             }
         },
-        onSettled: () => {
+        onSuccess: () => {
             // Clear TanStack Query cache
             clearUserCache();
 
@@ -121,6 +135,7 @@ export const useLogoutMutation = () => {
             // Clear sessionStorage
             sessionStorage.removeItem('jwt_token');
             sessionStorage.removeItem('current_chat_id');
+            sessionStorage.removeItem('selected_company_area_ids');
             localStorage.removeItem('token');
             localStorage.removeItem('PILOTOIA_REACT_QUERY_OFFLINE_CACHE');
 
@@ -131,14 +146,17 @@ export const useLogoutMutation = () => {
                 variant: "success"
             });
 
-            // Redirect to login page
-            setTimeout(() => {
-                window.location.href = '/#/';
-            }, 1000);
+            // Redirect to login page immediately after logout completes
+            window.location.href = '/#/';
         },
         onError: (error: Error) => {
             console.error('Logout error:', error);
-            // Note: onSettled will still run, so user will be logged out locally
+            // Don't clear user data on error, but show error message
+            toast({
+                title: "Error al cerrar sesión",
+                description: "Hubo un problema al cerrar sesión en el servidor",
+                variant: "destructive"
+            });
         },
     });
 };
@@ -196,26 +214,56 @@ export const useCompanyAreasQuery = () => {
                 AREA: string;
             }>> }).getCompanyAreas();
 
-            // Update the user cache with fresh company areas
+            // Get current user ONCE at the start
             const currentUser = queryClient.getQueryData(queryKeys.user.current()) as DecodedUserData;
-            if (currentUser) {
-                const updatedUser = {
-                    ...currentUser,
-                    company_areas: companyAreas,
-                    // Only set default area if actual_company_area is null, otherwise preserve user's selection
-                    actual_company_area: currentUser.actual_company_area || companyAreas[0] || null
-                };
-                queryClient.setQueryData(queryKeys.user.current(), updatedUser);
+            if (!currentUser) return companyAreas;
 
-                // Trigger user chats fetch after company areas are loaded
-                queryClient.invalidateQueries({ queryKey: ['user', 'chats'] });
+            // ========= COMPUTE EVERYTHING FIRST (NO CACHE UPDATES YET) =========
+            let actualCompanyArea = currentUser.actual_company_area;
+
+            // Verify current selection is still valid (exists in new companyAreas)
+            if (actualCompanyArea) {
+                const stillExists = companyAreas.find(
+                    ca => ca.ID_EMPRESA === actualCompanyArea!.ID_EMPRESA && ca.ID_AREA === actualCompanyArea!.ID_AREA
+                );
+                if (!stillExists) {
+                    actualCompanyArea = null; // Current selection no longer valid
+                }
             }
+
+            // If no current selection or it's invalid, determine it now
+            if (!actualCompanyArea) {
+                // Try sessionStorage first
+                const savedCompanyAreaIds = sessionStorage.getItem('selected_company_area_ids');
+                if (savedCompanyAreaIds) {
+                    try {
+                        const { idEmpresa, idArea } = JSON.parse(savedCompanyAreaIds);
+                        actualCompanyArea = companyAreas.find(
+                            ca => ca.ID_EMPRESA === idEmpresa && ca.ID_AREA === idArea
+                        ) || null;
+                    } catch (e) {
+                        console.error('Error parsing sessionStorage:', e);
+                    }
+                }
+
+                // Fall back to first item if still no selection
+                if (!actualCompanyArea && companyAreas.length > 0) {
+                    actualCompanyArea = companyAreas[0];
+                }
+            }
+
+            // ========= UPDATE CACHE ONCE with complete data =========
+            queryClient.setQueryData(queryKeys.user.current(), {
+                ...currentUser,
+                company_areas: companyAreas,
+                actual_company_area: actualCompanyArea
+            });
 
             return companyAreas;
         },
         enabled: !!user, // Only run if user is authenticated
-        staleTime: 24 * 60 * 60 * 1000, // 24 hours
-        gcTime: 24 * 60 * 60 * 1000, // 24 hours
+        staleTime: 60 * 60 * 1000, // 1 hour
+        gcTime: 2 * 60 * 60 * 1000, // 2 hours
         refetchOnWindowFocus: false,
         retry: 2,
     });
@@ -231,7 +279,7 @@ export const useUserChatsQuery = () => {
             const chats = await chatApi.getUserChats();
             return chats;
         },
-        enabled: !!user, // Only run if user is authenticated
+        enabled: !!user && !!(user as any)?.actual_company_area, // Wait for user and actual_company_area
         staleTime: 5 * 60 * 1000, // 5 minutes
         gcTime: 10 * 60 * 1000, // 10 minutes
         refetchOnWindowFocus: true,
@@ -254,5 +302,28 @@ export const useInvalidateUserChats = () => {
 
     return () => {
         queryClient.invalidateQueries({ queryKey: ['user', 'chats'] });
+    };
+};
+
+// Hook to change company area
+export const useChangeCompanyArea = () => {
+    const queryClient = useQueryClient();
+
+    return (selectedCompanyArea: any) => {
+        const currentUserData = queryClient.getQueryData(queryKeys.user.current()) as any;
+
+        if (currentUserData) {
+            // Save to sessionStorage FIRST
+            sessionStorage.setItem('selected_company_area_ids', JSON.stringify({
+                idEmpresa: selectedCompanyArea.ID_EMPRESA,
+                idArea: selectedCompanyArea.ID_AREA
+            }));
+
+            // Update cache ONCE with new company area
+            queryClient.setQueryData(queryKeys.user.current(), {
+                ...currentUserData,
+                actual_company_area: selectedCompanyArea
+            });
+        }
     };
 };

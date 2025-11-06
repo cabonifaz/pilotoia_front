@@ -1,86 +1,75 @@
 import apiClient from './apiClient';
-import multipartClient from './multipartClient';
-import { createWSConnection } from './wsClient';
+import type { PresignedUrlRequest, PresignedUrlResponse, KnowledgeLogsResponse } from '@/types/upload';
 
-export interface UploadResponse {
-  task_id: string;
-  message: string;
-  files_uploaded: number;
-  status: string;
-}
+export const getPresignedUrls = async (
+  request: PresignedUrlRequest
+): Promise<PresignedUrlResponse[]> => {
+  const response = await apiClient.post<PresignedUrlResponse[]>(
+    '/v1/uploads/get_presigned_urls',
+    request
+  );
+  return response.data;
+};
 
-export interface TaskStatus {
-  task_id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  company_name: string;
-  area_name: string;
-  created_at: string;
-  started_at?: string;
-  completed_at?: string;
-  error_message?: string;
-  files_processed: number;
-  total_files: number;
-}
+export const getCompanyUploads = async (
+  companyId: number,
+  limit: number = 100,
+  areaId: number
+): Promise<KnowledgeLogsResponse[]> => {
+  const response = await apiClient.post<KnowledgeLogsResponse[]>(
+    '/v1/uploads/get_company_uploads',
+    {
+      company_id: companyId,
+      limit: limit,
+      area_id: areaId
+    }
+  );
+  return response.data;
+};
 
-export interface ProcessingLogMessage {
-  type: 'log' | 'status' | 'error';
-  message: string;
-  timestamp?: string;
-  task_id?: string;
-  status?: 'pending' | 'running' | 'completed' | 'failed';
-}
+export const uploadPdfToS3 = async (
+  presignedUrl: string,
+  file: File
+): Promise<void> => {
+  // Use fetch for S3 presigned URL upload (not axios)
+  // S3 presigned URLs require specific headers
+  const response = await fetch(presignedUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/pdf',
+    },
+    body: file,
+  });
 
-// Upload files for processing
-export const uploadFiles = async (
+  if (!response.ok) {
+    throw new Error(`Failed to upload file to S3: ${response.statusText}`);
+  }
+};
+
+export const uploadMultiplePdfs = async (
   files: File[],
-  companyName: string,
-  areaName: string
-): Promise<UploadResponse> => {
-  const formData = new FormData();
+  companyId: number,
+  areaId: number,
+  userId: number,
+  embeddingModel: string
+): Promise<PresignedUrlResponse[]> => {
+  // Get presigned URLs for all files
+  const request: PresignedUrlRequest = {
+    company_id: companyId,
+    area_id: areaId,
+    user_id: userId,
+    embedding_model: embeddingModel,
+    pdf_keys: files.map(file => file.name),
+  };
 
-  files.forEach(file => {
-    formData.append('files', file);
+  const presignedResponses = await getPresignedUrls(request);
+
+  // Upload each file to S3 using its presigned URL
+  const uploadPromises = presignedResponses.map((response, index) => {
+    return uploadPdfToS3(response.presigned_url, files[index]);
   });
-  formData.append('company_name', companyName);
-  formData.append('area_name', areaName);
 
-  const response = await multipartClient.post('/v1/processing/upload', formData);
+  await Promise.all(uploadPromises);
 
-  return response.data;
-};
-
-// Start processing uploaded files
-export const startProcessing = async (taskId: string): Promise<{ message: string; task_id: string }> => {
-  const response = await apiClient.post(`/v1/processing/start/${taskId}`);
-  return response.data;
-};
-
-// Get task status
-export const getTaskStatus = async (taskId: string): Promise<TaskStatus> => {
-  const response = await apiClient.get(`/v1/processing/tasks/${taskId}`);
-  return response.data;
-};
-
-// Get all tasks
-export const getAllTasks = async (): Promise<{ tasks: Record<string, TaskStatus> }> => {
-  const response = await apiClient.get('/v1/processing/tasks');
-  return response.data;
-};
-
-// WebSocket connection for real-time logs using centralized client
-export const createWebSocketConnection = (
-  taskId: string,
-  onMessage: (message: ProcessingLogMessage) => void,
-  onError?: (error: Event) => void,
-  onClose?: (event: CloseEvent) => void,
-  onOpen?: () => void
-): WebSocket => {
-  return createWSConnection({
-    endpoint: '/v1/processing/ws/logs',
-    params: { task_id: taskId },
-    onMessage,
-    onError,
-    onClose,
-    onOpen
-  });
+  return presignedResponses;
 };

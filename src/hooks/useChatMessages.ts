@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react';
 
 const MAX_RECENT_CHATS = 10;
 
-export const useChatMessages = (chatId: number | null | undefined) => {
+export const useChatMessages = (chatId: number | null | undefined, company_id: number, area_id: number) => {
   const queryClient = useQueryClient();
   const recentChatsRef = useRef<(number | null)[]>([]);
 
@@ -41,7 +41,7 @@ export const useChatMessages = (chatId: number | null | undefined) => {
       if (!chatId) {
         return Promise.resolve([]);
       }
-      return chatApi.getMessagesByChat(chatId.toString());
+      return chatApi.getMessagesByChat(chatId.toString(), company_id, area_id);
     },
     enabled: !!chatId, // The query will only run if chatId is not null or undefined
     staleTime: 1000 * 60 * 60, // 1 hour

@@ -41,8 +41,8 @@ export type StreamEvent = ChunkEvent | CompleteEvent | ErrorEvent | AssistantMet
 interface UseChatStreamReturn {
   isLoading: boolean;
   streamingMessageId: string | null;
-  sendMessage: (message: string, config: AIConfig, chatContext: ChatContext) => Promise<void>;
-  sendAgentMessage: (message: string, config: AIConfig, chatContext: ChatContext, token: string) => Promise<void>;
+  searchVectorial: (message: string, config: AIConfig, chatContext: ChatContext) => Promise<void>;
+  searchVectorialSQL: (message: string, config: AIConfig, chatContext: ChatContext, token: string) => Promise<void>;
   cancelMessage: () => void;
   currentChatId: number | null;
 }
@@ -197,7 +197,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     };
   }, []);
 
-  const sendMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, chatContext: ChatContext) => {
+  const searchVectorial = useCallback(async (messageContent: string, aiConfig: AIConfig, chatContext: ChatContext) => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
@@ -390,7 +390,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     }
   }, [updateStreamingContent, addMessagesToCache, updateMessageInCache, streamingMessageId]);
 
-  const sendAgentMessage = useCallback(async (messageContent: string, aiConfig: AIConfig, chatContext: ChatContext, token: string) => {
+  const searchVectorialSQL = useCallback(async (messageContent: string, aiConfig: AIConfig, chatContext: ChatContext, token: string) => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
@@ -586,8 +586,8 @@ export const useChatStream = (): UseChatStreamReturn => {
   return {
     isLoading,
     streamingMessageId,
-    sendMessage,
-    sendAgentMessage,
+    searchVectorial,
+    searchVectorialSQL,
     cancelMessage,
     currentChatId
   };

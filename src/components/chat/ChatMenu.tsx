@@ -21,6 +21,7 @@ import { useQueryClient } from '@tanstack/react-query';
 interface ChatMenuProps {
   chatId: number;
   isDisabled?: boolean;
+  isSelected?: boolean;
   onChatDeleted?: (chatId: number) => void;
   onRenameClick?: () => void;
 }
@@ -28,6 +29,7 @@ interface ChatMenuProps {
 export const ChatMenu: React.FC<ChatMenuProps> = ({
   chatId,
   isDisabled = false,
+  isSelected = false,
   onChatDeleted,
   onRenameClick
 }) => {
@@ -97,9 +99,9 @@ export const ChatMenu: React.FC<ChatMenuProps> = ({
       <DropdownMenu>
         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
           <Button
-            variant="ghost"
+            variant={isSelected ? 'default' : 'ghost'}
             size="sm"
-            className="h-8 w-8 p-0 hover:bg-gray-200"
+            className="h-8 w-8 p-0"
             disabled={isDisabled}
           >
             <MoreVertical size={16} />
