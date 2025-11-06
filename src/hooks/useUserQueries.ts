@@ -8,6 +8,8 @@ import JWTUtils from '../utils/jwtUtils';
 
 // Custom hook for user authentication state
 export const useUserQuery = () => {
+    const queryClient = useQueryClient();
+
     return useQuery({
         queryKey: queryKeys.user.current(),
         queryFn: async (): Promise<DecodedUserData | null> => {
@@ -16,9 +18,21 @@ export const useUserQuery = () => {
             if (!token) {
                 return null;
             }
-            
+
             // Decode JWT to get user data
             const userData = JWTUtils.decodeToken(token);
+
+            // Preserve company_areas and actual_company_area from existing cache
+            // This prevents wiping out data populated by useCompanyAreasQuery
+            const existingData = queryClient.getQueryData(queryKeys.user.current()) as any;
+            if (existingData && userData) {
+                return {
+                    ...userData,
+                    company_areas: existingData.company_areas || [],
+                    actual_company_area: existingData.actual_company_area || null
+                };
+            }
+
             return userData;
         },
         staleTime: 24 * 60 * 60 * 1000, // Consider fresh for 8 hours (match JWT expiration)
@@ -207,7 +221,17 @@ export const useCompanyAreasQuery = () => {
             // ========= COMPUTE EVERYTHING FIRST (NO CACHE UPDATES YET) =========
             let actualCompanyArea = currentUser.actual_company_area;
 
-            // If no current selection, determine it now
+            // Verify current selection is still valid (exists in new companyAreas)
+            if (actualCompanyArea) {
+                const stillExists = companyAreas.find(
+                    ca => ca.ID_EMPRESA === actualCompanyArea!.ID_EMPRESA && ca.ID_AREA === actualCompanyArea!.ID_AREA
+                );
+                if (!stillExists) {
+                    actualCompanyArea = null; // Current selection no longer valid
+                }
+            }
+
+            // If no current selection or it's invalid, determine it now
             if (!actualCompanyArea) {
                 // Try sessionStorage first
                 const savedCompanyAreaIds = sessionStorage.getItem('selected_company_area_ids');
@@ -255,7 +279,7 @@ export const useUserChatsQuery = () => {
             const chats = await chatApi.getUserChats();
             return chats;
         },
-        enabled: !!user, // Only run if user is authenticated
+        enabled: !!user && !!(user as any)?.actual_company_area, // Wait for user and actual_company_area
         staleTime: 5 * 60 * 1000, // 5 minutes
         gcTime: 10 * 60 * 1000, // 10 minutes
         refetchOnWindowFocus: true,
