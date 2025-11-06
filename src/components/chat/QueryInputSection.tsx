@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
-import { Square, Settings } from 'lucide-react';
+import { Square } from 'lucide-react';
 import { VoiceRecordButton } from './VoiceRecordButton';
 import { FileTranscribeButton } from './FileTranscribeButton';
 import { CommandMenu } from './CommandMenu';
@@ -10,10 +10,11 @@ import { useTranscription } from '../../contexts/TranscriptionContext';
 
 interface QueryInputSectionProps {
   company: string;
+  area: string;
   onOpenConfigSidebar?: () => void;
 }
 
-export const QueryInputSection = ({ company, onOpenConfigSidebar }: QueryInputSectionProps) => {
+export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => {
   const currentMainActionRef = useRef<() => void>(() => {});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -57,18 +58,6 @@ export const QueryInputSection = ({ company, onOpenConfigSidebar }: QueryInputSe
   return (
     <div className="p-4">
       <div className="flex gap-2 items-end">
-        {!isLoading && onOpenConfigSidebar && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onOpenConfigSidebar}
-            className="rounded-full hover:bg-transparent"
-            title="Configuración"
-          >
-            <Settings className="h-5 w-5 text-primary" />
-          </Button>
-        )}
         <div className="relative flex-1">
           {/* Command Menu (Left side inside textarea) */}
           {!isLoading && (
@@ -79,10 +68,10 @@ export const QueryInputSection = ({ company, onOpenConfigSidebar }: QueryInputSe
             ref={textareaRef}
             value={userQuery}
             onChange={handleInput}
-            placeholder={`Escribe tu consulta sobre ${company}...`}
+            placeholder={`Escribe tu consulta sobre ${company} • ${area}...`}
             disabled={isLoading}
             rows={1}
-            className="resize-none pr-9 pl-9 min-h-[2.5rem] max-h-[5rem] overflow-y-auto !border-1 !border-primary rounded-lg focus:!ring-0 focus:!border-1 focus:!border-primary"
+            className="resize-none pr-9 pl-9 min-h-[2.5rem] max-h-[5rem] overflow-y-auto !border-1 !border-primary rounded-3xl focus:!ring-0 focus:!border-1 focus:!border-primary"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();

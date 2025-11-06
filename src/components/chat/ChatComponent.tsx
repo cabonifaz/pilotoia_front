@@ -194,7 +194,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
         ) : !messages || messages.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="w-full max-w-4xl px-4">
-              <QueryInputSection company={chatContext.company} onOpenConfigSidebar={onOpenConfigSidebar} />
+              <QueryInputSection company={chatContext.company} area={chatContext.area} onOpenConfigSidebar={onOpenConfigSidebar} />
             </div>
           </div>
         ) : (
@@ -216,7 +216,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
               </Card>
             </div>
             <div className="flex-shrink-0">
-              <QueryInputSection company={chatContext.company} onOpenConfigSidebar={onOpenConfigSidebar} />
+              <QueryInputSection company={chatContext.company} area={chatContext.area} onOpenConfigSidebar={onOpenConfigSidebar} />
             </div>
           </>
         )}

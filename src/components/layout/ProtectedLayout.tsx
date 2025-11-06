@@ -17,12 +17,12 @@ const ProtectedLayout = () => {
   <div className="h-screen bg-muted/30 flex flex-col">
     <Header isStreaming={isStreaming} />
 
-    <div className="flex-1 overflow-hidden flex min-h-0"> {/* ← agregar min-h-0 */}
+    <div className="flex-1 overflow-hidden flex min-h-0">
       {isRagRoute ? (
         <ChatStateProvider>
           <Sidebar isStreaming={isStreaming} />
 
-          <div className="flex-1 overflow-hidden min-h-0"> {/* ← agregar min-h-0 */}
+          <div className="flex-1 overflow-hidden min-h-0 bg-background">
             <Outlet context={{
               onStreamingStateChange: handleStreamingStateChange,
             }} />
@@ -32,7 +32,7 @@ const ProtectedLayout = () => {
         <>
           <Sidebar isStreaming={isStreaming} />
 
-          <div className="flex-1 overflow-hidden min-h-0"> {/* ← agregar min-h-0 */}
+          <div className="flex-1 overflow-hidden min-h-0 bg-background">
             <Outlet context={{
               onStreamingStateChange: handleStreamingStateChange,
             }} />
