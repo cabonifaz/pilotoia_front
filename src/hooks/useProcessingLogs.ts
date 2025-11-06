@@ -1,96 +1,29 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { toast } from '@/hooks/use-toast';
-import { createWebSocketConnection, type ProcessingLogMessage } from '@/api/uploadApi';
+import { useQuery } from '@tanstack/react-query';
+import { getCompanyUploads } from '@/api/uploadApi';
+import { useCurrentUser } from '@/hooks/useUserQueries';
+import type { KnowledgeLogsResponse } from '@/types/upload';
 
-export const useProcessingLogs = () => {
-  const [logs, setLogs] = useState<ProcessingLogMessage[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const websocketRef = useRef<WebSocket | null>(null);
+interface UseProcessingLogsOptions {
+  limit?: number;
+  enabled?: boolean;
+  refetchInterval?: number;
+}
 
-  const addLog = useCallback((log: ProcessingLogMessage) => {
-    setLogs(prev => [...prev, log]);
-  }, []);
+export const useProcessingLogs = ({
+  limit = 100,
+  enabled = true,
+  refetchInterval
+}: UseProcessingLogsOptions) => {
+  // Get company_id from current user's actual_company_area
+  const { user } = useCurrentUser();
+  const companyId = user?.actual_company_area?.ID_EMPRESA;
+  const areaId = user?.actual_company_area?.ID_AREA;
 
-  const clearLogs = useCallback(() => {
-    setLogs([]);
-  }, []);
-
-  const connectToTask = useCallback((
-    taskId: string,
-    onStatusChange?: (status: 'pending' | 'running' | 'completed' | 'failed') => void
-  ) => {
-    // Close existing connection
-    if (websocketRef.current) {
-      websocketRef.current.close();
-    }
-
-    clearLogs();
-
-    const ws = createWebSocketConnection(
-      taskId,
-      (message: ProcessingLogMessage) => {
-        addLog(message);
-        
-        // Handle status changes
-        if (message.type === 'status' && message.status && onStatusChange) {
-          onStatusChange(message.status);
-        }
-      },
-      (error) => {
-        console.error('WebSocket error:', error);
-        toast({
-          title: "Error de conexión",
-          description: "Error en la conexión de logs en tiempo real",
-          variant: "destructive"
-        });
-        setIsConnected(false);
-      },
-      (event) => {
-        setIsConnected(false);
-        
-        // Show completion message based on close reason
-        if (event.code === 1000 && event.reason === 'Task completed') {
-          toast({
-            title: "Procesamiento finalizado",
-            description: "La conexión de logs se ha cerrado correctamente",
-            variant: "default"
-          });
-        }
-      }
-    );
-
-    ws.onopen = () => {
-      setIsConnected(true);
-    };
-
-    websocketRef.current = ws;
-    return ws;
-  }, [addLog, clearLogs]);
-
-  const disconnect = useCallback(() => {
-    if (websocketRef.current) {
-      websocketRef.current.close();
-      websocketRef.current = null;
-    }
-    setIsConnected(false);
-  }, []);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      disconnect();
-    };
-  }, [disconnect]);
-
-  return {
-    // State
-    logs,
-    isConnected,
-    
-    // Actions
-    connectToTask,
-    disconnect,
-    clearLogs,
-    addLog,
-  };
+  return useQuery<KnowledgeLogsResponse[], Error>({
+    queryKey: ['company-uploads', companyId, limit],
+    queryFn: () => getCompanyUploads(companyId!, limit, areaId!),
+    enabled: enabled && !!companyId && !!areaId,
+    refetchInterval,
+    staleTime: 5 * 60 * 1000,
+  });
 };

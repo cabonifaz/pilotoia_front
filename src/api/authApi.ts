@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import type { LoginRequest, LoginResponse, LogoutResponse, UserInfo } from '@/types/auth';
+import type { LoginRequest, LoginResponse, LogoutResponse } from '@/types/auth';
 
 export const authApi = {
     login: async (credentials: LoginRequest): Promise<LoginResponse> => {
@@ -22,11 +22,6 @@ export const authApi = {
             // Clear local session even if API call fails
             authApi.clearUserSession();
         }
-    },
-
-    getUserInfo: async (userId: number): Promise<UserInfo> => {
-        const response = await apiClient.get<UserInfo>(`/v1/auth/user/${userId}`);
-        return response.data;
     },
 
     getCompanyAreas: async (): Promise<any[]> => {

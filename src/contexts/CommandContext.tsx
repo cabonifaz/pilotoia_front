@@ -1,0 +1,111 @@
+import { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import type { ReactNode } from 'react';
+
+interface CommandContextType {
+  // Command selection
+  selectedAction: 'vectorial' | 'vectorial+sql' | 'login';
+  onSelectedActionChange: (action: 'vectorial' | 'vectorial+sql' | 'login') => void;
+
+  // Command execution
+  onSearchVectorial: () => void;
+  onSearchVectorialSQL: () => void;
+  onCancel: () => void;
+  onMainActionChange: (action: () => void) => void;
+
+  // UI state
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  token?: string;
+
+  // User input
+  userQuery: string;
+  onQueryChange: (query: string) => void;
+}
+
+const CommandContext = createContext<CommandContextType | undefined>(undefined);
+
+interface CommandProviderProps {
+  children: ReactNode;
+
+  // User input
+  userQuery: string;
+  onQueryChange: (query: string) => void;
+
+  // Loading state
+  isLoading: boolean;
+  onCancel: () => void;
+
+  // Command execution
+  onSearchVectorial: () => void;
+  onSearchVectorialSQL: () => void;
+
+  // Auth
+  isAuthenticated: boolean;
+  token?: string;
+
+  // Main action callback
+  onMainActionChange: (action: () => void) => void;
+}
+
+export const CommandProvider = ({
+  children,
+  userQuery,
+  onQueryChange,
+  isLoading,
+  onCancel,
+  onSearchVectorial,
+  onSearchVectorialSQL,
+  isAuthenticated,
+  token,
+  onMainActionChange,
+}: CommandProviderProps) => {
+  const [selectedAction, setSelectedAction] = useState<'vectorial' | 'vectorial+sql' | 'login'>('vectorial');
+
+  // Create main action handler based on selectedAction
+  useEffect(() => {
+    const handleMainButtonClick = () => {
+      if (selectedAction === 'vectorial') {
+        onSearchVectorial();
+      } /*else if (selectedAction === 'vectorial+sql') {
+        onSearchVectorialSQL();
+      }
+      else if (selectedAction === 'login') {
+          handle login
+      }*/
+    };
+
+    onMainActionChange(handleMainButtonClick);
+  }, [selectedAction, isAuthenticated, onSearchVectorial, onSearchVectorialSQL, onMainActionChange]);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo<CommandContextType>(
+    () => ({
+      selectedAction,
+      onSelectedActionChange: setSelectedAction,
+      onSearchVectorial,
+      onSearchVectorialSQL,
+      onCancel,
+      onMainActionChange,
+      isLoading,
+      isAuthenticated,
+      token,
+      userQuery,
+      onQueryChange,
+    }),
+    [selectedAction, onSearchVectorial, onSearchVectorialSQL, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange]
+  );
+
+  return (
+    <CommandContext.Provider value={value}>
+      {children}
+    </CommandContext.Provider>
+  );
+};
+
+export const useCommand = () => {
+  const context = useContext(CommandContext);
+  if (!context) {
+    throw new Error('useCommand must be used within CommandProvider');
+  }
+  return context;
+};
