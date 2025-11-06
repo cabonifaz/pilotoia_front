@@ -182,46 +182,50 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
         onStartRecording={startFileRecording}
         onStopRecording={stopFileRecording}
       >
-        <div className="h-full flex flex-col">
-          {/* Messages Container */}
-          <Card className="flex-1 flex flex-col overflow-hidden border-2 shadow-lg bg-card/50">
-            <CardContent className="flex-1 overflow-y-auto p-4 messages-container min-h-0" onScroll={handleScroll}>
-              {isLoadingMessages ? (
-                <div className="flex items-center justify-center h-full">
-                  <p>Cargando mensajes...</p>
-                </div>
-              ) : errorMessages ? (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-red-500">Error al cargar los mensajes.</p>
-                </div>
-              ) : !messages || messages.length === 0 ? (
-                <div className="flex items-center justify-center h-full">
-                  <Card className="p-8 text-center bg-muted/30 border shadow-md">
-                    <div className="text-6xl mb-4">💬</div>
-                    <h3 className="text-xl font-semibold mb-2">¡Bienvenido al Piloto IA!</h3>
-                    <p className="text-muted-foreground">
-                      Haz tu primera consulta sobre {chatContext.company}
-                    </p>
-                  </Card>
-                </div>
-              ) : (
-                <div>
-                  {messages?.map(message => (
-                    <MessageBubble
-                      key={message.id}
-                      message={message}
-                      streamingMessageId={streamingMessageId}
-                      user={chatContext.user}
-                    />
-                  ))}
-                </div>
-              )}
-            </CardContent>
+<div className="h-full flex flex-col">
+  {/* Área de mensajes con scroll */}
+  <div className="flex-1 min-h-0 overflow-hidden mb-4">
+    <Card className="h-full overflow-hidden border-2 shadow-lg bg-card/50">
+      <CardContent className="h-full overflow-y-auto p-4" onScroll={handleScroll}>
+        {isLoadingMessages ? (
+          <div className="flex items-center justify-center h-full">
+            <p>Cargando mensajes...</p>
+          </div>
+        ) : errorMessages ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-red-500">Error al cargar los mensajes.</p>
+          </div>
+        ) : !messages || messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <Card className="p-8 text-center bg-muted/30 border shadow-md">
+              <div className="text-6xl mb-4">💬</div>
+              <h3 className="text-xl font-semibold mb-2">¡Bienvenido al Piloto IA!</h3>
+              <p className="text-muted-foreground">
+                Haz tu primera consulta sobre {chatContext.company}
+              </p>
+            </Card>
+          </div>
+        ) : (
+          <div>
+            {messages?.map(message => (
+              <MessageBubble
+                key={message.id}
+                message={message}
+                streamingMessageId={streamingMessageId}
+                user={chatContext.user}
+              />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  </div>
 
-            {/* Input Section */}
-            <QueryInputSection company={chatContext.company} onOpenConfigSidebar={onOpenConfigSidebar} />
-          </Card>
-        </div>
+  {/* Input Section - FIJO en la parte inferior */}
+  <div className="flex-shrink-0">
+    <QueryInputSection company={chatContext.company} onOpenConfigSidebar={onOpenConfigSidebar} />
+  </div>
+</div>
       </TranscriptionProvider>
     </CommandProvider>
   );

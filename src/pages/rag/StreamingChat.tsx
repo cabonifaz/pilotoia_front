@@ -157,46 +157,54 @@ const StreamingChat = () => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-2 px-8 py-8 pr-8 h-full">
-      {/* Chat Section */}
-      <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
-        <div className="flex-1 bg-background rounded-lg min-h-0 overflow-hidden">
-          <ChatComponent
-            aiConfig={aiConfig}
-            chatContext={chatContext}
-            onChatIdChange={handleChatIdChange}
-            onStreamingStateChange={handleStreamingStateChange}
-          />
+     <div className="flex flex-1 overflow-hidden min-h-0 h-full">
+      {/* Main Content */}
+      <div
+        className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 min-h-0 ${
+          isConfigSidebarOpen ? 'mr-96' : ''
+        }`}
+      >
+
+
+        {/* Chat Section */}
+        <div className="flex-1 flex flex-col px-8 pb-8 overflow-hidden min-h-0 h-full">
+          <div className="flex-1 bg-background rounded-lg overflow-hidden min-h-0 h-full">
+            <ChatComponent
+              aiConfig={aiConfig}
+              chatContext={chatContext}
+              onChatIdChange={handleChatIdChange}
+              onStreamingStateChange={handleStreamingStateChange}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Right Sidebar Area */}
-      <div className="flex-shrink-0 flex flex-col gap-0 min-h-0">
-        {/* Settings Button */}
+      {/* Header with Settings Button */}
+      <div className="flex items-center justify-end px-8 py-4 flex-shrink-0">
         {user?.id_tipo_rol !== 3 && (
           <Button
             onClick={() => setIsConfigSidebarOpen(true)}
             variant="ghost"
             size="icon"
-            className="rounded-full self-end"
+            className="rounded-full"
             title="Configuración"
           >
             <Settings className="h-5 w-5 text-primary" />
           </Button>
         )}
-
-        {/* Right Sidebar - Config Panel */}
-        {user?.id_tipo_rol !== 3 && (
-          <AIConfigSidebar
-            isOpen={isConfigSidebarOpen}
-            config={aiConfig}
-            chatContext={chatContext}
-            onClose={closeConfigSidebar}
-            onConfigChange={setAiConfig}
-            onChatContextChange={setChatContext}
-          />
-        )}
       </div>
+
+      {/* Right Sidebar - Config Panel */}
+      {user?.id_tipo_rol !== 3 && (
+        <AIConfigSidebar
+          isOpen={isConfigSidebarOpen}
+          config={aiConfig}
+          chatContext={chatContext}
+          onClose={closeConfigSidebar}
+          onConfigChange={setAiConfig}
+          onChatContextChange={setChatContext}
+        />
+      )}
     </div>
   );
 };

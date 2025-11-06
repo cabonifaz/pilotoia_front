@@ -14,34 +14,34 @@ const ProtectedLayout = () => {
   }, []);
 
   return (
-    <div className="h-screen bg-muted/30 flex flex-col">
-      <Header isStreaming={isStreaming} />
+  <div className="h-screen bg-muted/30 flex flex-col">
+    <Header isStreaming={isStreaming} />
 
-      <div className="flex-1 overflow-hidden flex">
-        {isRagRoute ? (
-          <ChatStateProvider>
-            <Sidebar isStreaming={isStreaming} />
+    <div className="flex-1 overflow-hidden flex min-h-0"> {/* ← agregar min-h-0 */}
+      {isRagRoute ? (
+        <ChatStateProvider>
+          <Sidebar isStreaming={isStreaming} />
 
-            <div className="flex-1 overflow-hidden">
-              <Outlet context={{
-                onStreamingStateChange: handleStreamingStateChange,
-              }} />
-            </div>
-          </ChatStateProvider>
-        ) : (
-          <>
-            <Sidebar isStreaming={isStreaming} />
+          <div className="flex-1 overflow-hidden min-h-0"> {/* ← agregar min-h-0 */}
+            <Outlet context={{
+              onStreamingStateChange: handleStreamingStateChange,
+            }} />
+          </div>
+        </ChatStateProvider>
+      ) : (
+        <>
+          <Sidebar isStreaming={isStreaming} />
 
-            <div className="flex-1 overflow-hidden">
-              <Outlet context={{
-                onStreamingStateChange: handleStreamingStateChange,
-              }} />
-            </div>
-          </>
-        )}
-      </div>
+          <div className="flex-1 overflow-hidden min-h-0"> {/* ← agregar min-h-0 */}
+            <Outlet context={{
+              onStreamingStateChange: handleStreamingStateChange,
+            }} />
+          </div>
+        </>
+      )}
     </div>
-  );
+  </div>
+);
 };
 
 export default ProtectedLayout;
