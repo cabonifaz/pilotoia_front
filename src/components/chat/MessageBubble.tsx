@@ -184,7 +184,7 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
 
   return (
   <div className={`mb-6 ${isUserMessage ? 'flex justify-end' : 'flex justify-start'}`}>
-    <Card className={`max-w-[80%] ${isUserMessage ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+    <Card className={`max-w-[80%] border-2 ${isUserMessage ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted border-muted-foreground'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2 text-xs">
           <Avatar className="h-6 w-6">

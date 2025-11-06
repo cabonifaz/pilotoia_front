@@ -157,55 +157,51 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
 
 
   return (
-    <CommandProvider
-      userQuery={userQuery}
-      onQueryChange={setUserQuery}
-      isLoading={isLoading}
-      onCancel={cancelar}
-      isAuthenticated={isAuthenticated}
-      token={token || undefined}
-      onSearchVectorial={chatQuery}
-      onSearchVectorialSQL={agentQuery}
-      onMainActionChange={(action) => {
-        currentMainActionRef.current = action;
-      }}
+  <CommandProvider
+    userQuery={userQuery}
+    onQueryChange={setUserQuery}
+    isLoading={isLoading}
+    onCancel={cancelar}
+    isAuthenticated={isAuthenticated}
+    token={token || undefined}
+    onSearchVectorial={chatQuery}
+    onSearchVectorialSQL={agentQuery}
+    onMainActionChange={(action) => {
+      currentMainActionRef.current = action;
+    }}
+  >
+    <TranscriptionProvider
+      transcribeProvider={transcribeProvider}
+      isRecording={isRecording}
+      isConnecting={isConnecting}
+      onMicrophoneClick={handleMicrophoneClick}
+      isFileRecording={isFileRecording}
+      isFileTranscribing={isFileTranscribing}
+      onPrepareRecording={prepareFileRecording}
+      onCancelPrepareRecording={cancelPrepareFileRecording}
+      onStartRecording={startFileRecording}
+      onStopRecording={stopFileRecording}
     >
-      <TranscriptionProvider
-        transcribeProvider={transcribeProvider}
-        isRecording={isRecording}
-        isConnecting={isConnecting}
-        onMicrophoneClick={handleMicrophoneClick}
-        isFileRecording={isFileRecording}
-        isFileTranscribing={isFileTranscribing}
-        onPrepareRecording={prepareFileRecording}
-        onCancelPrepareRecording={cancelPrepareFileRecording}
-        onStartRecording={startFileRecording}
-        onStopRecording={stopFileRecording}
-      >
-        <div className="h-full flex flex-col">
-          {/* Área de mensajes con scroll */}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <Card className="h-full overflow-hidden border-2 shadow-lg bg-card">
-              <CardContent className="h-full overflow-y-auto p-4" onScroll={handleScroll}>
-                {isLoadingMessages ? (
-                  <div className="flex items-center justify-center h-full">
-                    <p>Cargando mensajes...</p>
-                  </div>
-                ) : errorMessages ? (
-                  <div className="flex items-center justify-center h-full">
-                    <p className="text-red-500">Error al cargar los mensajes.</p>
-                  </div>
-                ) : !messages || messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full">
-                    <Card className="p-8 text-center bg-muted/30 border shadow-md">
-                      <div className="text-6xl mb-4">💬</div>
-                      <h3 className="text-xl font-semibold mb-2">¡Bienvenido al Piloto IA!</h3>
-                      <p className="text-muted-foreground">
-                        Haz tu primera consulta sobre {chatContext.company}
-                      </p>
-                    </Card>
-                  </div>
-                ) : (
+      <div className="h-full flex flex-col">
+        {isLoadingMessages ? (
+          <div className="flex items-center justify-center h-full">
+            <p>Cargando mensajes...</p>
+          </div>
+        ) : errorMessages ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-red-500">Error al cargar los mensajes.</p>
+          </div>
+        ) : !messages || messages.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-full max-w-4xl px-4">
+              <QueryInputSection company={chatContext.company} onOpenConfigSidebar={onOpenConfigSidebar} />
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <Card className="h-full overflow-hidden bg-transparent border-none">
+                <CardContent className="h-full overflow-y-auto p-4 bg-transparent" onScroll={handleScroll}>
                   <div>
                     {messages?.map(message => (
                       <MessageBubble
@@ -216,18 +212,18 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
                       />
                     ))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="flex-shrink-0">
-            <QueryInputSection company={chatContext.company} onOpenConfigSidebar={onOpenConfigSidebar} />
-          </div>
-        </div>
-      </TranscriptionProvider>
-    </CommandProvider>
-  );
+                </CardContent>
+              </Card>
+            </div>
+            <div className="flex-shrink-0">
+              <QueryInputSection company={chatContext.company} onOpenConfigSidebar={onOpenConfigSidebar} />
+            </div>
+          </>
+        )}
+      </div>
+    </TranscriptionProvider>
+  </CommandProvider>
+);
 };
 
 export default ChatComponent;
