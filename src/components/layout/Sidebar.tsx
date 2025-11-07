@@ -27,7 +27,7 @@ const Sidebar = ({ isStreaming = false }: SidebarProps) => {
       isCollapsed ? "w-14" : "w-60"
     )}>
       {/* Collapse/Expand Button */}
-      <div className="border-b border-border p-1.5 flex justify-center flex-shrink-0">
+      <div className={cn("border-b border-border p-1.5 flex flex-shrink-0 transition-all duration-300", isCollapsed ? "justify-center" : "justify-end")}>
         <Button
           variant="ghost"
           size="icon"
