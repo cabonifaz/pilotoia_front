@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
+import { Checkbox } from "@/components/shadcn/checkbox";
 import CryptoJS from 'crypto-js';
 
 type LoginFormData = {
@@ -127,14 +128,16 @@ export const LoginPage = () => {
                                     name="clave_acceso"
                                     id="clave_acceso"
                                 />
-                                <button
+                                <Button
                                     type="button"
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={() => setShowPassword((prev) => !prev)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
                                     tabIndex={-1}
                                 >
-                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                                </button>
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </Button>
                             </div>
                             {errors.clave_acceso && (
                                 <p className="text-sm text-red-600">{errors.clave_acceso.message}</p>
@@ -142,13 +145,11 @@ export const LoginPage = () => {
                         </div>
 
                         <div className="flex items-center space-x-2">
-                            <input
-                                type="checkbox"
+                            <Checkbox
                                 id="rememberMe"
                                 checked={rememberMe}
-                                onChange={(e) => {
-                                    const isChecked = e.target.checked;
-                                    setRememberMe(isChecked);
+                                onCheckedChange={(isChecked) => {
+                                    setRememberMe(isChecked as boolean);
 
                                     // Clear localStorage immediately when unchecked
                                     if (!isChecked) {
@@ -157,7 +158,7 @@ export const LoginPage = () => {
                                     }
                                 }}
                                 disabled={isLoading}
-                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                variant="primary"
                             />
                             <label
                                 htmlFor="rememberMe"
@@ -170,7 +171,8 @@ export const LoginPage = () => {
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full h-11 text-base bg-[#0B85C3] hover:bg-[#0B6E99] text-white"
+                            variant="secondary"
+                            className="w-full h-11 text-base"
                             size="lg"
                         >
                             {isLoading ? (

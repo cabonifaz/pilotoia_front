@@ -202,7 +202,7 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div>
+        <div className="text-sm">
           {isTableOrList ? (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}

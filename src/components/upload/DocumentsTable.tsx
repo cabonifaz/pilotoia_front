@@ -144,7 +144,7 @@ export const DocumentsTable = ({ onAddClick }: DocumentsTableProps) => {
             Estado
           </Button>
 
-          <Button onClick={onAddClick} className="bg-blue-600 hover:bg-blue-700 gap-2">
+          <Button onClick={onAddClick} variant="secondary" className="gap-2">
             <CirclePlus className="h-4 w-4" />
             Agregar documentos
           </Button>
@@ -177,7 +177,7 @@ export const DocumentsTable = ({ onAddClick }: DocumentsTableProps) => {
         {!isLoading && !error && displayedDocuments.length > 0 && (
           <>
             <div className="flex-1 overflow-y-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 font-medium">

@@ -6,7 +6,7 @@ import "./App.css";
 export const App = () => {
   return (
     <QueryAuthProvider>
-      <div className="app">
+      <div className="app font-sans text-sm">
         <Outlet />
         <Toaster />
       </div>

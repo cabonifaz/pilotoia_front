@@ -46,7 +46,7 @@ const Sidebar = ({ isStreaming = false }: SidebarProps) => {
           return (
             <Button
               key={item.path}
-              variant={active ? 'default' : 'ghost'}
+              variant={active ? 'secondary' : 'ghost'}
               className={cn(
                 "transition-all duration-300 h-8",
                 isCollapsed ? "w-full justify-center px-1.5" : "w-full justify-start gap-2 px-2"
@@ -56,7 +56,7 @@ const Sidebar = ({ isStreaming = false }: SidebarProps) => {
               title={isCollapsed ? item.label : undefined}
             >
               <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-              {!isCollapsed && <span>{item.label}</span>}
+              {!isCollapsed && <span className="text-xs">{item.label}</span>}
             </Button>
           );
         })}

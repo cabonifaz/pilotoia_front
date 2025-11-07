@@ -48,11 +48,11 @@ const UserDropdown = () => {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="flex items-center gap-2 px-3 py-2 h-auto"
+          className="flex items-center gap-2 px-3 py-2 h-auto text-xs"
         >
           <div className="flex items-center gap-2">
             {getRoleIcon()}
-            <span className="text-sm font-medium">
+            <span className="text-xs font-medium">
               {user.nombres} {user.apellidos}
             </span>
             <ChevronDown className="h-4 w-4" />

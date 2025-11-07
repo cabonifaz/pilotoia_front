@@ -71,7 +71,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
             placeholder={`Escribe tu consulta sobre ${company} • ${area}...`}
             disabled={isLoading}
             rows={1}
-            className="resize-none pr-9 pl-9 min-h-[2.5rem] max-h-[5rem] overflow-y-auto !border-1 !border-muted-foreground/30 rounded-3xl"
+            className="resize-none pr-9 pl-9 min-h-[2.5rem] max-h-[5rem] overflow-y-auto !border-1 !border-muted-foreground/30 rounded-3xl text-xs"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();

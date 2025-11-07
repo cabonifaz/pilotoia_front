@@ -125,8 +125,8 @@ export const UploadSidebar = ({
         <CardHeader className="pb-3 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Agregar documentos</CardTitle>
-              <CardDescription>Agregue documentos a la empresa.</CardDescription>
+              <CardTitle className="text-sm">Agregar documentos</CardTitle>
+              <CardDescription className="text-xs">Agregue documentos a la empresa.</CardDescription>
             </div>
             <button
               onClick={onClose}
@@ -141,7 +141,7 @@ export const UploadSidebar = ({
         <CardContent className="flex-1 overflow-y-auto py-4 space-y-4">
           {/* Company ID Input */}
           <div className="space-y-2">
-            <Label htmlFor="company-id">ID Empresa</Label>
+            <Label htmlFor="company-id" className="text-xs">ID Empresa</Label>
             <Input
               id="company-id"
               type="number"
@@ -154,7 +154,7 @@ export const UploadSidebar = ({
 
           {/* Area ID Input */}
           <div className="space-y-2">
-            <Label htmlFor="area-id">ID Área</Label>
+            <Label htmlFor="area-id" className="text-xs">ID Área</Label>
             <Input
               id="area-id"
               type="number"
@@ -167,7 +167,7 @@ export const UploadSidebar = ({
 
           {/* Embedding Model Input */}
           <div className="space-y-2">
-            <Label htmlFor="embedding-model">Modelo de Embedding</Label>
+            <Label htmlFor="embedding-model" className="text-xs">Modelo de Embedding</Label>
             <Input
               id="embedding-model"
               type="text"
@@ -187,7 +187,7 @@ export const UploadSidebar = ({
           >
             <div className="flex flex-col items-center justify-center gap-2 text-center">
               <Upload className="w-8 h-8 text-gray-400" />
-              <p className="text-sm font-medium text-gray-600">
+              <p className="text-xs font-medium text-gray-600">
                 Arrastra y suelta tus documentos aquí
               </p>
               <p className="text-xs text-gray-500">O haz click para navegar en tus documentos</p>
@@ -197,7 +197,7 @@ export const UploadSidebar = ({
           {/* Selected Files List */}
           {files.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-medium">
+              <p className="text-xs font-medium">
                 Seleccionado {files.length} archivo{files.length > 1 ? 's' : ''}
               </p>
               <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -209,7 +209,7 @@ export const UploadSidebar = ({
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{file.file.name}</p>
+                        <p className="text-xs font-medium truncate">{file.file.name}</p>
                         <p className="text-xs text-gray-500">
                           {(file.file.size / 1024 / 1024).toFixed(1)} MB
                         </p>
@@ -251,7 +251,7 @@ export const UploadSidebar = ({
           <Button
             onClick={handleUpload}
             disabled={isGeneratingUrls || companyId === '' || areaId === '' || !embeddingModel.trim() || files.length === 0 || !user}
-            className="flex-1 bg-blue-600 hover:bg-blue-700"
+            className="flex-1"
           >
             {isGeneratingUrls ? 'Subiendo...' : 'Agregar'}
           </Button>
