@@ -48,7 +48,7 @@ const UserDropdown = () => {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="flex items-center gap-2 px-3 py-2 h-auto text-sm"
+          className="flex items-center gap-2 px-3 py-2 h-auto text-sm hover:text-foreground"
         >
           <div className="flex items-center gap-2">
             {getRoleIcon()}

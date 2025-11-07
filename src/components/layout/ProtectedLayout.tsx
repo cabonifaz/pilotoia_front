@@ -20,13 +20,15 @@ const ProtectedLayout = () => {
     <div className="flex-1 overflow-hidden flex min-h-0">
       {isRagRoute ? (
         <ChatStateProvider>
-          <Sidebar isStreaming={isStreaming} />
+          <>
+            <Sidebar isStreaming={isStreaming} />
 
-          <div className="flex-1 overflow-hidden min-h-0 bg-background">
-            <Outlet context={{
-              onStreamingStateChange: handleStreamingStateChange,
-            }} />
-          </div>
+            <div className="flex-1 overflow-hidden min-h-0 bg-background">
+              <Outlet context={{
+                onStreamingStateChange: handleStreamingStateChange,
+              }} />
+            </div>
+          </>
         </ChatStateProvider>
       ) : (
         <>

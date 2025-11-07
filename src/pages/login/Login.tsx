@@ -171,7 +171,7 @@ export const LoginPage = () => {
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            variant="secondary"
+                            variant="blue"
                             className="w-full h-11 text-base"
                             size="lg"
                         >

@@ -144,7 +144,7 @@ export const DocumentsTable = ({ onAddClick }: DocumentsTableProps) => {
             Estado
           </Button>
 
-          <Button onClick={onAddClick} variant="secondary" className="gap-2">
+          <Button onClick={onAddClick} variant="blue" className="gap-2">
             <CirclePlus className="h-4 w-4" />
             Agregar documentos
           </Button>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MessageCircle, Clipboard, Menu } from 'lucide-react';
 import { Button } from '../shadcn/button';
@@ -12,7 +12,16 @@ interface SidebarProps {
 const Sidebar = ({ isStreaming = false }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    // Load initial state from sessionStorage
+    const saved = sessionStorage.getItem('sidebar-collapsed');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Save state to sessionStorage whenever it changes
+  useEffect(() => {
+    sessionStorage.setItem('sidebar-collapsed', JSON.stringify(isCollapsed));
+  }, [isCollapsed]);
 
   const navigationItems = [
     { path: '/rag', label: 'Chat', icon: MessageCircle },
