@@ -64,7 +64,7 @@ const UserDropdown = () => {
         <DropdownMenuItem
           onClick={handleLogout}
           disabled={isLoggingOut}
-          className="cursor-pointer bg-red-500 text-white hover:bg-red-600 focus:bg-red-600"
+          className="cursor-pointer bg-red-500 text-white hover:bg-red-600 hover:text-white focus:bg-red-600 focus:text-white"
         >
           <LogOut className="h-4 w-4 mr-2 text-white" />
           {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
