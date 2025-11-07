@@ -64,7 +64,7 @@ export const AIConfigSidebar = ({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-sm">Configuración de IA</CardTitle>
-              <CardDescription className="text-xs">Ajusta los parámetros del modelo.</CardDescription>
+              <CardDescription className="text-sm">Ajusta los parámetros del modelo.</CardDescription>
             </div>
             <button
               onClick={onClose}
@@ -81,8 +81,8 @@ export const AIConfigSidebar = ({
           {/* Similarity Threshold */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-foreground font-semibold text-xs">Umbral de Similitud:</Label>
-              <span className="text-xs font-mono bg-primary/10 text-primary px-2 py-1 rounded">
+              <Label className="text-foreground font-semibold text-sm">Umbral de Similitud:</Label>
+              <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
                 {localConfig.similarity_threshold.toFixed(2)}
               </span>
             </div>
@@ -95,7 +95,7 @@ export const AIConfigSidebar = ({
               className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
               disabled={isReadOnlyRole}
             />
-            <div className="flex justify-between text-xs text-foreground/70">
+            <div className="flex justify-between text-sm text-foreground/70">
               <span>0.0</span>
               <span>1.0</span>
             </div>
@@ -104,8 +104,8 @@ export const AIConfigSidebar = ({
           {/* Temperature */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-foreground font-semibold text-xs">Temperatura:</Label>
-              <span className="text-xs font-mono bg-primary/10 text-primary px-2 py-1 rounded">
+              <Label className="text-foreground font-semibold text-sm">Temperatura:</Label>
+              <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
                 {localConfig.temperature.toFixed(2)}
               </span>
             </div>
@@ -118,7 +118,7 @@ export const AIConfigSidebar = ({
               className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
               disabled={isReadOnlyRole}
             />
-            <div className="flex justify-between text-xs text-foreground/70">
+            <div className="flex justify-between text-sm text-foreground/70">
               <span>0.0 (Conservador)</span>
               <span>1.0 (Creativo)</span>
             </div>
@@ -127,8 +127,8 @@ export const AIConfigSidebar = ({
           {/* Max Tokens */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-foreground font-semibold text-xs">Máx. Tokens:</Label>
-              <span className="text-xs font-mono bg-primary/10 text-primary px-2 py-1 rounded">
+              <Label className="text-foreground font-semibold text-sm">Máx. Tokens:</Label>
+              <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
                 {localConfig.max_tokens}
               </span>
             </div>
@@ -141,7 +141,7 @@ export const AIConfigSidebar = ({
               className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
               disabled={isReadOnlyRole}
             />
-            <div className="flex justify-between text-xs text-foreground/70">
+            <div className="flex justify-between text-sm text-foreground/70">
               <span>256</span>
               <span>8192</span>
             </div>
@@ -150,8 +150,8 @@ export const AIConfigSidebar = ({
           {/* Top-K */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-foreground font-semibold text-xs">Top-K Resultados:</Label>
-              <span className="text-xs font-mono bg-primary/10 text-primary px-2 py-1 rounded">
+              <Label className="text-foreground font-semibold text-sm">Top-K Resultados:</Label>
+              <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
                 {localConfig.top_k}
               </span>
             </div>
@@ -164,7 +164,7 @@ export const AIConfigSidebar = ({
               className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
               disabled={isReadOnlyRole}
             />
-            <div className="flex justify-between text-xs text-foreground/70">
+            <div className="flex justify-between text-sm text-foreground/70">
               <span>1 (Mínimo)</span>
               <span>20 (Máximo)</span>
             </div>
@@ -173,8 +173,8 @@ export const AIConfigSidebar = ({
           {/* Alpha */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-foreground font-semibold text-xs">Alpha (Búsqueda Híbrida):</Label>
-              <span className="text-xs font-mono bg-primary/10 text-primary px-2 py-1 rounded">
+              <Label className="text-foreground font-semibold text-sm">Alpha (Búsqueda Híbrida):</Label>
+              <span className="text-sm font-mono bg-primary/10 text-primary px-2 py-1 rounded">
                 {localConfig.alpha.toFixed(2)}
               </span>
             </div>
@@ -187,7 +187,7 @@ export const AIConfigSidebar = ({
               className={`w-full ${isReadOnlyRole ? 'cursor-not-allowed opacity-50' : ''}`}
               disabled={isReadOnlyRole}
             />
-            <div className="flex justify-between text-xs text-foreground/70">
+            <div className="flex justify-between text-sm text-foreground/70">
               <span>0.0 (Palabras clave)</span>
               <span>1.0 (Vectorial)</span>
             </div>

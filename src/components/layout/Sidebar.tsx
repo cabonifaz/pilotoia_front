@@ -56,7 +56,7 @@ const Sidebar = ({ isStreaming = false }: SidebarProps) => {
               title={isCollapsed ? item.label : undefined}
             >
               <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-              {!isCollapsed && <span className="text-xs">{item.label}</span>}
+              {!isCollapsed && <span className="text-sm">{item.label}</span>}
             </Button>
           );
         })}

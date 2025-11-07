@@ -110,14 +110,14 @@ export const ChatMenu: React.FC<ChatMenuProps> = ({
         <DropdownMenuContent align="end">
           <DropdownMenuItem
             onClick={handleRenameClick}
-            className="cursor-pointer text-xs"
+            className="cursor-pointer text-sm"
           >
             <Pencil size={14} className="mr-2" />
             Renombrar
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={handleDeleteClick}
-            className="cursor-pointer text-xs text-red-600 focus:text-red-600"
+            className="cursor-pointer text-sm text-red-600 focus:text-red-600"
           >
             <Trash2 size={14} className="mr-2" />
             Eliminar

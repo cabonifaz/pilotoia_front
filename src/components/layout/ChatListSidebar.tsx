@@ -144,14 +144,14 @@ export const ChatListSidebar = ({ isStreaming = false, isCollapsed = false }: Ch
       ) : error ? (
         <div className="text-center py-4">
           <MessageCircle size={24} className="mx-auto text-gray-300 mb-2" />
-          <p className="text-xs text-gray-500">
+          <p className="text-sm text-gray-500">
             No se pudieron cargar las conversaciones
           </p>
         </div>
       ) : (
         <>
           <div className="px-2 h-8 flex items-center mt-1">
-            <h3 className="font-semibold text-xs px-1">Conversaciones</h3>
+            <h3 className="font-semibold text-sm px-1">Conversaciones</h3>
           </div>
 
           <Button
@@ -161,11 +161,11 @@ export const ChatListSidebar = ({ isStreaming = false, isCollapsed = false }: Ch
             className="w-full h-8 justify-start gap-2 px-2 transition-all duration-300"
           >
             <Plus className="h-3.5 w-3.5 flex-shrink-0" />
-            <span className="text-xs">Nueva Conversación</span>
+            <span className="text-sm">Nueva Conversación</span>
           </Button>
 
           {chats && chats.length > 0 && (
-            <Badge variant="secondary" className="w-fit text-xs mx-2">
+            <Badge variant="secondary" className="w-fit text-sm mx-2">
               {chats.length} conversación{chats.length !== 1 ? 'es' : ''}
             </Badge>
           )}
@@ -174,7 +174,7 @@ export const ChatListSidebar = ({ isStreaming = false, isCollapsed = false }: Ch
             {sortedChats.length === 0 ? (
               <div className="text-center py-8">
                 <MessageCircle size={32} className="mx-auto text-gray-300 mb-2" />
-                <p className="text-xs text-gray-500">
+                <p className="text-sm text-gray-500">
                   No hay conversaciones
                 </p>
               </div>
@@ -214,7 +214,7 @@ export const ChatListSidebar = ({ isStreaming = false, isCollapsed = false }: Ch
                           onClick={(e) => e.stopPropagation()}
                         />
                       ) : (
-                        <span className="truncate text-xs">
+                        <span className="truncate text-sm">
                           {chat.TITULO || `Conversación #${chat.ID_CHAT}`}
                         </span>
                       )}

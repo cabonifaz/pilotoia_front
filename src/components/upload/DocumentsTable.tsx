@@ -177,7 +177,7 @@ export const DocumentsTable = ({ onAddClick }: DocumentsTableProps) => {
         {!isLoading && !error && displayedDocuments.length > 0 && (
           <>
             <div className="flex-1 overflow-y-auto">
-              <table className="w-full text-xs">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 font-medium">

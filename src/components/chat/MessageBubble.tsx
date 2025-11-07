@@ -187,16 +187,16 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
   <div className={`mb-6 ${isUserMessage ? 'flex justify-end' : 'flex justify-start'}`}>
     <Card className={`max-w-[80%] border-0 shadow-none ${isUserMessage ? 'bg-muted' : 'bg-background'}`}>
       <CardHeader className="pb-2">
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 text-sm">
           <Avatar className="h-6 w-6">
-            <AvatarFallback className="text-xs">
+            <AvatarFallback className="text-sm">
               {getIcon()}
             </AvatarFallback>
           </Avatar>
           <span className="font-medium">
             {getDisplayName()}
           </span>
-          <Badge variant={isUserMessage ? 'secondary' : 'outline'} className="text-xs">
+          <Badge variant={isUserMessage ? 'secondary' : 'outline'} className="text-sm">
             {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Badge>
         </div>

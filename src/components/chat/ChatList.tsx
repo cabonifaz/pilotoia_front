@@ -282,7 +282,7 @@ export const ChatList: React.FC<ChatListProps> = ({
                       </div>
 
                       {!isEditing && (
-                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <div className="flex items-center gap-3 text-sm text-gray-500">
                           {chat.ULTIMO_MENSAJE_FECHA && (
                             <div className="flex items-center gap-1">
                               <Clock size={12} />
