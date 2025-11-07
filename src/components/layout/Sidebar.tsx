@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MessageCircle, /*Clipboard, */Menu } from 'lucide-react';
+import { MessageCircle, Clipboard, Menu } from 'lucide-react';
 import { Button } from '../shadcn/button';
 import { cn } from '@/lib/utils';
 import { ChatListSidebar } from './ChatListSidebar';
@@ -15,8 +15,8 @@ const Sidebar = ({ isStreaming = false }: SidebarProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navigationItems = [
-    { path: '/rag', label: 'Chat', icon: MessageCircle }/*,
-    { path: '/upload', label: 'Documentos', icon: Clipboard },*/
+    { path: '/rag', label: 'Chat', icon: MessageCircle },
+    { path: '/upload', label: 'Documentos', icon: Clipboard },
   ];
 
   const isActive = (path: string) => location.pathname === path;

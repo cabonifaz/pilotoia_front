@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
-import { Settings } from 'lucide-react';
+import { Settings, Loader2 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import ChatComponent from '../../components/chat/ChatComponent';
 import { AIConfigSidebar } from '../../components/aiConfigPanel/AIConfigSidebar';
@@ -145,10 +145,10 @@ const StreamingChat = () => {
 
   if (!chatContext) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center h-full">
         <Card className="p-8">
-          <div className="text-center">
-            <div className="text-4xl mb-4">⏳</div>
+          <div className="flex flex-col items-center justify-center text-center">
+            <Loader2 className="h-12 w-12 mb-4 animate-spin text-primary" />
             <p className="text-lg">Cargando configuración...</p>
           </div>
         </Card>
