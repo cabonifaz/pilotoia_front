@@ -167,7 +167,7 @@ const StreamingChat = () => {
 
 
         {/* Chat Section */}
-        <div className="flex-1 flex flex-col pb-8 pl-8 pt-8 overflow-hidden min-h-0 h-full">
+        <div className="flex-1 flex flex-col pl-8 overflow-hidden min-h-0 h-full">
           <div className="flex-1 rounded-lg overflow-hidden min-h-0 h-full">
             <ChatComponent
               aiConfig={aiConfig}

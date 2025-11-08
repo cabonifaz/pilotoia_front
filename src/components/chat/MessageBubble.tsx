@@ -187,22 +187,22 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
   <div className={`mb-6 ${isUserMessage ? 'flex justify-end' : 'flex justify-start'}`}>
     <Card className={`max-w-[80%] border-0 shadow-none ${isUserMessage ? 'bg-muted' : 'bg-background'}`}>
       <CardHeader className="pb-2">
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-xs">
           <Avatar className="h-6 w-6">
-            <AvatarFallback className="text-sm">
+            <AvatarFallback className="text-xs">
               {getIcon()}
             </AvatarFallback>
           </Avatar>
           <span className="font-medium">
             {getDisplayName()}
           </span>
-          <Badge variant={isUserMessage ? 'secondary' : 'outline'} className="text-sm">
+          <Badge variant={isUserMessage ? 'secondary' : 'outline'} className="text-xs">
             {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="text-sm">
+        <div className="text-xs">
           {isTableOrList ? (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -210,7 +210,7 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
                 // Table styling
                 table: ({ children }) => (
                   <div className="overflow-x-auto mb-4 border border-gray-300 dark:border-gray-600">
-                    <table className="w-full min-w-max border-collapse text-sm">
+                    <table className="w-full min-w-max border-collapse text-xs">
                       {children}
                     </table>
                   </div>

@@ -112,7 +112,7 @@ export const LoginPage = () => {
                                 id="usuario"
                             />
                             {errors.usuario && (
-                                <p className="text-sm text-red-600">{errors.usuario.message}</p>
+                                <p className="text-xs text-red-600">{errors.usuario.message}</p>
                             )}
                         </div>
 
@@ -140,7 +140,7 @@ export const LoginPage = () => {
                                 </Button>
                             </div>
                             {errors.clave_acceso && (
-                                <p className="text-sm text-red-600">{errors.clave_acceso.message}</p>
+                                <p className="text-xs text-red-600">{errors.clave_acceso.message}</p>
                             )}
                         </div>
 
@@ -162,7 +162,7 @@ export const LoginPage = () => {
                             />
                             <label
                                 htmlFor="rememberMe"
-                                className="text-sm text-slate-700 font-medium leading-none cursor-pointer"
+                                className="text-xs text-slate-700 font-medium leading-none cursor-pointer"
                             >
                                 Recordar usuario
                             </label>

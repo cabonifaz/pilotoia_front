@@ -61,7 +61,7 @@ const CompanyAreaDropdown = ({ isDisabled = false }: CompanyAreaDropdownProps) =
         <Button
           variant="outline"
           disabled={isDisabled}
-          className="flex items-center gap-2 px-3 py-1.5 h-auto text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+          className="flex items-center gap-2 px-3 py-1.5 h-auto text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           <div className="flex items-center gap-2">
             <span className="font-medium">{companyName}</span>
@@ -79,7 +79,7 @@ const CompanyAreaDropdown = ({ isDisabled = false }: CompanyAreaDropdownProps) =
       </DropdownMenuTrigger>
 
       {hasMultipleCompanyAreas && (
-        <DropdownMenuContent align="end" className="w-56 text-sm">
+        <DropdownMenuContent align="end" className="w-56 text-xs">
           {user.company_areas?.map((companyArea: any) => {
             const key = `${companyArea.ID_EMPRESA}-${companyArea.ID_AREA}`;
             const isCurrent = key === currentKey;
