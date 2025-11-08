@@ -12,9 +12,7 @@ const DocumentUpload = () => {
     <div className="flex flex-1 overflow-hidden">
       {/* Main Content */}
       <div
-        className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ${
-          isSidebarOpen ? 'mr-96' : ''
-        }`}
+        className={`flex flex-col flex-1 overflow-hidden transition-all duration-300`}
       >
         {/* Header and Table Wrapper */}
         <div className="flex flex-col flex-1 overflow-hidden p-8 gap-4">

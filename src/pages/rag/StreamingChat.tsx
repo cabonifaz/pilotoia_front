@@ -157,17 +157,15 @@ const StreamingChat = () => {
   }
 
   return (
-     <div className="flex flex-1 overflow-hidden min-h-0 h-full">
+     <div className="relative flex flex-1 overflow-hidden min-h-0 h-full">
       {/* Main Content */}
       <div
-        className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 min-h-0 ${
-          isConfigSidebarOpen ? 'mr-96' : ''
-        }`}
+        className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 min-h-0`}
       >
 
 
         {/* Chat Section */}
-        <div className="flex-1 flex flex-col pl-8 overflow-hidden min-h-0 h-full">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0 h-full">
           <div className="flex-1 rounded-lg overflow-hidden min-h-0 h-full">
             <ChatComponent
               aiConfig={aiConfig}
@@ -179,9 +177,9 @@ const StreamingChat = () => {
         </div>
       </div>
 
-      {/* Header with Settings Button */}
-      <div className="flex items-center justify-start pl-8 pr-2 py-4 flex-shrink-0">
-        {user?.id_tipo_rol !== 3 && (
+      {/* Settings Button */}
+      <div className="absolute top-4 right-8 z-10">
+        {user?.id_tipo_rol !== 3 && !isConfigSidebarOpen && (
           <Button
             onClick={() => setIsConfigSidebarOpen(true)}
             variant="ghost"

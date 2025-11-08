@@ -23,7 +23,7 @@ export const VoiceRecordButton = ({
       variant="ghost"
       size="icon"
       className={cn(
-        "absolute right-0.5 bottom-0.5 rounded-full hover:bg-transparent"
+        "rounded-full hover:bg-transparent"
       )}
       title={isRecording ? "Detener grabación" : "Grabar audio"}
     >

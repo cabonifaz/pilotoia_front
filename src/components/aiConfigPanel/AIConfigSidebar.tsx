@@ -56,7 +56,6 @@ export const AIConfigSidebar = ({
       className={`fixed inset-y-0 right-0 w-96 bg-background border-l shadow-lg transform transition-all duration-300 flex flex-col ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}
-      style={{ top: '69px', bottom: '0' }}
     >
       <Card className="h-full rounded-none border-0 flex flex-col">
         {/* Header del Sidebar */}

@@ -56,22 +56,22 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
   }, [selectedAction, onSearchVectorial, onSearchVectorialSQL]);
 
   return (
-    <div className="p-4">
+    <div className="p-1">
       <div className="flex gap-2 items-end">
-        <div className="relative flex-1">
-          {/* Command Menu (Left side inside textarea) */}
-          {!isLoading && (
-            <CommandMenu disabled={isLoading} />
-          )}
+        {/* Command Menu (Left side) */}
+        {!isLoading && (
+          <CommandMenu disabled={isLoading} />
+        )}
 
+        <div className="relative flex-1">
           <Textarea
             ref={textareaRef}
             value={userQuery}
             onChange={handleInput}
-            placeholder={`Escribe tu consulta sobre ${company} • ${area}...`}
+            placeholder={`Escribe tu consulta sobre ${company} • ${area}`}
             disabled={isLoading}
             rows={1}
-            className="resize-none pr-9 pl-9 min-h-[2.5rem] max-h-[5rem] overflow-y-auto !border-1 !border-muted-foreground/30 rounded-3xl text-xs"
+            className="resize-none min-h-[2.8rem] max-h-[3.8rem] w-full overflow-y-auto !border-1 !border-muted-foreground/30 rounded-3xl text-xs p-3"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -90,29 +90,31 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
               <Square className="w-4 h-4" />
             </Button>
           )}
-          {!isLoading && (
-            <>
-              {transcribeProvider === 'aws' ? (
-                <VoiceRecordButton
-                  isRecording={isRecording}
-                  isConnecting={isConnecting}
-                  isDisabled={isLoading}
-                  onClick={onMicrophoneClick}
-                />
-              ) : (
-                <FileTranscribeButton
-                  isRecording={isFileRecording}
-                  isTranscribing={isFileTranscribing}
-                  isDisabled={isLoading}
-                  onPrepareRecording={onPrepareRecording}
-                  onCancelPrepareRecording={onCancelPrepareRecording}
-                  onStartRecording={onStartRecording}
-                  onStopRecording={onStopRecording}
-                />
-              )}
-            </>
-          )}
         </div>
+
+        {/* Right-side buttons */}
+        {!isLoading && (
+          <>
+            {transcribeProvider === 'aws' ? (
+              <VoiceRecordButton
+                isRecording={isRecording}
+                isConnecting={isConnecting}
+                isDisabled={isLoading}
+                onClick={onMicrophoneClick}
+              />
+            ) : (
+              <FileTranscribeButton
+                isRecording={isFileRecording}
+                isTranscribing={isFileTranscribing}
+                isDisabled={isLoading}
+                onPrepareRecording={onPrepareRecording}
+                onCancelPrepareRecording={onCancelPrepareRecording}
+                onStartRecording={onStartRecording}
+                onStopRecording={onStopRecording}
+              />
+            )}
+          </>
+        )}
       </div>
     </div>
   );
