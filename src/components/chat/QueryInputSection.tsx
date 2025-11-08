@@ -58,11 +58,6 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
   return (
     <div className="p-1">
       <div className="flex gap-2 items-end">
-        {/* Command Menu (Left side) */}
-        {!isLoading && (
-          <CommandMenu disabled={isLoading} />
-        )}
-
         <div className="relative flex-1">
           <Textarea
             ref={textareaRef}
@@ -71,7 +66,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
             placeholder={`Escribe tu consulta sobre ${company} • ${area}`}
             disabled={isLoading}
             rows={1}
-            className="resize-none min-h-[2.8rem] max-h-[3.8rem] w-full overflow-y-auto !border-1 !border-muted-foreground/30 rounded-3xl text-xs p-3"
+            className="resize-none min-h-[2.8rem] max-h-[3.8rem] w-full overflow-y-auto !border-1 !border-muted-foreground/30 rounded-3xl text-xs px-10 py-3"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -79,42 +74,50 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
               }
             }}
           />
+          {/* Left side - Command Menu */}
+          {!isLoading && (
+            <div className="absolute left-1 bottom-1">
+              <CommandMenu disabled={isLoading} />
+            </div>
+          )}
+
+          {/* Right side - Stop button when loading */}
           {isLoading && (
             <Button
               onClick={onCancel}
               variant="destructive"
               size="icon"
-              className="absolute right-0.5 bottom-0.5 rounded-full"
+              className="absolute right-3 bottom-1 rounded-full h-6 w-6"
               title="Detener"
             >
               <Square className="w-4 h-4" />
             </Button>
           )}
-        </div>
 
-        {/* Right-side buttons */}
-        {!isLoading && (
-          <>
-            {transcribeProvider === 'aws' ? (
-              <VoiceRecordButton
-                isRecording={isRecording}
-                isConnecting={isConnecting}
-                isDisabled={isLoading}
-                onClick={onMicrophoneClick}
-              />
-            ) : (
-              <FileTranscribeButton
-                isRecording={isFileRecording}
-                isTranscribing={isFileTranscribing}
-                isDisabled={isLoading}
-                onPrepareRecording={onPrepareRecording}
-                onCancelPrepareRecording={onCancelPrepareRecording}
-                onStartRecording={onStartRecording}
-                onStopRecording={onStopRecording}
-              />
-            )}
-          </>
-        )}
+          {/* Right side - Transcription buttons when not loading */}
+          {!isLoading && (
+            <div className="absolute right-3 bottom-1 flex gap-1">
+              {transcribeProvider === 'aws' ? (
+                <VoiceRecordButton
+                  isRecording={isRecording}
+                  isConnecting={isConnecting}
+                  isDisabled={isLoading}
+                  onClick={onMicrophoneClick}
+                />
+              ) : (
+                <FileTranscribeButton
+                  isRecording={isFileRecording}
+                  isTranscribing={isFileTranscribing}
+                  isDisabled={isLoading}
+                  onPrepareRecording={onPrepareRecording}
+                  onCancelPrepareRecording={onCancelPrepareRecording}
+                  onStartRecording={onStartRecording}
+                  onStopRecording={onStopRecording}
+                />
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
