@@ -39,7 +39,7 @@ const ProtectedLayout = () => {
               )}
 
               <div className="flex-1 overflow-hidden min-h-0 flex justify-center p-4 md:py-6 md:px-0">
-                <div className="w-full md:max-w-4xl h-full flex flex-col">
+                <div className="w-full md:max-w-5xl h-full flex flex-col">
                   <Outlet
                     context={{
                       onStreamingStateChange: handleStreamingStateChange,
@@ -64,7 +64,7 @@ const ProtectedLayout = () => {
             )}
 
             <div className="flex-1 overflow-hidden min-h-0 flex justify-center p-4 md:py-6 md:px-0">
-              <div className="w-full md:max-w-4xl h-full flex flex-col">
+              <div className="w-full md:max-w-5xl h-full flex flex-col">
                 <Outlet
                   context={{
                     onStreamingStateChange: handleStreamingStateChange,

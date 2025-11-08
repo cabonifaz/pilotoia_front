@@ -81,20 +81,17 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
             </div>
           )}
 
-          {/* Right side - Stop button when loading */}
           {isLoading && (
             <Button
               onClick={onCancel}
               variant="destructive"
               size="icon"
-              className="absolute right-3 bottom-1 rounded-full h-6 w-6"
+              className="absolute right-3 bottom-1 rounded-full"
               title="Detener"
             >
               <Square className="w-4 h-4" />
             </Button>
           )}
-
-          {/* Right side - Transcription buttons when not loading */}
           {!isLoading && (
             <div className="absolute right-3 bottom-1 flex gap-1">
               {transcribeProvider === 'aws' ? (

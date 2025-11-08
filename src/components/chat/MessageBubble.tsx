@@ -2,7 +2,7 @@ import { memo, useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { User, Bot } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
+import { Card, CardHeaderCompact, CardContentCompact } from '@/components/shadcn/card';
 import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
 import { Badge } from '@/components/shadcn/badge';
 import { type Message, parseMessageTimestamp, getMessageType } from '@/types/message';
@@ -186,7 +186,7 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
   return (
   <div className={`mb-6 ${isUserMessage ? 'flex justify-end' : 'flex justify-start'}`}>
     <Card className={`max-w-[80%] border-0 shadow-none ${isUserMessage ? 'bg-muted' : 'bg-background'}`}>
-      <CardHeader className="pb-2">
+      <CardHeaderCompact className="pb-2">
         <div className="flex items-center gap-2 text-xs">
           <Avatar className="h-6 w-6">
             <AvatarFallback className="text-xs">
@@ -200,8 +200,8 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
             {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Badge>
         </div>
-      </CardHeader>
-      <CardContent className="pt-0">
+      </CardHeaderCompact>
+      <CardContentCompact>
         <div className="text-xs">
           {isTableOrList ? (
             <ReactMarkdown
@@ -250,7 +250,7 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
           )}
           {streamingMessageId === message.id && isTableOrList && <SpinnerCursor />}
         </div>
-      </CardContent>
+      </CardContentCompact>
     </Card>
   </div>
   );

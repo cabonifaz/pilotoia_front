@@ -178,7 +178,7 @@ const StreamingChat = () => {
       </div>
 
       {/* Settings Button */}
-      <div className="absolute top-4 right-8 z-10">
+      <div className="fixed top-20 right-4 z-10">
         {user?.id_tipo_rol !== 3 && !isConfigSidebarOpen && (
           <Button
             onClick={() => setIsConfigSidebarOpen(true)}
