@@ -27,7 +27,11 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
 
   // Get current user data
   const { data: currentUser } = useQuery({
-    queryKey: ['user', 'current']
+    queryKey: ['user', 'current'],
+    queryFn: async () => {
+      return null;
+    },
+    enabled: false
   });
 
   // Get transcription provider from environment

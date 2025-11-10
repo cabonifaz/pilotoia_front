@@ -202,7 +202,7 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
         </div>
       </CardHeaderCompact>
       <CardContentCompact>
-        <div className="text-xs">
+        <div className="text-xs overflow-hidden">
           {isTableOrList ? (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -236,13 +236,25 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
 
                 // Keep paragraphs clean
                 p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+
+                // Code block styling with outline variant
+                code: ({ children }) => (
+                  <code className="bg-background border border-foreground px-1 py-0.5 rounded text-xs font-mono break-words">
+                    {children}
+                  </code>
+                ),
+                pre: ({ children }) => (
+                  <pre className="bg-background border-2 border-foreground p-3 rounded overflow-x-auto max-h-96 mb-2">
+                    {children}
+                  </pre>
+                ),
               }}
             >
               {processedContent || (messageType !== 'user' ? 'Pensando...' : '')}
             </ReactMarkdown>
           ) : (
             <>
-              <span className="whitespace-pre-wrap">
+              <span className="whitespace-pre-wrap break-words overflow-hidden">
                 {message.message || (messageType !== 'user' ? 'Pensando...' : '')}
               </span>
               {streamingMessageId === message.id && <SpinnerCursor />}
