@@ -34,6 +34,9 @@ export const useTranscribe = (): UseTranscribeReturn => {
         (import.meta.env.VITE_TRANSCRIBE_DEFAULT_LANGUAGE || 'es-ES') as LanguageCode
     );
 
+    // Get record mode from env (default to 'click')
+    const recordMode = (import.meta.env.VITE_RECORD_MODE || 'click') as 'click' | 'hold';
+
     const audioContextRef = useRef<AudioContext | null>(null);
     const workletNodeRef = useRef<AudioWorkletNode | null>(null);
     const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -41,6 +44,7 @@ export const useTranscribe = (): UseTranscribeReturn => {
     const detectionFrameIdRef = useRef<number | null>(null);
     const transcribeClientRef = useRef<ReturnType<typeof transcribeApi.startTranscription> | null>(null);
     const transcriptBufferRef = useRef<string[]>([]);
+    const isStoppingRef = useRef<boolean>(false);
 
     /**
      * Start recording and transcription
@@ -127,13 +131,13 @@ export const useTranscribe = (): UseTranscribeReturn => {
                         source.connect(workletNode);
                         workletNode.connect(audioContext.destination);
 
-                        // Variables para tracking de silencio
+                        // Variables para tracking de silencio (only used in 'click' mode)
                         let silenceTimeoutId: NodeJS.Timeout | null = null;
                         let stopSignalSent = false;
                         const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '5000', 10);
                         const SILENCE_LEVEL = parseInt(import.meta.env.VITE_SILENCE_LEVEL || '15', 10);
 
-                        // Create analyser for silence detection
+                        // Create analyser for silence detection (only used in 'click' mode)
                         const analyser = audioContext.createAnalyser();
                         analyser.fftSize = 2048;
                         source.connect(analyser);
@@ -152,42 +156,45 @@ export const useTranscribe = (): UseTranscribeReturn => {
                             }
                         };
 
-                        const detectSilence = () => {
-                            analyser.getByteFrequencyData(dataArray);
-                            const sum = dataArray.reduce((a, b) => a + b, 0);
-                            const average = sum / dataArray.length;
+                        // Only enable silence detection in 'click' mode
+                        if (recordMode === 'click') {
+                            const detectSilence = () => {
+                                analyser.getByteFrequencyData(dataArray);
+                                const sum = dataArray.reduce((a, b) => a + b, 0);
+                                const average = sum / dataArray.length;
 
-                            // If average volume is very low, consider it silence
-                            if (average < SILENCE_LEVEL) {
-                                if (!silenceTimeoutId) {
-                                    silenceTimeoutId = setTimeout(() => {
-                                        if (!stopSignalSent) {
-                                            stopSignalSent = true;
-                                            // Send stop signal but keep worklet running briefly
-                                            // to ensure server receives it
-                                            client.sendStop();
+                                // If average volume is very low, consider it silence
+                                if (average < SILENCE_LEVEL) {
+                                    if (!silenceTimeoutId) {
+                                        silenceTimeoutId = setTimeout(() => {
+                                            if (!stopSignalSent) {
+                                                stopSignalSent = true;
+                                                // Send stop signal but keep worklet running briefly
+                                                // to ensure server receives it
+                                                client.sendStop();
 
-                                            // Cleanup after a brief delay to ensure stop signal is sent
-                                            setTimeout(() => {
-                                                workletNode.disconnect();
-                                                source.disconnect();
-                                            }, 500);
-                                        }
-                                    }, SILENCE_THRESHOLD);
+                                                // Cleanup after a brief delay to ensure stop signal is sent
+                                                setTimeout(() => {
+                                                    workletNode.disconnect();
+                                                    source.disconnect();
+                                                }, 500);
+                                            }
+                                        }, SILENCE_THRESHOLD);
+                                    }
+                                } else {
+                                    // Clear timeout if sound detected
+                                    if (silenceTimeoutId && !stopSignalSent) {
+                                        clearTimeout(silenceTimeoutId);
+                                        silenceTimeoutId = null;
+                                    }
                                 }
-                            } else {
-                                // Clear timeout if sound detected
-                                if (silenceTimeoutId && !stopSignalSent) {
-                                    clearTimeout(silenceTimeoutId);
-                                    silenceTimeoutId = null;
-                                }
-                            }
 
+                                detectionFrameIdRef.current = requestAnimationFrame(detectSilence);
+                            };
+
+                            // Start silence detection
                             detectionFrameIdRef.current = requestAnimationFrame(detectSilence);
-                        };
-
-                        // Start silence detection
-                        detectionFrameIdRef.current = requestAnimationFrame(detectSilence);
+                        }
                         } catch (error) {
                             console.error('❌ Error initializing audio context:', error);
                             toast({
@@ -256,6 +263,24 @@ export const useTranscribe = (): UseTranscribeReturn => {
      * Stop recording and transcription
      */
     const stopRecording = useCallback(() => {
+        // Prevent multiple simultaneous stops
+        if (isStoppingRef.current) return;
+        isStoppingRef.current = true;
+
+        // In 'hold' mode, send stop signal and let server close the connection
+        if (recordMode === 'hold' && transcribeClientRef.current && transcribeClientRef.current.isConnected()) {
+            transcribeClientRef.current.sendStop();
+            // Cleanup will happen when server sends onClose callback
+        } else {
+            // In 'click' mode, cleanup immediately (silence detection already triggered sendStop)
+            cleanupAudioResources();
+        }
+    }, [recordMode]);
+
+    /**
+     * Cleanup audio resources
+     */
+    const cleanupAudioResources = useCallback(() => {
         // Clean up Web Audio API resources
         if (detectionFrameIdRef.current !== null) {
             cancelAnimationFrame(detectionFrameIdRef.current);
@@ -296,6 +321,7 @@ export const useTranscribe = (): UseTranscribeReturn => {
         setIsRecording(false);
         setIsConnecting(false);
         setPartialTranscript('');
+        isStoppingRef.current = false;
     }, []);
 
     /**
