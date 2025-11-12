@@ -45,6 +45,55 @@ export const useTranscribe = (): UseTranscribeReturn => {
     const transcribeClientRef = useRef<ReturnType<typeof transcribeApi.startTranscription> | null>(null);
     const transcriptBufferRef = useRef<string[]>([]);
     const isStoppingRef = useRef<boolean>(false);
+    const recordingStartTimeRef = useRef<number>(0);
+
+    /**
+     * Cleanup audio resources
+     */
+    const cleanupAudioResources = useCallback(() => {
+        // Clean up Web Audio API resources
+        if (detectionFrameIdRef.current !== null) {
+            cancelAnimationFrame(detectionFrameIdRef.current);
+            detectionFrameIdRef.current = null;
+        }
+
+        if (workletNodeRef.current) {
+            workletNodeRef.current.disconnect();
+            workletNodeRef.current = null;
+        }
+
+        if (sourceRef.current) {
+            sourceRef.current.disconnect();
+            sourceRef.current = null;
+        }
+
+        if (analyserRef.current) {
+            analyserRef.current.disconnect();
+            analyserRef.current = null;
+        }
+
+        if (audioContextRef.current) {
+            // Close audio context if it's still running
+            if (audioContextRef.current.state !== 'closed') {
+                audioContextRef.current.close().catch(() => {
+                    // Ignore errors closing audio context
+                });
+            }
+            audioContextRef.current = null;
+        }
+
+        // Disconnect WebSocket
+        if (transcribeClientRef.current) {
+            transcribeClientRef.current.disconnect();
+            transcribeClientRef.current = null;
+        }
+
+        setIsRecording(false);
+        setIsConnecting(false);
+        setPartialTranscript('');
+        isStoppingRef.current = false;
+        recordingStartTimeRef.current = 0;
+    }, []);
 
     /**
      * Start recording and transcription
@@ -109,6 +158,7 @@ export const useTranscribe = (): UseTranscribeReturn => {
                     onOpen: async () => {
                         setIsConnecting(false);
                         setIsRecording(true);
+                        recordingStartTimeRef.current = Date.now();
 
                         try {
                             // Capture raw PCM from microphone using Web Audio API with AudioWorklet
@@ -256,7 +306,7 @@ export const useTranscribe = (): UseTranscribeReturn => {
             setIsRecording(false);
             setIsConnecting(false);
         }
-    }, []);
+    }, [cleanupAudioResources, currentLanguage, recordMode]);
 
     /**
      * Stop recording and transcription
@@ -264,64 +314,46 @@ export const useTranscribe = (): UseTranscribeReturn => {
     const stopRecording = useCallback(() => {
         // Prevent multiple simultaneous stops
         if (isStoppingRef.current) return;
+        
+        // For hold mode, we need to check if recording has actually started
+        if (recordMode === 'hold' && !recordingStartTimeRef.current) {
+            // User released button before connection was established.
+            // We can simply clean up without sending signals.
+            cleanupAudioResources();
+            return;
+        }
+
         isStoppingRef.current = true;
 
-        // In 'hold' mode, send stop signal and let server close the connection
-        if (recordMode === 'hold' && transcribeClientRef.current && transcribeClientRef.current.isConnected()) {
-            transcribeClientRef.current.sendStop();
-            // Cleanup will happen when server sends onClose callback
+        if (recordMode === 'hold') {
+            const duration = Date.now() - recordingStartTimeRef.current;
+            const SHORT_RECORDING_THRESHOLD = 3000; // 3 seconds
+
+            if (duration < SHORT_RECORDING_THRESHOLD) {
+                // Hard stop for short recordings
+                cleanupAudioResources();
+            } else {
+                // Graceful stop for longer recordings, inspired by 'click' mode's silence detector
+                if (transcribeClientRef.current && transcribeClientRef.current.isConnected()) {
+                    transcribeClientRef.current.sendStop();
+                    
+                    // Disconnect local audio sources after a delay to allow in-flight audio to send
+                    setTimeout(() => {
+                        if (workletNodeRef.current && sourceRef.current) {
+                            sourceRef.current.disconnect(workletNodeRef.current);
+                        }
+                    }, 500);
+                } else {
+                    // If client is already disconnected, just clean up
+                    cleanupAudioResources();
+                }
+            }
         } else {
-            // In 'click' mode, cleanup immediately (silence detection already triggered sendStop)
+            // In 'click' mode, cleanup is handled by silence detection or the onClose event
+            // This call is a fallback.
             cleanupAudioResources();
         }
-    }, [recordMode]);
-
-    /**
-     * Cleanup audio resources
-     */
-    const cleanupAudioResources = useCallback(() => {
-        // Clean up Web Audio API resources
-        if (detectionFrameIdRef.current !== null) {
-            cancelAnimationFrame(detectionFrameIdRef.current);
-            detectionFrameIdRef.current = null;
-        }
-
-        if (workletNodeRef.current) {
-            workletNodeRef.current.disconnect();
-            workletNodeRef.current = null;
-        }
-
-        if (sourceRef.current) {
-            sourceRef.current.disconnect();
-            sourceRef.current = null;
-        }
-
-        if (analyserRef.current) {
-            analyserRef.current.disconnect();
-            analyserRef.current = null;
-        }
-
-        if (audioContextRef.current) {
-            // Close audio context if it's still running
-            if (audioContextRef.current.state !== 'closed') {
-                audioContextRef.current.close().catch(() => {
-                    // Ignore errors closing audio context
-                });
-            }
-            audioContextRef.current = null;
-        }
-
-        // Disconnect WebSocket
-        if (transcribeClientRef.current) {
-            transcribeClientRef.current.disconnect();
-            transcribeClientRef.current = null;
-        }
-
-        setIsRecording(false);
-        setIsConnecting(false);
-        setPartialTranscript('');
-        isStoppingRef.current = false;
-    }, []);
+    }, [recordMode, cleanupAudioResources]);
 
     /**
      * Clear transcript
@@ -335,9 +367,9 @@ export const useTranscribe = (): UseTranscribeReturn => {
     // Cleanup on unmount
     useEffect(() => {
         return () => {
-            stopRecording();
+            cleanupAudioResources();
         };
-    }, [stopRecording]);
+    }, [cleanupAudioResources]);
 
     return {
         isRecording,
