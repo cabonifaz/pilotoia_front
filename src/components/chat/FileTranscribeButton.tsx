@@ -151,6 +151,22 @@ export const FileTranscribeButton = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Prevent Space from triggering the button, but let Enter propagate
+    if (e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    // Prevent Space from triggering the button, but let Enter propagate
+    if (e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -163,12 +179,15 @@ export const FileTranscribeButton = ({
   return (
     <Button
       type="button"
+      tabIndex={-1}
       onClick={handleClick}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
       disabled={isDisabled || isTranscribing}
       variant="ghost"
       size="icon"

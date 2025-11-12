@@ -54,15 +54,34 @@ export const VoiceRecordButton = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Prevent Space from triggering the button, but let Enter propagate
+    if (e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    // Prevent Space from triggering the button, but let Enter propagate
+    if (e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
   return (
     <Button
       type="button"
+      tabIndex={-1}
       onClick={handleButtonClick}
       onMouseDown={handlePress as React.MouseEventHandler}
       onMouseUp={handleRelease as React.MouseEventHandler}
       onMouseLeave={handleRelease as React.MouseEventHandler} // Stop if mouse leaves while holding
       onTouchStart={handlePress as React.TouchEventHandler}
       onTouchEnd={handleRelease as React.TouchEventHandler}
+      onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
       disabled={isDisabled || (isConnecting && !isRecording)}
       variant="ghost"
       size="icon"

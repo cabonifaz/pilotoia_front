@@ -31,6 +31,12 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     }
   };
 
+  const focusTextarea = () => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
   // Get transcription state from context
   const {
     transcribeProvider,
@@ -101,9 +107,15 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                   isRecording={isRecording}
                   isConnecting={isConnecting}
                   isDisabled={isLoading}
-                  onClick={onMicrophoneClick}
+                  onClick={() => {
+                    onMicrophoneClick();
+                    focusTextarea();
+                  }}
                   onStart={startMicrophoneRecording}
-                  onStop={stopMicrophoneRecording}
+                  onStop={() => {
+                    stopMicrophoneRecording();
+                    focusTextarea();
+                  }}
                 />
               ) : (
                 <FileTranscribeButton
@@ -113,7 +125,10 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                   onPrepareRecording={onPrepareRecording}
                   onCancelPrepareRecording={onCancelPrepareRecording}
                   onStartRecording={onStartRecording}
-                  onStopRecording={onStopRecording}
+                  onStopRecording={() => {
+                    onStopRecording();
+                    focusTextarea();
+                  }}
                 />
               )}
             </div>
