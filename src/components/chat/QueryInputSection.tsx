@@ -21,9 +21,8 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
   // Get command state from context
   const { userQuery, onQueryChange, isLoading, onCancel, onSearchVectorial, selectedAction, onSearchVectorialSQL } = useCommand();
 
-  // Auto-grow textarea
-  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onQueryChange(e.target.value);
+  // Resize textarea to fit content
+  const resizeTextarea = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       const scrollHeight = Math.min(textareaRef.current.scrollHeight, 80); // 80px = ~3 rows
@@ -31,11 +30,22 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     }
   };
 
+  // Auto-grow textarea on keyboard input
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onQueryChange(e.target.value);
+    resizeTextarea();
+  };
+
   const focusTextarea = () => {
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
   };
+
+  // Resize textarea whenever userQuery changes (e.g., from transcription)
+  useEffect(() => {
+    resizeTextarea();
+  }, [userQuery]);
 
   // Get transcription state from context
   const {
