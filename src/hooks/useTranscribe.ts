@@ -19,8 +19,7 @@ interface UseTranscribeReturn {
     isConnecting: boolean;
     transcript: string;
     partialTranscript: string;
-    currentLanguage: LanguageCode;
-    setLanguage: (language: LanguageCode) => void;
+    selectedLanguages: LanguageCode[];
     startRecording: (config?: Partial<TranscribeConfig>) => Promise<void>;
     stopRecording: () => void;
     clearTranscript: () => void;
@@ -32,9 +31,11 @@ export const useTranscribe = (): UseTranscribeReturn => {
     const [isConnecting, setIsConnecting] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [partialTranscript, setPartialTranscript] = useState('');
-    const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>(
-        (import.meta.env.VITE_TRANSCRIBE_DEFAULT_LANGUAGE || 'es-ES') as LanguageCode
+    // Always use all supported languages for detection
+    const [selectedLanguages] = useState<LanguageCode[]>(
+        Object.keys(SUPPORTED_LANGUAGES) as LanguageCode[]
     );
+
 
     // Get record mode from env (default to 'click')
     const recordMode = (import.meta.env.VITE_RECORD_MODE || 'click') as 'click' | 'hold';
@@ -146,7 +147,8 @@ export const useTranscribe = (): UseTranscribeReturn => {
             const defaultShowSpeakerLabel = import.meta.env.VITE_TRANSCRIBE_SHOW_SPEAKER_LABEL === 'true';
 
             const transcribeConfig: TranscribeConfig = {
-                language_code: config.language_code || currentLanguage,
+                language_code: config.language_code || selectedLanguages[0],
+                language_codes: config.language_codes || selectedLanguages,
                 sample_rate: config.sample_rate || audioSampleRate,
                 media_encoding: config.media_encoding || audioEncoding,
                 enable_partial_results: config.enable_partial_results ?? defaultEnablePartialResults,
@@ -319,7 +321,7 @@ export const useTranscribe = (): UseTranscribeReturn => {
             setIsRecording(false);
             setIsConnecting(false);
         }
-    }, [cleanupAudioResources, currentLanguage, recordMode]);
+    }, [cleanupAudioResources, selectedLanguages, recordMode]);
 
     /**
      * Stop recording and transcription
@@ -412,8 +414,7 @@ export const useTranscribe = (): UseTranscribeReturn => {
         isConnecting,
         transcript,
         partialTranscript,
-        currentLanguage,
-        setLanguage: setCurrentLanguage,
+        selectedLanguages,
         startRecording,
         stopRecording,
         clearTranscript,

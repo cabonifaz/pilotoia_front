@@ -5,6 +5,7 @@
 
 export interface TranscribeConfig {
     language_code?: string;
+    language_codes?: string[];
     sample_rate?: number;
     media_encoding?: string;
     vocabulary_name?: string;

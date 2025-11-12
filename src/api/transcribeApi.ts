@@ -158,6 +158,7 @@ class TranscribeWebSocketClient {
             type: 'config',
             data: {
                 language_code: config.language_code || 'es-ES',
+                language_codes: config.language_codes || [config.language_code || 'es-ES'],
                 sample_rate: config.sample_rate || 16000,
                 media_encoding: config.media_encoding || 'pcm',
                 vocabulary_name: config.vocabulary_name || null,
