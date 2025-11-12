@@ -222,7 +222,7 @@ export const ChatListSidebar = ({ isStreaming = false, isCollapsed = false }: Ch
                           }}
                           maxLength={50}
                           disabled={isUpdating}
-                          className="h-6 px-1 py-0"
+                          className="h-6 px-1 py-0 text-xs"
                           onClick={(e) => e.stopPropagation()}
                         />
                       ) : (
