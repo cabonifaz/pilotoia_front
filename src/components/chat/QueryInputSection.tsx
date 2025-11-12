@@ -37,6 +37,8 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     isRecording,
     isConnecting,
     onMicrophoneClick,
+    startMicrophoneRecording,
+    stopMicrophoneRecording,
     isFileRecording,
     isFileTranscribing,
     onPrepareRecording,
@@ -100,6 +102,8 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                   isConnecting={isConnecting}
                   isDisabled={isLoading}
                   onClick={onMicrophoneClick}
+                  onStart={startMicrophoneRecording}
+                  onStop={stopMicrophoneRecording}
                 />
               ) : (
                 <FileTranscribeButton

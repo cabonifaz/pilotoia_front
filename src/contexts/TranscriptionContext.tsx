@@ -9,6 +9,8 @@ interface TranscriptionContextType {
   isRecording: boolean;
   isConnecting: boolean;
   onMicrophoneClick: () => void;
+  startMicrophoneRecording: () => Promise<void>;
+  stopMicrophoneRecording: () => void;
 
   // File transcription (OpenAI)
   isFileRecording: boolean;
@@ -31,6 +33,8 @@ interface TranscriptionProviderProps {
   isRecording: boolean;
   isConnecting: boolean;
   onMicrophoneClick: () => void;
+  startMicrophoneRecording: () => Promise<void>;
+  stopMicrophoneRecording: () => void;
 
   // File transcription (OpenAI)
   isFileRecording: boolean;
@@ -47,6 +51,8 @@ export const TranscriptionProvider = ({
   isRecording,
   isConnecting,
   onMicrophoneClick,
+  startMicrophoneRecording,
+  stopMicrophoneRecording,
   isFileRecording,
   isFileTranscribing,
   onPrepareRecording,
@@ -61,6 +67,8 @@ export const TranscriptionProvider = ({
       isRecording,
       isConnecting,
       onMicrophoneClick,
+      startMicrophoneRecording,
+      stopMicrophoneRecording,
       isFileRecording,
       isFileTranscribing,
       onPrepareRecording,
@@ -73,6 +81,8 @@ export const TranscriptionProvider = ({
       isRecording,
       isConnecting,
       onMicrophoneClick,
+      startMicrophoneRecording,
+      stopMicrophoneRecording,
       isFileRecording,
       isFileTranscribing,
       onPrepareRecording,

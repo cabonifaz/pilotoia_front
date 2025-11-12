@@ -1,54 +1,40 @@
 import { Mic, Square, Loader2 } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { cn } from '@/lib/utils';
-import { useRef } from 'react';
 
 interface VoiceRecordButtonProps {
   isRecording: boolean;
   isConnecting: boolean;
   isDisabled?: boolean;
-  onClick: () => void;
+  onClick?: () => void; // Optional for 'click' mode
+  onStart: () => void; // For 'hold' mode
+  onStop: () => void;  // For 'hold' mode
 }
 
 export const VoiceRecordButton = ({
   isRecording,
   isConnecting,
   isDisabled = false,
-  onClick
+  onClick,
+  onStart,
+  onStop,
 }: VoiceRecordButtonProps) => {
   const recordMode = (import.meta.env.VITE_RECORD_MODE || 'click') as 'click' | 'hold';
-  const isHoldModeRef = useRef(false);
 
-  const handleMouseDown = () => {
-    if (recordMode === 'hold' && !isRecording) {
-      isHoldModeRef.current = true;
-      onClick(); // Start recording
+  const handlePress = () => {
+    if (recordMode === 'hold') {
+      onStart();
     }
   };
 
-  const handleMouseUp = () => {
-    if (recordMode === 'hold' && isHoldModeRef.current && isRecording) {
-      isHoldModeRef.current = false;
-      onClick(); // Stop recording
+  const handleRelease = () => {
+    if (recordMode === 'hold') {
+      onStop();
     }
   };
 
-  const handleTouchStart = () => {
-    if (recordMode === 'hold' && !isRecording) {
-      isHoldModeRef.current = true;
-      onClick(); // Start recording
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (recordMode === 'hold' && isHoldModeRef.current && isRecording) {
-      isHoldModeRef.current = false;
-      onClick(); // Stop recording
-    }
-  };
-
-  const handleClick = () => {
-    if (recordMode === 'click') {
+  const handleButtonClick = () => {
+    if (recordMode === 'click' && onClick) {
       onClick();
     }
   };
@@ -56,13 +42,13 @@ export const VoiceRecordButton = ({
   return (
     <Button
       type="button"
-      onClick={handleClick}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp} // Stop if mouse leaves while holding
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      disabled={isDisabled || isConnecting}
+      onClick={handleButtonClick}
+      onMouseDown={handlePress}
+      onMouseUp={handleRelease}
+      onMouseLeave={handleRelease} // Stop if mouse leaves while holding
+      onTouchStart={handlePress}
+      onTouchEnd={handleRelease}
+      disabled={isDisabled || (isConnecting && !isRecording)}
       variant="ghost"
       size="icon"
       className={cn(

@@ -54,8 +54,8 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
     isConnecting,
     transcript,
     partialTranscript,
-    startRecording,
-    stopRecording,
+    startRecording, // This is the start for AWS streaming
+    stopRecording,  // This is the stop for AWS streaming
     clearTranscript
   } = useTranscribe();
 
@@ -184,6 +184,8 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
       isRecording={isRecording}
       isConnecting={isConnecting}
       onMicrophoneClick={handleMicrophoneClick}
+      startMicrophoneRecording={async () => { clearTranscript(); await startRecording({ language_code: 'es-ES' }); }}
+      stopMicrophoneRecording={stopRecording}
       isFileRecording={isFileRecording}
       isFileTranscribing={isFileTranscribing}
       onPrepareRecording={prepareFileRecording}

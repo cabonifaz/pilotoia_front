@@ -229,8 +229,7 @@ export const useTranscribe = (): UseTranscribeReturn => {
                         }
                     },
                     onClose: () => {
-                        setIsRecording(false);
-                        setIsConnecting(false);
+                        cleanupAudioResources();
                     }
                 }
             );
