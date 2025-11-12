@@ -1,9 +1,12 @@
 class PCMAudioProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    // Buffer to accumulate samples before sending (target ~4096 samples like old implementation)
+    // Bootstrap buffer: smaller initial buffer for fast first audio send (~12ms)
+    // Normal buffer: larger for subsequent sends (~50ms)
     this.buffer = [];
-    this.bufferSize = 4096;
+    this.normalBufferSize = 800; // At 16kHz: ~50ms
+    this.bufferSize = 200; // Initial: ~12ms for fast bootstrap
+    this.isBootstrapped = false;
   }
 
   process(inputs, outputs, parameters) {
@@ -30,6 +33,12 @@ class PCMAudioProcessor extends AudioWorkletProcessor {
             type: 'audio',
             data: pcmData.buffer
           }, [pcmData.buffer]); // Transfer buffer for performance
+
+          // After first send, switch to normal buffer size for efficiency
+          if (!this.isBootstrapped) {
+            this.isBootstrapped = true;
+            this.bufferSize = this.normalBufferSize;
+          }
 
           // Clear buffer
           this.buffer = [];
