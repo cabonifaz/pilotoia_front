@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
-import { Settings } from 'lucide-react';
+import { Settings, Loader2 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import ChatComponent from '../../components/chat/ChatComponent';
 import { AIConfigSidebar } from '../../components/aiConfigPanel/AIConfigSidebar';
@@ -145,10 +145,10 @@ const StreamingChat = () => {
 
   if (!chatContext) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center h-full">
         <Card className="p-8">
-          <div className="text-center">
-            <div className="text-4xl mb-4">⏳</div>
+          <div className="flex flex-col items-center justify-center text-center">
+            <Loader2 className="h-12 w-12 mb-4 animate-spin text-primary" />
             <p className="text-lg">Cargando configuración...</p>
           </div>
         </Card>
@@ -157,17 +157,15 @@ const StreamingChat = () => {
   }
 
   return (
-     <div className="flex flex-1 overflow-hidden min-h-0 h-full">
+     <div className="relative flex flex-1 overflow-hidden min-h-0 h-full">
       {/* Main Content */}
       <div
-        className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 min-h-0 ${
-          isConfigSidebarOpen ? 'mr-96' : ''
-        }`}
+        className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 min-h-0`}
       >
 
 
         {/* Chat Section */}
-        <div className="flex-1 flex flex-col pb-8 pl-8 pt-8 overflow-hidden min-h-0 h-full">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0 h-full">
           <div className="flex-1 rounded-lg overflow-hidden min-h-0 h-full">
             <ChatComponent
               aiConfig={aiConfig}
@@ -179,9 +177,9 @@ const StreamingChat = () => {
         </div>
       </div>
 
-      {/* Header with Settings Button */}
-      <div className="flex items-center justify-start pl-8 pr-2 py-4 flex-shrink-0">
-        {user?.id_tipo_rol !== 3 && (
+      {/* Settings Button */}
+      <div className="fixed top-20 right-4 z-10">
+        {user?.id_tipo_rol !== 3 && !isConfigSidebarOpen && (
           <Button
             onClick={() => setIsConfigSidebarOpen(true)}
             variant="ghost"

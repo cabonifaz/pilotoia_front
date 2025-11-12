@@ -48,11 +48,11 @@ const UserDropdown = () => {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="flex items-center gap-2 px-3 py-2 h-auto"
+          className="flex items-center gap-2 px-3 py-2 h-auto text-xs hover:text-foreground"
         >
           <div className="flex items-center gap-2">
             {getRoleIcon()}
-            <span className="text-sm font-medium">
+            <span className="text-xs font-medium">
               {user.nombres} {user.apellidos}
             </span>
             <ChevronDown className="h-4 w-4" />
@@ -64,7 +64,7 @@ const UserDropdown = () => {
         <DropdownMenuItem
           onClick={handleLogout}
           disabled={isLoggingOut}
-          className="cursor-pointer bg-red-500 text-white hover:bg-red-600 focus:bg-red-600"
+          className="cursor-pointer bg-red-500 text-white hover:bg-red-600 hover:text-white focus:bg-red-600 focus:text-white"
         >
           <LogOut className="h-4 w-4 mr-2 text-white" />
           {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}

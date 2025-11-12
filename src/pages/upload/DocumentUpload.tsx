@@ -12,16 +12,14 @@ const DocumentUpload = () => {
     <div className="flex flex-1 overflow-hidden">
       {/* Main Content */}
       <div
-        className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ${
-          isSidebarOpen ? 'mr-96' : ''
-        }`}
+        className={`flex flex-col flex-1 overflow-hidden transition-all duration-300`}
       >
         {/* Header and Table Wrapper */}
         <div className="flex flex-col flex-1 overflow-hidden p-8 gap-4">
           {/* Header with Title and Controls */}
           <div className="flex flex-col items-start gap-1">
             <h1 className="text-3xl font-bold text-foreground">Documentos</h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Gestiona todos los documentos de la empresa.
             </p>
           </div>

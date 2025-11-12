@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Mic, Square, Loader2 } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { cn } from '@/lib/utils';
@@ -6,26 +7,93 @@ interface VoiceRecordButtonProps {
   isRecording: boolean;
   isConnecting: boolean;
   isDisabled?: boolean;
-  onClick: () => void;
+  onClick?: () => void; // Optional for 'click' mode
+  onStart: () => void; // For 'hold' mode
+  onStop: () => void;  // For 'hold' mode
 }
 
 export const VoiceRecordButton = ({
   isRecording,
   isConnecting,
   isDisabled = false,
-  onClick
+  onClick,
+  onStart,
+  onStop,
 }: VoiceRecordButtonProps) => {
+  // Detect device type based on window width and select recording mode (once, doesn't change during session)
+  // Mobile (hold mode): width <= 768px
+  // Web (click mode): width > 768px
+  const recordMode = useMemo(() => {
+    if (typeof window === 'undefined') return 'click' as const;
+    return (window.innerWidth <= 768 ? 'hold' : 'click') as 'click' | 'hold';
+  }, []);
+
+  const handlePress = (e: React.MouseEvent | React.TouchEvent) => {
+    if (recordMode === 'hold') {
+      e.preventDefault();
+      e.stopPropagation();
+      onStart();
+    }
+  };
+
+  const handleRelease = (e: React.MouseEvent | React.TouchEvent) => {
+    if (recordMode === 'hold') {
+      e.preventDefault();
+      e.stopPropagation();
+      onStop();
+    }
+  };
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    if (recordMode === 'click' && onClick) {
+      onClick();
+    } else if (recordMode === 'hold') {
+      // In hold mode, prevent the click handler from doing anything
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Prevent Space from triggering the button, but let Enter propagate
+    if (e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    // Prevent Space from triggering the button, but let Enter propagate
+    if (e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
   return (
     <Button
       type="button"
-      onClick={onClick}
-      disabled={isDisabled || isConnecting}
+      tabIndex={-1}
+      onClick={handleButtonClick}
+      onMouseDown={handlePress as React.MouseEventHandler}
+      onMouseUp={handleRelease as React.MouseEventHandler}
+      onMouseLeave={handleRelease as React.MouseEventHandler} // Stop if mouse leaves while holding
+      onTouchStart={handlePress as React.TouchEventHandler}
+      onTouchEnd={handleRelease as React.TouchEventHandler}
+      onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
+      disabled={isDisabled || (isConnecting && !isRecording)}
       variant="ghost"
       size="icon"
       className={cn(
-        "absolute right-0.5 bottom-0.5 rounded-full hover:bg-transparent"
+        "rounded-full hover:bg-transparent",
+        recordMode === 'hold' && isRecording && "active:scale-95"
       )}
-      title={isRecording ? "Detener grabación" : "Grabar audio"}
+      title={
+        recordMode === 'hold'
+          ? (isRecording ? "Suelta para detener" : "Presiona y mantén para grabar")
+          : (isRecording ? "Detener grabación" : "Grabar audio")
+      }
     >
       {isConnecting ? (
         <Loader2 className={cn("w-4 h-4 animate-spin", isRecording && "text-destructive")} />
