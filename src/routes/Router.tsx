@@ -4,7 +4,7 @@ import { App } from "../App";
 import { GuardRoute } from "./GuardRoute";
 import ProtectedLayout from "../components/layout/ProtectedLayout";
 import StreamingChat from "../pages/rag/StreamingChat";
-//import DocumentUpload from "../pages/upload/DocumentUpload";
+import DocumentUpload from "../pages/upload/DocumentUpload";
 
 export const router = createHashRouter([
   {
@@ -25,11 +25,11 @@ export const router = createHashRouter([
           {
             path: "rag",
             element: <StreamingChat />,
-          }/*,
+          },
           {
             path: "upload",
             element: <DocumentUpload />,
-          },*/
+          },
         ],
       },
     ],

@@ -22,7 +22,7 @@ export const CommandMenu = ({ disabled = false }: CommandMenuProps) => {
           size="icon"
           disabled={disabled}
           className={cn(
-            "absolute left-0.5 bottom-0.5 rounded-full hover:bg-transparent z-10"
+            "rounded-full hover:bg-transparent z-10"
           )}
         >
           <Plus className="h-5 w-5 text-primary" />

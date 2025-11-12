@@ -144,7 +144,7 @@ export const DocumentsTable = ({ onAddClick }: DocumentsTableProps) => {
             Estado
           </Button>
 
-          <Button onClick={onAddClick} className="bg-blue-600 hover:bg-blue-700 gap-2">
+          <Button onClick={onAddClick} variant="blue" className="gap-2">
             <CirclePlus className="h-4 w-4" />
             Agregar documentos
           </Button>
@@ -177,7 +177,7 @@ export const DocumentsTable = ({ onAddClick }: DocumentsTableProps) => {
         {!isLoading && !error && displayedDocuments.length > 0 && (
           <>
             <div className="flex-1 overflow-y-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 font-medium">
@@ -218,7 +218,7 @@ export const DocumentsTable = ({ onAddClick }: DocumentsTableProps) => {
 
             {/* Pagination */}
             <div className="flex items-center justify-between pt-4 border-t">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Mostrando {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedDocuments.length)} de {sortedDocuments.length} documentos
               </p>
               <div className="flex items-center gap-2">

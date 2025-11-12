@@ -47,7 +47,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-xs text-muted-foreground", className)}
     {...props}
   />
 ))
@@ -73,4 +73,36 @@ const CardFooter = React.forwardRef<
 ))
 CardFooter.displayName = "CardFooter"
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+const CardHeaderCompact = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col space-y-1.5 p-4", className)}
+    {...props}
+  />
+))
+CardHeaderCompact.displayName = "CardHeaderCompact"
+
+const CardContentCompact = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-4 pt-0", className)} {...props} />
+))
+CardContentCompact.displayName = "CardContentCompact"
+
+const CardFooterCompact = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center p-4 pt-0", className)}
+    {...props}
+  />
+))
+CardFooterCompact.displayName = "CardFooterCompact"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent, CardHeaderCompact, CardContentCompact, CardFooterCompact }

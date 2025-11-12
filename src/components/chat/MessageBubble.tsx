@@ -2,7 +2,7 @@ import { memo, useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { User, Bot } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
+import { Card, CardHeaderCompact, CardContentCompact } from '@/components/shadcn/card';
 import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
 import { Badge } from '@/components/shadcn/badge';
 import { type Message, parseMessageTimestamp, getMessageType } from '@/types/message';
@@ -186,7 +186,7 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
   return (
   <div className={`mb-6 ${isUserMessage ? 'flex justify-end' : 'flex justify-start'}`}>
     <Card className={`max-w-[80%] border-0 shadow-none ${isUserMessage ? 'bg-muted' : 'bg-background'}`}>
-      <CardHeader className="pb-2">
+      <CardHeaderCompact className="pb-2">
         <div className="flex items-center gap-2 text-xs">
           <Avatar className="h-6 w-6">
             <AvatarFallback className="text-xs">
@@ -200,9 +200,9 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
             {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Badge>
         </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div>
+      </CardHeaderCompact>
+      <CardContentCompact>
+        <div className="text-xs overflow-hidden">
           {isTableOrList ? (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -210,7 +210,7 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
                 // Table styling
                 table: ({ children }) => (
                   <div className="overflow-x-auto mb-4 border border-gray-300 dark:border-gray-600">
-                    <table className="w-full min-w-max border-collapse text-sm">
+                    <table className="w-full min-w-max border-collapse text-xs">
                       {children}
                     </table>
                   </div>
@@ -236,13 +236,25 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
 
                 // Keep paragraphs clean
                 p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+
+                // Code block styling with outline variant
+                code: ({ children }) => (
+                  <code className="bg-background border border-foreground px-1 py-0.5 rounded text-xs font-mono break-words">
+                    {children}
+                  </code>
+                ),
+                pre: ({ children }) => (
+                  <pre className="bg-background border-2 border-foreground p-3 rounded overflow-x-auto max-h-96 mb-2">
+                    {children}
+                  </pre>
+                ),
               }}
             >
               {processedContent || (messageType !== 'user' ? 'Pensando...' : '')}
             </ReactMarkdown>
           ) : (
             <>
-              <span className="whitespace-pre-wrap">
+              <span className="whitespace-pre-wrap break-words overflow-hidden">
                 {message.message || (messageType !== 'user' ? 'Pensando...' : '')}
               </span>
               {streamingMessageId === message.id && <SpinnerCursor />}
@@ -250,7 +262,7 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
           )}
           {streamingMessageId === message.id && isTableOrList && <SpinnerCursor />}
         </div>
-      </CardContent>
+      </CardContentCompact>
     </Card>
   </div>
   );

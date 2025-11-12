@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { transcribeApi } from '../api/transcribeApi';
 import type { TranscribeConfig, TranscriptResult } from '../types/transcribe';
 import { toast } from './use-toast';
@@ -8,6 +8,8 @@ export const SUPPORTED_LANGUAGES = {
     'es-ES': 'Spanish (Spain)',
     'es-US': 'Spanish (United States)',
     'en-US': 'English (United States)',
+    'de-DE': 'German (Germany)',
+    'de-CH': 'German (Switzerland)',
 } as const;
 
 export type LanguageCode = keyof typeof SUPPORTED_LANGUAGES;
@@ -17,8 +19,7 @@ interface UseTranscribeReturn {
     isConnecting: boolean;
     transcript: string;
     partialTranscript: string;
-    currentLanguage: LanguageCode;
-    setLanguage: (language: LanguageCode) => void;
+    selectedLanguages: LanguageCode[];
     startRecording: (config?: Partial<TranscribeConfig>) => Promise<void>;
     stopRecording: () => void;
     clearTranscript: () => void;
@@ -30,9 +31,19 @@ export const useTranscribe = (): UseTranscribeReturn => {
     const [isConnecting, setIsConnecting] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [partialTranscript, setPartialTranscript] = useState('');
-    const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>(
-        (import.meta.env.VITE_TRANSCRIBE_DEFAULT_LANGUAGE || 'es-ES') as LanguageCode
+    // Always use all supported languages for detection
+    const [selectedLanguages] = useState<LanguageCode[]>(
+        Object.keys(SUPPORTED_LANGUAGES) as LanguageCode[]
     );
+
+
+    // Detect device type and select record mode (once, doesn't change during session)
+    // Mobile (hold mode): width <= 768px
+    // Web (click mode): width > 768px
+    const recordMode = useMemo(() => {
+        if (typeof window === 'undefined') return 'click' as const;
+        return (window.innerWidth <= 768 ? 'hold' : 'click') as 'click' | 'hold';
+    }, []);
 
     const audioContextRef = useRef<AudioContext | null>(null);
     const workletNodeRef = useRef<AudioWorkletNode | null>(null);
@@ -41,6 +52,58 @@ export const useTranscribe = (): UseTranscribeReturn => {
     const detectionFrameIdRef = useRef<number | null>(null);
     const transcribeClientRef = useRef<ReturnType<typeof transcribeApi.startTranscription> | null>(null);
     const transcriptBufferRef = useRef<string[]>([]);
+    const isStoppingRef = useRef<boolean>(false);
+    const recordingStartTimeRef = useRef<number>(0);
+    const isWaitingForCloseRef = useRef<boolean>(false);
+
+    /**
+     * Cleanup audio resources
+     */
+    const cleanupAudioResources = useCallback(() => {
+        // Clean up Web Audio API resources
+        if (detectionFrameIdRef.current !== null) {
+            cancelAnimationFrame(detectionFrameIdRef.current);
+            detectionFrameIdRef.current = null;
+        }
+
+        if (workletNodeRef.current) {
+            workletNodeRef.current.disconnect();
+            workletNodeRef.current = null;
+        }
+
+        if (sourceRef.current) {
+            sourceRef.current.disconnect();
+            sourceRef.current = null;
+        }
+
+        if (analyserRef.current) {
+            analyserRef.current.disconnect();
+            analyserRef.current = null;
+        }
+
+        if (audioContextRef.current) {
+            // Close audio context if it's still running
+            if (audioContextRef.current.state !== 'closed') {
+                audioContextRef.current.close().catch(() => {
+                    // Ignore errors closing audio context
+                });
+            }
+            audioContextRef.current = null;
+        }
+
+        // Disconnect WebSocket
+        if (transcribeClientRef.current) {
+            transcribeClientRef.current.disconnect();
+            transcribeClientRef.current = null;
+        }
+
+        setIsRecording(false);
+        setIsConnecting(false);
+        setPartialTranscript('');
+        isStoppingRef.current = false;
+        isWaitingForCloseRef.current = false;
+        recordingStartTimeRef.current = 0;
+    }, []);
 
     /**
      * Start recording and transcription
@@ -89,7 +152,8 @@ export const useTranscribe = (): UseTranscribeReturn => {
             const defaultShowSpeakerLabel = import.meta.env.VITE_TRANSCRIBE_SHOW_SPEAKER_LABEL === 'true';
 
             const transcribeConfig: TranscribeConfig = {
-                language_code: config.language_code || currentLanguage,
+                language_code: config.language_code || selectedLanguages[0],
+                language_codes: config.language_codes || selectedLanguages,
                 sample_rate: config.sample_rate || audioSampleRate,
                 media_encoding: config.media_encoding || audioEncoding,
                 enable_partial_results: config.enable_partial_results ?? defaultEnablePartialResults,
@@ -105,6 +169,7 @@ export const useTranscribe = (): UseTranscribeReturn => {
                     onOpen: async () => {
                         setIsConnecting(false);
                         setIsRecording(true);
+                        recordingStartTimeRef.current = Date.now();
 
                         try {
                             // Capture raw PCM from microphone using Web Audio API with AudioWorklet
@@ -127,13 +192,13 @@ export const useTranscribe = (): UseTranscribeReturn => {
                         source.connect(workletNode);
                         workletNode.connect(audioContext.destination);
 
-                        // Variables para tracking de silencio
+                        // Variables para tracking de silencio (only used in 'click' mode)
                         let silenceTimeoutId: NodeJS.Timeout | null = null;
                         let stopSignalSent = false;
                         const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '5000', 10);
                         const SILENCE_LEVEL = parseInt(import.meta.env.VITE_SILENCE_LEVEL || '15', 10);
 
-                        // Create analyser for silence detection
+                        // Create analyser for silence detection (only used in 'click' mode)
                         const analyser = audioContext.createAnalyser();
                         analyser.fftSize = 2048;
                         source.connect(analyser);
@@ -152,42 +217,45 @@ export const useTranscribe = (): UseTranscribeReturn => {
                             }
                         };
 
-                        const detectSilence = () => {
-                            analyser.getByteFrequencyData(dataArray);
-                            const sum = dataArray.reduce((a, b) => a + b, 0);
-                            const average = sum / dataArray.length;
+                        // Only enable silence detection in 'click' mode
+                        if (recordMode === 'click') {
+                            const detectSilence = () => {
+                                analyser.getByteFrequencyData(dataArray);
+                                const sum = dataArray.reduce((a, b) => a + b, 0);
+                                const average = sum / dataArray.length;
 
-                            // If average volume is very low, consider it silence
-                            if (average < SILENCE_LEVEL) {
-                                if (!silenceTimeoutId) {
-                                    silenceTimeoutId = setTimeout(() => {
-                                        if (!stopSignalSent) {
-                                            stopSignalSent = true;
-                                            // Send stop signal but keep worklet running briefly
-                                            // to ensure server receives it
-                                            client.sendStop();
+                                // If average volume is very low, consider it silence
+                                if (average < SILENCE_LEVEL) {
+                                    if (!silenceTimeoutId) {
+                                        silenceTimeoutId = setTimeout(() => {
+                                            if (!stopSignalSent) {
+                                                stopSignalSent = true;
+                                                // Send stop signal but keep worklet running briefly
+                                                // to ensure server receives it
+                                                client.sendStop();
 
-                                            // Cleanup after a brief delay to ensure stop signal is sent
-                                            setTimeout(() => {
-                                                workletNode.disconnect();
-                                                source.disconnect();
-                                            }, 500);
-                                        }
-                                    }, SILENCE_THRESHOLD);
+                                                // Cleanup after a brief delay to ensure stop signal is sent
+                                                setTimeout(() => {
+                                                    workletNode.disconnect();
+                                                    source.disconnect();
+                                                }, 500);
+                                            }
+                                        }, SILENCE_THRESHOLD);
+                                    }
+                                } else {
+                                    // Clear timeout if sound detected
+                                    if (silenceTimeoutId && !stopSignalSent) {
+                                        clearTimeout(silenceTimeoutId);
+                                        silenceTimeoutId = null;
+                                    }
                                 }
-                            } else {
-                                // Clear timeout if sound detected
-                                if (silenceTimeoutId && !stopSignalSent) {
-                                    clearTimeout(silenceTimeoutId);
-                                    silenceTimeoutId = null;
-                                }
-                            }
 
+                                detectionFrameIdRef.current = requestAnimationFrame(detectSilence);
+                            };
+
+                            // Start silence detection
                             detectionFrameIdRef.current = requestAnimationFrame(detectSilence);
-                        };
-
-                        // Start silence detection
-                        detectionFrameIdRef.current = requestAnimationFrame(detectSilence);
+                        }
                         } catch (error) {
                             console.error('❌ Error initializing audio context:', error);
                             toast({
@@ -222,8 +290,16 @@ export const useTranscribe = (): UseTranscribeReturn => {
                         }
                     },
                     onClose: () => {
-                        setIsRecording(false);
-                        setIsConnecting(false);
+                        // In hold mode, only cleanup if we were waiting for close
+                        // Otherwise, let stopRecording handle the cleanup timing
+                        if (recordMode === 'hold') {
+                            if (isWaitingForCloseRef.current) {
+                                cleanupAudioResources();
+                            }
+                        } else {
+                            // In click mode, always cleanup on close
+                            cleanupAudioResources();
+                        }
                     }
                 }
             );
@@ -250,53 +326,77 @@ export const useTranscribe = (): UseTranscribeReturn => {
             setIsRecording(false);
             setIsConnecting(false);
         }
-    }, []);
+    }, [cleanupAudioResources, selectedLanguages, recordMode]);
 
     /**
      * Stop recording and transcription
      */
     const stopRecording = useCallback(() => {
-        // Clean up Web Audio API resources
-        if (detectionFrameIdRef.current !== null) {
-            cancelAnimationFrame(detectionFrameIdRef.current);
-            detectionFrameIdRef.current = null;
+        // Prevent multiple simultaneous stops
+        if (isStoppingRef.current) return;
+
+        // For hold mode, we need to check if recording has actually started
+        if (recordMode === 'hold' && !recordingStartTimeRef.current) {
+            // User released button before connection was established.
+            // We can simply clean up without sending signals.
+            cleanupAudioResources();
+            return;
         }
 
-        if (workletNodeRef.current) {
-            workletNodeRef.current.disconnect();
-            workletNodeRef.current = null;
-        }
+        isStoppingRef.current = true;
 
-        if (sourceRef.current) {
-            sourceRef.current.disconnect();
-            sourceRef.current = null;
-        }
+        if (recordMode === 'hold') {
+            const duration = Date.now() - recordingStartTimeRef.current;
+            const SHORT_RECORDING_THRESHOLD = 1500; // 1.5 seconds
 
-        if (analyserRef.current) {
-            analyserRef.current.disconnect();
-            analyserRef.current = null;
-        }
+            if (duration < SHORT_RECORDING_THRESHOLD) {
+                // Hard stop for short recordings
+                cleanupAudioResources();
+            } else {
+                // Graceful stop for longer recordings: send stop and wait for onClose
+                if (transcribeClientRef.current && transcribeClientRef.current.isConnected()) {
+                    // Mark that we're waiting for server to close the connection
+                    isWaitingForCloseRef.current = true;
 
-        if (audioContextRef.current) {
-            // Close audio context if it's still running
-            if (audioContextRef.current.state !== 'closed') {
-                audioContextRef.current.close().catch(() => {
-                    // Ignore errors closing audio context
-                });
+                    // Force worklet to send any remaining buffered audio
+                    if (workletNodeRef.current) {
+                        workletNodeRef.current.port.postMessage({ type: 'flush' });
+                    }
+
+                    // Wait for buffered audio to be sent before sending stop signal
+                    setTimeout(() => {
+                        // Send stop signal to server
+                        if (transcribeClientRef.current && transcribeClientRef.current.isConnected()) {
+                            transcribeClientRef.current.sendStop();
+                        }
+
+                        // Disconnect audio sources after stop is sent
+                        if (sourceRef.current) {
+                            sourceRef.current.disconnect();
+                        }
+                        if (workletNodeRef.current) {
+                            workletNodeRef.current.disconnect();
+                        }
+                    }, 100);
+
+                    // Safety timeout: if server doesn't close within 10 seconds, force cleanup
+                    setTimeout(() => {
+                        if (isWaitingForCloseRef.current) {
+                            console.warn('⚠️ Server did not close connection within timeout, forcing cleanup');
+                            cleanupAudioResources();
+                        }
+                    }, 10000);
+                } else {
+                    // If client is already disconnected, just clean up
+                    cleanupAudioResources();
+                }
             }
-            audioContextRef.current = null;
+        } else {
+            // In 'click' mode, cleanup is handled by silence detection or the onClose event
+            // This call is a fallback.
+            cleanupAudioResources();
         }
-
-        // Disconnect WebSocket
-        if (transcribeClientRef.current) {
-            transcribeClientRef.current.disconnect();
-            transcribeClientRef.current = null;
-        }
-
-        setIsRecording(false);
-        setIsConnecting(false);
-        setPartialTranscript('');
-    }, []);
+    }, [recordMode, cleanupAudioResources]);
 
     /**
      * Clear transcript
@@ -310,17 +410,16 @@ export const useTranscribe = (): UseTranscribeReturn => {
     // Cleanup on unmount
     useEffect(() => {
         return () => {
-            stopRecording();
+            cleanupAudioResources();
         };
-    }, [stopRecording]);
+    }, [cleanupAudioResources]);
 
     return {
         isRecording,
         isConnecting,
         transcript,
         partialTranscript,
-        currentLanguage,
-        setLanguage: setCurrentLanguage,
+        selectedLanguages,
         startRecording,
         stopRecording,
         clearTranscript,

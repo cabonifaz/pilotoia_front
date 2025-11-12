@@ -27,7 +27,11 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
 
   // Get current user data
   const { data: currentUser } = useQuery({
-    queryKey: ['user', 'current']
+    queryKey: ['user', 'current'],
+    queryFn: async () => {
+      return null;
+    },
+    enabled: false
   });
 
   // Get transcription provider from environment
@@ -50,8 +54,8 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
     isConnecting,
     transcript,
     partialTranscript,
-    startRecording,
-    stopRecording,
+    startRecording, // This is the start for AWS streaming
+    stopRecording,  // This is the stop for AWS streaming
     clearTranscript
   } = useTranscribe();
 
@@ -180,6 +184,8 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
       isRecording={isRecording}
       isConnecting={isConnecting}
       onMicrophoneClick={handleMicrophoneClick}
+      startMicrophoneRecording={async () => { clearTranscript(); await startRecording({ language_code: 'es-ES' }); }}
+      stopMicrophoneRecording={stopRecording}
       isFileRecording={isFileRecording}
       isFileTranscribing={isFileTranscribing}
       onPrepareRecording={prepareFileRecording}
@@ -198,7 +204,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
           </div>
         ) : !messages || messages.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="w-full max-w-4xl px-4 flex flex-col gap-3">
+            <div className="w-full flex flex-col gap-3">
               <div className="flex items-center justify-center mb-2">
                 <img
                   src="/fractal-logo.svg"
@@ -214,8 +220,8 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
           </div>
         ) : (
           <>
-            <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
-              <div className="w-full max-w-4xl h-full overflow-y-auto p-4 messages-container" onScroll={handleScroll}>
+            <div className="flex-1 min-h-0 overflow-hidden flex">
+              <div className="w-full h-full overflow-y-auto messages-container" onScroll={handleScroll}>
                 {messages?.map(message => (
                   <MessageBubble
                     key={message.id}
@@ -226,8 +232,8 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
                 ))}
               </div>
             </div>
-            <div className="flex-shrink-0 flex justify-center">
-              <div className="w-full max-w-4xl">
+            <div className="flex-shrink-0 flex">
+              <div className="w-full">
                 <QueryInputSection company={chatContext.company} area={chatContext.area} onOpenConfigSidebar={onOpenConfigSidebar} />
               </div>
             </div>

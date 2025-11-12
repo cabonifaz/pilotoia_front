@@ -28,6 +28,18 @@ export const ChatListSidebar = ({ isStreaming = false, isCollapsed = false }: Ch
   const [isUpdating, setIsUpdating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // State to track mobile view
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768); // Tailwind's `md` breakpoint
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+
   // Filter chats by actual company area
   const chats = React.useMemo(() => {
     if (!allChats || !user?.actual_company_area) return allChats || [];
@@ -127,7 +139,7 @@ export const ChatListSidebar = ({ isStreaming = false, isCollapsed = false }: Ch
     }
   };
 
-  if (isCollapsed) {
+  if (isCollapsed && !isMobile) {
     return null;
   }
 
@@ -151,7 +163,7 @@ export const ChatListSidebar = ({ isStreaming = false, isCollapsed = false }: Ch
       ) : (
         <>
           <div className="px-2 h-8 flex items-center mt-1">
-            <h3 className="font-semibold text-sm px-1">Conversaciones</h3>
+            <h3 className="font-semibold text-xs px-1">Conversaciones</h3>
           </div>
 
           <Button
@@ -161,7 +173,7 @@ export const ChatListSidebar = ({ isStreaming = false, isCollapsed = false }: Ch
             className="w-full h-8 justify-start gap-2 px-2 transition-all duration-300"
           >
             <Plus className="h-3.5 w-3.5 flex-shrink-0" />
-            <span>Nueva Conversación</span>
+            <span className="text-xs">Nueva Conversación</span>
           </Button>
 
           {chats && chats.length > 0 && (
@@ -186,7 +198,7 @@ export const ChatListSidebar = ({ isStreaming = false, isCollapsed = false }: Ch
                 return (
                   <div key={chat.ID_CHAT} className="relative group">
                     <Button
-                      variant={isSelected ? 'default' : 'ghost'}
+                      variant={isSelected ? 'secondary' : 'ghost'}
                       className={cn(
                         "transition-all duration-300 h-8 w-full justify-start gap-2 px-2",
                         isStreaming && "opacity-50"
@@ -210,11 +222,11 @@ export const ChatListSidebar = ({ isStreaming = false, isCollapsed = false }: Ch
                           }}
                           maxLength={50}
                           disabled={isUpdating}
-                          className="h-6 px-1 py-0"
+                          className="h-6 px-1 py-0 text-xs"
                           onClick={(e) => e.stopPropagation()}
                         />
                       ) : (
-                        <span className="truncate">
+                        <span className="truncate text-xs">
                           {chat.TITULO || `Conversación #${chat.ID_CHAT}`}
                         </span>
                       )}

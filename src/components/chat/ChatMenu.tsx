@@ -99,7 +99,7 @@ export const ChatMenu: React.FC<ChatMenuProps> = ({
       <DropdownMenu>
         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
           <Button
-            variant={isSelected ? 'default' : 'ghost'}
+            variant={isSelected ? 'secondary' : 'ghost'}
             size="sm"
             className="h-8 w-8 p-0"
             disabled={isDisabled}
@@ -110,14 +110,14 @@ export const ChatMenu: React.FC<ChatMenuProps> = ({
         <DropdownMenuContent align="end">
           <DropdownMenuItem
             onClick={handleRenameClick}
-            className="cursor-pointer"
+            className="cursor-pointer text-xs"
           >
             <Pencil size={14} className="mr-2" />
             Renombrar
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={handleDeleteClick}
-            className="cursor-pointer text-red-600 focus:text-red-600"
+            className="cursor-pointer text-xs text-red-600 focus:text-red-600"
           >
             <Trash2 size={14} className="mr-2" />
             Eliminar

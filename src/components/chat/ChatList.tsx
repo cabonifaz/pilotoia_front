@@ -190,7 +190,7 @@ export const ChatList: React.FC<ChatListProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-600">
+          <p className="text-xs text-gray-600">
             No se pudieron cargar las conversaciones
           </p>
         </CardContent>
@@ -229,7 +229,7 @@ export const ChatList: React.FC<ChatListProps> = ({
         {sortedChats.length === 0 ? (
           <div className="text-center py-8">
             <MessageCircle size={48} className="mx-auto text-gray-300 mb-3" />
-            <p className="text-sm text-gray-500">
+            <p className="text-xs text-gray-500">
               No hay conversaciones guardadas
             </p>
           </div>
@@ -271,11 +271,11 @@ export const ChatList: React.FC<ChatListProps> = ({
                             }}
                             maxLength={50}
                             disabled={isUpdating}
-                            className="text-sm font-medium h-6 px-2 py-0"
+                            className="text-xs font-medium h-6 px-2 py-0"
                             onClick={(e) => e.stopPropagation()}
                           />
                         ) : (
-                          <h3 className="text-sm font-medium truncate">
+                          <h3 className="text-xs font-medium truncate">
                             {chat.TITULO || `Conversación #${chat.ID_CHAT}`}
                           </h3>
                         )}

@@ -132,11 +132,8 @@ export const useLogoutMutation = () => {
             // Invalidate and remove all user-related queries
             queryClient.clear();
 
-            // Clear sessionStorage
-            sessionStorage.removeItem('jwt_token');
-            sessionStorage.removeItem('current_chat_id');
-            sessionStorage.removeItem('selected_company_area_ids');
-            localStorage.removeItem('token');
+            // Clear sessionStorage and localStorage
+            sessionStorage.clear();
             localStorage.removeItem('PILOTOIA_REACT_QUERY_OFFLINE_CACHE');
 
             // Show logout message

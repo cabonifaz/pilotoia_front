@@ -21,9 +21,8 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
   // Get command state from context
   const { userQuery, onQueryChange, isLoading, onCancel, onSearchVectorial, selectedAction, onSearchVectorialSQL } = useCommand();
 
-  // Auto-grow textarea
-  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onQueryChange(e.target.value);
+  // Resize textarea to fit content
+  const resizeTextarea = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       const scrollHeight = Math.min(textareaRef.current.scrollHeight, 80); // 80px = ~3 rows
@@ -31,12 +30,31 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     }
   };
 
+  // Auto-grow textarea on keyboard input
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onQueryChange(e.target.value);
+    resizeTextarea();
+  };
+
+  const focusTextarea = () => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
+  // Resize textarea whenever userQuery changes (e.g., from transcription)
+  useEffect(() => {
+    resizeTextarea();
+  }, [userQuery]);
+
   // Get transcription state from context
   const {
     transcribeProvider,
     isRecording,
     isConnecting,
     onMicrophoneClick,
+    startMicrophoneRecording,
+    stopMicrophoneRecording,
     isFileRecording,
     isFileTranscribing,
     onPrepareRecording,
@@ -56,22 +74,17 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
   }, [selectedAction, onSearchVectorial, onSearchVectorialSQL]);
 
   return (
-    <div className="p-4">
+    <div className="p-1">
       <div className="flex gap-2 items-end">
         <div className="relative flex-1">
-          {/* Command Menu (Left side inside textarea) */}
-          {!isLoading && (
-            <CommandMenu disabled={isLoading} />
-          )}
-
           <Textarea
             ref={textareaRef}
             value={userQuery}
             onChange={handleInput}
-            placeholder={`Escribe tu consulta sobre ${company} • ${area}...`}
+            placeholder={`Escribe tu consulta sobre ${company} • ${area}`}
             disabled={isLoading}
             rows={1}
-            className="resize-none pr-9 pl-9 min-h-[2.5rem] max-h-[5rem] overflow-y-auto !border-1 !border-muted-foreground/30 rounded-3xl"
+            className="resize-none min-h-[2.8rem] max-h-[3.8rem] w-full overflow-y-auto !border-1 !border-muted-foreground/30 rounded-3xl text-xs px-10 py-3"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -79,25 +92,40 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
               }
             }}
           />
+          {/* Left side - Command Menu */}
+          {!isLoading && (
+            <div className="absolute left-1 bottom-1">
+              <CommandMenu disabled={isLoading} />
+            </div>
+          )}
+
           {isLoading && (
             <Button
               onClick={onCancel}
               variant="destructive"
               size="icon"
-              className="absolute right-0.5 bottom-0.5 rounded-full"
+              className="absolute right-3 bottom-1 rounded-full"
               title="Detener"
             >
               <Square className="w-4 h-4" />
             </Button>
           )}
           {!isLoading && (
-            <>
+            <div className="absolute right-3 bottom-1 flex gap-1">
               {transcribeProvider === 'aws' ? (
                 <VoiceRecordButton
                   isRecording={isRecording}
                   isConnecting={isConnecting}
                   isDisabled={isLoading}
-                  onClick={onMicrophoneClick}
+                  onClick={() => {
+                    onMicrophoneClick();
+                    focusTextarea();
+                  }}
+                  onStart={startMicrophoneRecording}
+                  onStop={() => {
+                    stopMicrophoneRecording();
+                    focusTextarea();
+                  }}
                 />
               ) : (
                 <FileTranscribeButton
@@ -107,10 +135,13 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                   onPrepareRecording={onPrepareRecording}
                   onCancelPrepareRecording={onCancelPrepareRecording}
                   onStartRecording={onStartRecording}
-                  onStopRecording={onStopRecording}
+                  onStopRecording={() => {
+                    onStopRecording();
+                    focusTextarea();
+                  }}
                 />
               )}
-            </>
+            </div>
           )}
         </div>
       </div>
