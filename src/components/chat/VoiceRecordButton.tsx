@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Mic, Square, Loader2 } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { cn } from '@/lib/utils';
@@ -19,23 +20,37 @@ export const VoiceRecordButton = ({
   onStart,
   onStop,
 }: VoiceRecordButtonProps) => {
-  const recordMode = (import.meta.env.VITE_RECORD_MODE || 'click') as 'click' | 'hold';
+  // Detect device type based on window width and select recording mode (once, doesn't change during session)
+  // Mobile (hold mode): width <= 768px
+  // Web (click mode): width > 768px
+  const recordMode = useMemo(() => {
+    if (typeof window === 'undefined') return 'click' as const;
+    return (window.innerWidth <= 768 ? 'hold' : 'click') as 'click' | 'hold';
+  }, []);
 
-  const handlePress = () => {
+  const handlePress = (e: React.MouseEvent | React.TouchEvent) => {
     if (recordMode === 'hold') {
+      e.preventDefault();
+      e.stopPropagation();
       onStart();
     }
   };
 
-  const handleRelease = () => {
+  const handleRelease = (e: React.MouseEvent | React.TouchEvent) => {
     if (recordMode === 'hold') {
+      e.preventDefault();
+      e.stopPropagation();
       onStop();
     }
   };
 
-  const handleButtonClick = () => {
+  const handleButtonClick = (e: React.MouseEvent) => {
     if (recordMode === 'click' && onClick) {
       onClick();
+    } else if (recordMode === 'hold') {
+      // In hold mode, prevent the click handler from doing anything
+      e.preventDefault();
+      e.stopPropagation();
     }
   };
 
@@ -43,11 +58,11 @@ export const VoiceRecordButton = ({
     <Button
       type="button"
       onClick={handleButtonClick}
-      onMouseDown={handlePress}
-      onMouseUp={handleRelease}
-      onMouseLeave={handleRelease} // Stop if mouse leaves while holding
-      onTouchStart={handlePress}
-      onTouchEnd={handleRelease}
+      onMouseDown={handlePress as React.MouseEventHandler}
+      onMouseUp={handleRelease as React.MouseEventHandler}
+      onMouseLeave={handleRelease as React.MouseEventHandler} // Stop if mouse leaves while holding
+      onTouchStart={handlePress as React.TouchEventHandler}
+      onTouchEnd={handleRelease as React.TouchEventHandler}
       disabled={isDisabled || (isConnecting && !isRecording)}
       variant="ghost"
       size="icon"

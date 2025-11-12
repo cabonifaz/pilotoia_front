@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { transcribeApi } from '../api/transcribeApi';
 import type { TranscribeConfig, TranscriptResult } from '../types/transcribe';
 import { toast } from './use-toast';
@@ -37,8 +37,13 @@ export const useTranscribe = (): UseTranscribeReturn => {
     );
 
 
-    // Get record mode from env (default to 'click')
-    const recordMode = (import.meta.env.VITE_RECORD_MODE || 'click') as 'click' | 'hold';
+    // Detect device type and select record mode (once, doesn't change during session)
+    // Mobile (hold mode): width <= 768px
+    // Web (click mode): width > 768px
+    const recordMode = useMemo(() => {
+        if (typeof window === 'undefined') return 'click' as const;
+        return (window.innerWidth <= 768 ? 'hold' : 'click') as 'click' | 'hold';
+    }, []);
 
     const audioContextRef = useRef<AudioContext | null>(null);
     const workletNodeRef = useRef<AudioWorkletNode | null>(null);
@@ -329,7 +334,7 @@ export const useTranscribe = (): UseTranscribeReturn => {
     const stopRecording = useCallback(() => {
         // Prevent multiple simultaneous stops
         if (isStoppingRef.current) return;
-        
+
         // For hold mode, we need to check if recording has actually started
         if (recordMode === 'hold' && !recordingStartTimeRef.current) {
             // User released button before connection was established.
