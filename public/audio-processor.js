@@ -1,12 +1,19 @@
 class PCMAudioProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    // Bootstrap buffer: smaller initial buffer for fast first audio send (~12ms)
-    // Normal buffer: larger for subsequent sends (~50ms)
+    // Buffer to accumulate samples before sending (target ~4096 samples like old implementation)
     this.buffer = [];
-    this.normalBufferSize = 800; // At 16kHz: ~50ms
-    this.bufferSize = 200; // Initial: ~12ms for fast bootstrap
-    this.isBootstrapped = false;
+    this.bufferSize = 4096;
+
+    // Listen for flush commands from main thread
+    this.port.onmessage = (event) => {
+      if (event.data.type === 'flush') {
+        // Send any remaining buffered audio immediately
+        if (this.buffer.length > 0) {
+          this.sendBuffer();
+        }
+      }
+    };
   }
 
   process(inputs, outputs, parameters) {
@@ -21,33 +28,33 @@ class PCMAudioProcessor extends AudioWorkletProcessor {
 
         // Send when we have enough samples
         if (this.buffer.length >= this.bufferSize) {
-          // Convert accumulated Float32Array to Int16Array PCM (little-endian)
-          const pcmData = new Int16Array(this.buffer.length);
-          for (let i = 0; i < this.buffer.length; i++) {
-            const s = Math.max(-1, Math.min(1, this.buffer[i]));
-            pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-          }
-
-          // Send PCM data to main thread
-          this.port.postMessage({
-            type: 'audio',
-            data: pcmData.buffer
-          }, [pcmData.buffer]); // Transfer buffer for performance
-
-          // After first send, switch to normal buffer size for efficiency
-          if (!this.isBootstrapped) {
-            this.isBootstrapped = true;
-            this.bufferSize = this.normalBufferSize;
-          }
-
-          // Clear buffer
-          this.buffer = [];
+          this.sendBuffer();
         }
       }
     }
 
     // Return true to keep processor alive
     return true;
+  }
+
+  sendBuffer() {
+    if (this.buffer.length === 0) return;
+
+    // Convert accumulated Float32Array to Int16Array PCM (little-endian)
+    const pcmData = new Int16Array(this.buffer.length);
+    for (let i = 0; i < this.buffer.length; i++) {
+      const s = Math.max(-1, Math.min(1, this.buffer[i]));
+      pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+
+    // Send PCM data to main thread
+    this.port.postMessage({
+      type: 'audio',
+      data: pcmData.buffer
+    }, [pcmData.buffer]); // Transfer buffer for performance
+
+    // Clear buffer
+    this.buffer = [];
   }
 }
 

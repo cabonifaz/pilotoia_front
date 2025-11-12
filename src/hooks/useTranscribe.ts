@@ -8,6 +8,8 @@ export const SUPPORTED_LANGUAGES = {
     'es-ES': 'Spanish (Spain)',
     'es-US': 'Spanish (United States)',
     'en-US': 'English (United States)',
+    'de-DE': 'German (Germany)',
+    'de-CH': 'German (Switzerland)',
 } as const;
 
 export type LanguageCode = keyof typeof SUPPORTED_LANGUAGES;
@@ -46,6 +48,7 @@ export const useTranscribe = (): UseTranscribeReturn => {
     const transcriptBufferRef = useRef<string[]>([]);
     const isStoppingRef = useRef<boolean>(false);
     const recordingStartTimeRef = useRef<number>(0);
+    const isWaitingForCloseRef = useRef<boolean>(false);
 
     /**
      * Cleanup audio resources
@@ -92,6 +95,7 @@ export const useTranscribe = (): UseTranscribeReturn => {
         setIsConnecting(false);
         setPartialTranscript('');
         isStoppingRef.current = false;
+        isWaitingForCloseRef.current = false;
         recordingStartTimeRef.current = 0;
     }, []);
 
@@ -279,7 +283,16 @@ export const useTranscribe = (): UseTranscribeReturn => {
                         }
                     },
                     onClose: () => {
-                        cleanupAudioResources();
+                        // In hold mode, only cleanup if we were waiting for close
+                        // Otherwise, let stopRecording handle the cleanup timing
+                        if (recordMode === 'hold') {
+                            if (isWaitingForCloseRef.current) {
+                                cleanupAudioResources();
+                            }
+                        } else {
+                            // In click mode, always cleanup on close
+                            cleanupAudioResources();
+                        }
                     }
                 }
             );
@@ -327,22 +340,45 @@ export const useTranscribe = (): UseTranscribeReturn => {
 
         if (recordMode === 'hold') {
             const duration = Date.now() - recordingStartTimeRef.current;
-            const SHORT_RECORDING_THRESHOLD = 3000; // 3 seconds
+            const SHORT_RECORDING_THRESHOLD = 1500; // 1.5 seconds
 
             if (duration < SHORT_RECORDING_THRESHOLD) {
                 // Hard stop for short recordings
                 cleanupAudioResources();
             } else {
-                // Graceful stop for longer recordings, inspired by 'click' mode's silence detector
+                // Graceful stop for longer recordings: send stop and wait for onClose
                 if (transcribeClientRef.current && transcribeClientRef.current.isConnected()) {
-                    transcribeClientRef.current.sendStop();
-                    
-                    // Disconnect local audio sources after a delay to allow in-flight audio to send
+                    // Mark that we're waiting for server to close the connection
+                    isWaitingForCloseRef.current = true;
+
+                    // Force worklet to send any remaining buffered audio
+                    if (workletNodeRef.current) {
+                        workletNodeRef.current.port.postMessage({ type: 'flush' });
+                    }
+
+                    // Wait for buffered audio to be sent before sending stop signal
                     setTimeout(() => {
-                        if (workletNodeRef.current && sourceRef.current) {
-                            sourceRef.current.disconnect(workletNodeRef.current);
+                        // Send stop signal to server
+                        if (transcribeClientRef.current && transcribeClientRef.current.isConnected()) {
+                            transcribeClientRef.current.sendStop();
                         }
-                    }, 500);
+
+                        // Disconnect audio sources after stop is sent
+                        if (sourceRef.current) {
+                            sourceRef.current.disconnect();
+                        }
+                        if (workletNodeRef.current) {
+                            workletNodeRef.current.disconnect();
+                        }
+                    }, 100);
+
+                    // Safety timeout: if server doesn't close within 10 seconds, force cleanup
+                    setTimeout(() => {
+                        if (isWaitingForCloseRef.current) {
+                            console.warn('⚠️ Server did not close connection within timeout, forcing cleanup');
+                            cleanupAudioResources();
+                        }
+                    }, 10000);
                 } else {
                     // If client is already disconnected, just clean up
                     cleanupAudioResources();
