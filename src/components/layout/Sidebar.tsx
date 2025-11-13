@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MessageCircle, Clipboard, Menu } from 'lucide-react';
+import { MessageCircle, /*Clipboard, */Menu } from 'lucide-react';
 import { Button } from '../shadcn/button';
 import { cn } from '@/lib/utils';
 import { ChatListSidebar } from './ChatListSidebar';
@@ -35,8 +35,8 @@ const Sidebar = ({
   };
 
   const navigationItems = [
-    { path: '/rag', label: 'Chat', icon: MessageCircle },
-    { path: '/upload', label: 'Documentos', icon: Clipboard },
+    { path: '/rag', label: 'Chat', icon: MessageCircle }/*,
+    { path: '/upload', label: 'Documentos', icon: Clipboard },*/
   ];
 
   const isActive = (path: string) => location.pathname === path;
