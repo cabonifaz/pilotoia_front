@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MessageCircle, /*Clipboard, */Menu } from 'lucide-react';
+import { MessageCircle, Clipboard, Menu } from 'lucide-react';
 import { Button } from '../shadcn/button';
 import { cn } from '@/lib/utils';
 import { ChatListSidebar } from './ChatListSidebar';
 import UserDropdown from '../user/UserDropdown';
 import CompanyAreaDropdown from '../user/CompanyAreaDropdown';
+import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 
 interface SidebarProps {
   isStreaming?: boolean;
@@ -20,6 +21,7 @@ const Sidebar = ({
 }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useQueryAuthContext();
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = sessionStorage.getItem('sidebar-collapsed');
     return saved ? JSON.parse(saved) : false;
@@ -35,9 +37,12 @@ const Sidebar = ({
   };
 
   const navigationItems = [
-    { path: '/rag', label: 'Chat', icon: MessageCircle }/*,
-    { path: '/upload', label: 'Documentos', icon: Clipboard },*/
-  ];
+    { path: '/rag', label: 'Chat', icon: MessageCircle, allowedRoles: [1, 2, 3] },
+    { path: '/upload', label: 'Documentos', icon: Clipboard, allowedRoles: [1, 2] },
+  ].filter(item => {
+    if (!item.allowedRoles) return true; // si no tiene restricción, se muestra
+    return item.allowedRoles.includes(user?.id_tipo_rol ?? -1); // compara rol
+  });
 
   const isActive = (path: string) => location.pathname === path;
 
