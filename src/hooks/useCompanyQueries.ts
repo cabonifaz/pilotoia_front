@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createCompany } from '../api/companyApi';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createCompany, getCompanies } from '../api/companyApi';
 import type { CreateCompanyRequest } from '@/types/company';
 import { toast } from './use-toast';
 
@@ -15,6 +15,7 @@ export const useCreateCompany = () => {
       // Invalidate user and company-areas queries to refetch updated data
       queryClient.invalidateQueries({ queryKey: ['user'] });
       queryClient.invalidateQueries({ queryKey: ['company-areas'] });
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
 
       toast({
         title: 'Éxito',
@@ -30,5 +31,15 @@ export const useCreateCompany = () => {
         variant: 'destructive',
       });
     },
+  });
+};
+
+export const useGetCompanies = () => {
+  return useQuery({
+    queryKey: ['companies'],
+    queryFn: async () => {
+      return await getCompanies();
+    },
+    retry: false,
   });
 };

@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
 import { Badge } from '@/components/shadcn/badge';
+import { Checkbox } from '@/components/shadcn/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/table';
 import { Loader } from '@/components/loader/Loader';
 import { useProcessingLogs } from '@/hooks/useProcessingLogs';
@@ -149,9 +150,7 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
                 <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">
-                      <input type="checkbox" className="rounded" />
-                    </TableHead>
+                    <TableHead className="w-12"></TableHead>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Área</TableHead>
                     <TableHead>Creado el</TableHead>
@@ -164,7 +163,7 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
                   {displayedDocuments.map((doc) => (
                     <TableRow key={doc.id}>
                       <TableCell>
-                        <input type="checkbox" className="rounded" />
+                        <Checkbox />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
