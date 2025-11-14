@@ -39,7 +39,7 @@ const Sidebar = ({
   const navigationItems = [
     { path: '/rag', label: 'Chat', icon: MessageCircle, allowedRoles: [1, 2, 3] },
     { path: '/upload', label: 'Documentos', icon: Clipboard, allowedRoles: [1, 2] },
-    { path: '/company', label: 'Compañias', icon: Building2, allowedRoles: [1] },
+    { path: '/company', label: 'Empresas', icon: Building2, allowedRoles: [1] },
   ].filter(item => {
     if (!item.allowedRoles) return true; // si no tiene restricción, se muestra
     return item.allowedRoles.includes(user?.id_tipo_rol ?? -1); // compara rol

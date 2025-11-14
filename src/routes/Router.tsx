@@ -5,6 +5,7 @@ import { GuardRoute } from "./GuardRoute";
 import ProtectedLayout from "../components/layout/ProtectedLayout";
 import StreamingChat from "../pages/rag/StreamingChat";
 import DocumentUpload from "../pages/upload/DocumentUpload";
+import CompanyManagement from "../pages/company/CompanyManagement";
 
 export const router = createHashRouter([
   {
@@ -31,6 +32,11 @@ export const router = createHashRouter([
             path: "upload",
             element: <DocumentUpload />,
             handle: { allowedRoles: [1, 2] },
+          },
+          {
+            path: "company",
+            element: <CompanyManagement />,
+            handle: { allowedRoles: [1] },
           },
           {
             path: "unauthorized",

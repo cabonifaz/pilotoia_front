@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Search, ChevronsUpDown, CirclePlus, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
-import { Input } from '@/components/shadcn/input';
 import { Badge } from '@/components/shadcn/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/table';
+import { Loader } from '@/components/loader/Loader';
 import { useProcessingLogs } from '@/hooks/useProcessingLogs';
 
 // Map process_stage to status display
@@ -44,13 +45,12 @@ const formatDate = (isoDate: string): string => {
 };
 
 interface DocumentsTableProps {
-  onAddClick: () => void;
+  searchTerm: string;
+  sortBy: 'area' | 'status' | null;
 }
 
-export const DocumentsTable = ({ onAddClick }: DocumentsTableProps) => {
+export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'area' | 'status' | null>(null);
 
   // Fetch company uploads (companyId is automatically retrieved from user context inside the hook)
   const { data: uploads, isLoading, error } = useProcessingLogs({
@@ -113,50 +113,18 @@ export const DocumentsTable = ({ onAddClick }: DocumentsTableProps) => {
   return (
     <Card className="flex-1 flex flex-col min-h-0">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Buscar documentos"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          {/* Sort/Filter Buttons - on the same row as search */}
-          <Button
-            variant={sortBy === 'area' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSortBy(sortBy === 'area' ? null : 'area')}
-            className="gap-2"
-          >
-            <ChevronsUpDown className="h-4 w-4" />
-            Área
-          </Button>
-          <Button
-            variant={sortBy === 'status' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSortBy(sortBy === 'status' ? null : 'status')}
-            className="gap-2"
-          >
-            <ChevronsUpDown className="h-4 w-4" />
-            Estado
-          </Button>
-
-          <Button onClick={onAddClick} variant="blue" className="gap-2">
-            <CirclePlus className="h-4 w-4" />
-            Agregar documentos
-          </Button>
+        <div className="flex flex-col items-start gap-1">
+          <h1 className="text-2xl font-bold text-foreground">Documentos</h1>
+          <p className="text-xs text-muted-foreground">
+            Gestiona todos los documentos de la empresa.
+          </p>
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
         {/* Loading State */}
         {isLoading && (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground">Cargando documentos...</p>
-          </div>
+          <Loader text="Cargando documentos..." />
         )}
 
         {/* Error State */}
@@ -176,51 +144,52 @@ export const DocumentsTable = ({ onAddClick }: DocumentsTableProps) => {
         {/* Table */}
         {!isLoading && !error && displayedDocuments.length > 0 && (
           <>
-            <div className="flex-1 overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-medium">
+            <div className="flex-1 min-h-0 border rounded-lg">
+              <div className="h-full overflow-y-auto">
+                <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">
                       <input type="checkbox" className="rounded" />
-                    </th>
-                    <th className="text-left py-3 px-4 font-medium">Nombre</th>
-                    <th className="text-left py-3 px-4 font-medium">Área</th>
-                    <th className="text-left py-3 px-4 font-medium">Creado el</th>
-                    <th className="text-left py-3 px-4 font-medium">Subido por</th>
-                    <th className="text-left py-3 px-4 font-medium">Estado</th>
-                    <th className="text-left py-3 px-4 font-medium"></th>
-                  </tr>
-                </thead>
-                <tbody>
+                    </TableHead>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Área</TableHead>
+                    <TableHead>Creado el</TableHead>
+                    <TableHead>Subido por</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="w-12"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {displayedDocuments.map((doc) => (
-                    <tr key={doc.id} className="border-b hover:bg-muted/50">
-                      <td className="py-3 px-4">
+                    <TableRow key={doc.id}>
+                      <TableCell>
                         <input type="checkbox" className="rounded" />
-                      </td>
-                      <td className="py-3 px-4 flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-blue-500" />
-                        <span>{doc.name}</span>
-                      </td>
-                      <td className="py-3 px-4">{doc.area}</td>
-                      <td className="py-3 px-4">{doc.createdDate}</td>
-                      <td className="py-3 px-4">{doc.uploadedBy}</td>
-                      <td className="py-3 px-4">
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-blue-500" />
+                          <span>{doc.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{doc.area}</TableCell>
+                      <TableCell>{doc.createdDate}</TableCell>
+                      <TableCell>{doc.uploadedBy}</TableCell>
+                      <TableCell>
                         <Badge variant={doc.status.variant}>{doc.status.label}</Badge>
-                      </td>
-                      <td className="py-3 px-4">
+                      </TableCell>
+                      <TableCell>
                         <button className="text-muted-foreground hover:text-foreground">...</button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
+              </div>
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between pt-4 border-t">
-              <p className="text-xs text-muted-foreground">
-                Mostrando {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedDocuments.length)} de {sortedDocuments.length} documentos
-              </p>
+            <div className="flex flex-col items-center gap-2 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -255,6 +224,9 @@ export const DocumentsTable = ({ onAddClick }: DocumentsTableProps) => {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Mostrando {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedDocuments.length)} de {sortedDocuments.length} documentos
+              </p>
             </div>
           </>
         )}

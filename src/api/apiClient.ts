@@ -2,8 +2,6 @@ import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig 
 import type { MensajeResponse } from '@/types/Mensaje';
 import { toast } from '../hooks/use-toast';
 
-// JWT is now stored in sessionStorage and sent via Authorization header
-
 const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
 interface ApiResponse {
