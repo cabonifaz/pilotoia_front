@@ -2,11 +2,11 @@ import { useRef, useEffect } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
 import { Square } from 'lucide-react';
-import { VoiceRecordButton } from './VoiceRecordButton';
-import { FileTranscribeButton } from './FileTranscribeButton';
+//import { VoiceRecordButton } from './VoiceRecordButton';
+//import { FileTranscribeButton } from './FileTranscribeButton';
 import { CommandMenu } from './CommandMenu';
 import { useCommand } from '../../contexts/CommandContext';
-import { useTranscription } from '../../contexts/TranscriptionContext';
+//import { useTranscription } from '../../contexts/TranscriptionContext';
 
 interface QueryInputSectionProps {
   company: string;
@@ -36,11 +36,11 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     resizeTextarea();
   };
 
-  const focusTextarea = () => {
+  /*const focusTextarea = () => {
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
-  };
+  };*/
 
   // Resize textarea whenever userQuery changes (e.g., from transcription)
   useEffect(() => {
@@ -48,7 +48,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
   }, [userQuery]);
 
   // Get transcription state from context
-  const {
+  /*const {
     transcribeProvider,
     isRecording,
     isConnecting,
@@ -61,7 +61,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     onCancelPrepareRecording,
     onStartRecording,
     onStopRecording,
-  } = useTranscription();
+  } = useTranscription();*/
 
   // Update ref based on selected action
   useEffect(() => {
@@ -110,7 +110,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
               <Square className="w-4 h-4" />
             </Button>
           )}
-          {!isLoading && (
+          {/*!isLoading && (
             <div className="absolute right-3 bottom-1 flex gap-1">
               {transcribeProvider === 'aws' ? (
                 <VoiceRecordButton
@@ -142,7 +142,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                 />
               )}
             </div>
-          )}
+          )*/}
         </div>
       </div>
     </div>
