@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
@@ -52,12 +52,32 @@ interface DocumentsTableProps {
 
 export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch company uploads (companyId is automatically retrieved from user context inside the hook)
   const { data: uploads, isLoading, error } = useProcessingLogs({
     limit: 100,
     enabled: true,
   });
+
+  // Automatically calculate items per page based on container height
+  useEffect(() => {
+    const calculateItemsPerPage = () => {
+      if (tableContainerRef.current) {
+        const containerHeight = tableContainerRef.current.clientHeight;
+        const rowHeight = 45; // Height of each table row
+        const headerHeight = 45; // Height of table header
+        const availableHeight = containerHeight - headerHeight;
+        const calculatedItems = Math.floor(availableHeight / rowHeight);
+        setItemsPerPage(Math.max(5, calculatedItems));
+      }
+    };
+
+    calculateItemsPerPage();
+    window.addEventListener('resize', calculateItemsPerPage);
+    return () => window.removeEventListener('resize', calculateItemsPerPage);
+  }, []);
 
   // Process and filter documents
   const processedDocuments = useMemo(() => {
@@ -106,7 +126,6 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
     return sorted;
   }, [processedDocuments, sortBy]);
 
-  const itemsPerPage = 5;
   const totalPages = Math.ceil(sortedDocuments.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const displayedDocuments = sortedDocuments.slice(startIndex, startIndex + itemsPerPage);
@@ -145,7 +164,7 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
         {/* Table */}
         {!isLoading && !error && displayedDocuments.length > 0 && (
           <>
-            <div className="flex-1 min-h-0 border rounded-lg">
+            <div ref={tableContainerRef} className="flex-1 min-h-0 border rounded-lg">
               <div className="h-full overflow-y-auto">
                 <Table>
                 <TableHeader>

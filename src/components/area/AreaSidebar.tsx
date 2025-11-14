@@ -6,15 +6,15 @@ import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
 import { useCreateCompany } from '@/hooks/useCompanyQueries';
 
-interface CompanySidebarProps {
+interface AreaSidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const CompanySidebar = ({
+export const AreaSidebar = ({
   isOpen,
   onClose,
-}: CompanySidebarProps) => {
+}: AreaSidebarProps) => {
   const [ruc, setRuc] = useState('');
   const [razonSocial, setRazonSocial] = useState('');
   const { mutate: createCompany, isPending } = useCreateCompany();
@@ -58,8 +58,8 @@ export const CompanySidebar = ({
         <CardHeader className="pb-3 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-xs">Agregar empresa</CardTitle>
-              <CardDescription className="text-xs">Agregue una nueva empresa.</CardDescription>
+              <CardTitle className="text-xs">Agregar área</CardTitle>
+              <CardDescription className="text-xs">Agregue una nueva área.</CardDescription>
             </div>
             <Button
               variant="ghost"

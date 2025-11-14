@@ -18,34 +18,33 @@ const formatDate = (isoDate: string): string => {
   });
 };
 
-interface CompanyTableProps {
+interface AreaTableProps {
   searchTerm: string;
   sortBy: 'ruc' | 'razon_social' | null;
 }
 
-export const CompanyTable = ({ searchTerm, sortBy }: CompanyTableProps) => {
+export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(8);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, error } = useGetCompanies();
 
-  // Calculate items per page based on available height
+  // Automatically calculate items per page based on container height
   useEffect(() => {
     const calculateItemsPerPage = () => {
       if (tableContainerRef.current) {
         const containerHeight = tableContainerRef.current.clientHeight;
-        const rowHeight = 45; // Approximate height of a table row in pixels (h-9 + padding)
-        const headerHeight = 45; // Approximate height of table header
+        const rowHeight = 45; // Height of each table row
+        const headerHeight = 45; // Height of table header
         const availableHeight = containerHeight - headerHeight;
         const calculatedItems = Math.floor(availableHeight / rowHeight);
-        setItemsPerPage(Math.max(5, calculatedItems)); // Minimum 5 items
+        setItemsPerPage(Math.max(5, calculatedItems));
       }
     };
 
     calculateItemsPerPage();
     window.addEventListener('resize', calculateItemsPerPage);
-
     return () => window.removeEventListener('resize', calculateItemsPerPage);
   }, []);
 
@@ -87,9 +86,9 @@ export const CompanyTable = ({ searchTerm, sortBy }: CompanyTableProps) => {
     <Card className="flex-1 flex flex-col min-h-0">
       <CardHeader className="pb-3">
         <div className="flex flex-col items-start gap-1">
-          <h1 className="text-2xl font-bold text-foreground">Empresas</h1>
+          <h1 className="text-2xl font-bold text-foreground">Áreas</h1>
           <p className="text-xs text-muted-foreground">
-            Gestiona las empresas disponibles.
+            Gestiona las áreas disponibles.
           </p>
         </div>
       </CardHeader>
@@ -97,7 +96,7 @@ export const CompanyTable = ({ searchTerm, sortBy }: CompanyTableProps) => {
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
         {/* Loading State */}
         {isLoading && (
-          <Loader text="Cargando empresas..." />
+          <Loader text="Cargando áreas..." />
         )}
 
         {/* Error State */}
@@ -110,7 +109,7 @@ export const CompanyTable = ({ searchTerm, sortBy }: CompanyTableProps) => {
         {/* Empty State */}
         {!isLoading && !error && displayedCompanies.length === 0 && (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground">No se encontraron empresas</p>
+            <p className="text-muted-foreground">No se encontraron áreas</p>
           </div>
         )}
 
@@ -196,7 +195,7 @@ export const CompanyTable = ({ searchTerm, sortBy }: CompanyTableProps) => {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Mostrando {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedCompanies.length)} de {sortedCompanies.length} empresas
+                Mostrando {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedCompanies.length)} de {sortedCompanies.length} áreas
               </p>
             </div>
           </>

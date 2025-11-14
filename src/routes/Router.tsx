@@ -6,6 +6,7 @@ import ProtectedLayout from "../components/layout/ProtectedLayout";
 import StreamingChat from "../pages/rag/StreamingChat";
 import DocumentUpload from "../pages/upload/DocumentUpload";
 import CompanyManagement from "../pages/company/CompanyManagement";
+import AreaManagement from "../pages/area/AreaManagement";
 
 export const router = createHashRouter([
   {
@@ -37,6 +38,11 @@ export const router = createHashRouter([
             path: "company",
             element: <CompanyManagement />,
             handle: { allowedRoles: [1] },
+          },
+          {
+            path: "area",
+            element: <AreaManagement />,
+            handle: { allowedRoles: [1, 2] },
           },
           {
             path: "unauthorized",

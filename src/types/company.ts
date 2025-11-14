@@ -4,10 +4,8 @@ export interface CreateCompanyRequest {
 }
 
 export interface CreateCompanyResult {
-  id_rol: number;
-  message: string;
-  id_company: number;
-  id_area: number;
+  ID_TIPO_MENSAJE: number;
+  MENSAJE: string;
 }
 
 export interface CreateCompanyResponse {

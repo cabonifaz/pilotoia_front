@@ -127,12 +127,13 @@ export const UploadSidebar = ({
               <CardTitle className="text-xs">Agregar documentos</CardTitle>
               <CardDescription className="text-xs">Agregue documentos a la empresa.</CardDescription>
             </div>
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={onClose}
-              className="text-muted-foreground hover:text-foreground"
             >
               <X className="h-5 w-5" />
-            </button>
+            </Button>
           </div>
         </CardHeader>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MessageCircle, Clipboard, Menu, Building2 } from 'lucide-react';
+import { MessageCircle, Clipboard, Menu, Building2, Network } from 'lucide-react';
 import { Button } from '../shadcn/button';
 import { cn } from '@/lib/utils';
 import { ChatListSidebar } from './ChatListSidebar';
@@ -40,6 +40,7 @@ const Sidebar = ({
     { path: '/rag', label: 'Chat', icon: MessageCircle, allowedRoles: [1, 2, 3] },
     { path: '/upload', label: 'Documentos', icon: Clipboard, allowedRoles: [1, 2] },
     { path: '/company', label: 'Empresas', icon: Building2, allowedRoles: [1] },
+    { path: '/area', label: 'Áreas', icon: Network, allowedRoles: [1, 2] },
   ].filter(item => {
     if (!item.allowedRoles) return true; // si no tiene restricción, se muestra
     return item.allowedRoles.includes(user?.id_tipo_rol ?? -1); // compara rol

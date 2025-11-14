@@ -17,9 +17,12 @@ export const useCreateCompany = () => {
       queryClient.invalidateQueries({ queryKey: ['company-areas'] });
       queryClient.invalidateQueries({ queryKey: ['companies'] });
 
+      // Get message from results array (SP response) or from result wrapper
+      const successMessage = data.results?.[0]?.MENSAJE || data.result?.mensaje || 'Empresa creada exitosamente';
+
       toast({
         title: 'Éxito',
-        description: data.result.mensaje || 'Empresa creada exitosamente',
+        description: successMessage,
         variant: 'success',
       });
     },

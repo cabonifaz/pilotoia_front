@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Search, ChevronsUpDown, CirclePlus } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
-import { CompanyTable, CompanySidebar } from '@/components/company';
+import { AreaTable, AreaSidebar } from '@/components/area';
 
-const CompanyManagement = () => {
+const AreaManagement = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'ruc' | 'razon_social' | null>(null);
@@ -26,7 +26,7 @@ const CompanyManagement = () => {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
-                placeholder="Buscar empresas"
+                placeholder="Buscar áreas"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -55,17 +55,17 @@ const CompanyManagement = () => {
 
             <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2">
               <CirclePlus className="h-4 w-4" />
-              Agregar empresa
+              Agregar área
             </Button>
           </div>
 
           {/* Table Section */}
-          <CompanyTable searchTerm={searchTerm} sortBy={sortBy} />
+          <AreaTable searchTerm={searchTerm} sortBy={sortBy} />
         </div>
       </div>
 
       {/* Right Sidebar - Upload Panel */}
-      <CompanySidebar
+      <AreaSidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
       />
@@ -73,4 +73,4 @@ const CompanyManagement = () => {
   );
 };
 
-export default CompanyManagement;
+export default AreaManagement;
