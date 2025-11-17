@@ -4,43 +4,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
-import { useCreateCompany } from '@/hooks/useCompanyQueries';
+import { useCreateArea } from '@/hooks/useAreaQueries';
 
 interface AreaSidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  id_empresa: number;
 }
 
 export const AreaSidebar = ({
   isOpen,
   onClose,
+  id_empresa,
 }: AreaSidebarProps) => {
-  const [ruc, setRuc] = useState('');
-  const [razonSocial, setRazonSocial] = useState('');
-  const { mutate: createCompany, isPending } = useCreateCompany();
+  const [area, setArea] = useState('');
+  const { mutate: createArea, isPending } = useCreateArea(id_empresa);
 
   // Reset state when sidebar closes
   useEffect(() => {
     if (!isOpen) {
-      setRuc('');
-      setRazonSocial('');
+      setArea('');
     }
   }, [isOpen]);
 
   const handleSubmit = () => {
-    if (!ruc.trim() || !razonSocial.trim()) {
+    if (!area.trim()) {
       return;
     }
 
-    createCompany(
+    createArea(
       {
-        ruc: ruc.trim(),
-        razon_social: razonSocial.trim(),
+        id_empresa,
+        area: area.trim(),
       },
       {
         onSuccess: () => {
-          setRuc('');
-          setRazonSocial('');
+          setArea('');
           onClose();
         },
       }
@@ -73,28 +72,15 @@ export const AreaSidebar = ({
 
         {/* Contenido scrollable con altura definida */}
         <CardContent className="flex-1 overflow-y-auto py-4 space-y-4">
-          {/* RUC Input */}
+          {/* Area Input */}
           <div className="space-y-2">
-            <Label htmlFor="ruc" className="text-xs">RUC</Label>
+            <Label htmlFor="area" className="text-xs">Área</Label>
             <Input
-              id="ruc"
+              id="area"
               type="text"
-              placeholder="Ingrese el RUC"
-              value={ruc}
-              onChange={(e) => setRuc(e.target.value)}
-              disabled={isPending}
-            />
-          </div>
-
-          {/* Razón Social Input */}
-          <div className="space-y-2">
-            <Label htmlFor="razon-social" className="text-xs">Razón Social</Label>
-            <Input
-              id="razon-social"
-              type="text"
-              placeholder="Ingrese la razón social"
-              value={razonSocial}
-              onChange={(e) => setRazonSocial(e.target.value)}
+              placeholder="Ingrese el nombre del área"
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
               disabled={isPending}
             />
           </div>
@@ -111,7 +97,7 @@ export const AreaSidebar = ({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isPending || !ruc.trim() || !razonSocial.trim()}
+            disabled={isPending || !area.trim()}
             className="flex-1"
           >
             {isPending ? 'Guardando...' : 'Agregar'}

@@ -3,15 +3,20 @@ import { Search, ChevronsUpDown, CirclePlus } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { AreaTable, AreaSidebar } from '@/components/area';
+import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 
 const AreaManagement = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'ruc' | 'razon_social' | null>(null);
+  const [sortBy, setSortBy] = useState<'area' | 'fecha_creacion' | null>(null);
+  const { user } = useQueryAuthContext();
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
   };
+
+  // Get the current company ID from user's actual_company_area
+  const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
   return (
     <div className="flex flex-1 overflow-hidden h-full">
@@ -35,22 +40,22 @@ const AreaManagement = () => {
 
             {/* Sort/Filter Buttons */}
             <Button
-              variant={sortBy === 'ruc' ? 'default' : 'outline'}
+              variant={sortBy === 'area' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setSortBy(sortBy === 'ruc' ? null : 'ruc')}
+              onClick={() => setSortBy(sortBy === 'area' ? null : 'area')}
               className="gap-2"
             >
               <ChevronsUpDown className="h-4 w-4" />
-              RUC
+              Área
             </Button>
             <Button
-              variant={sortBy === 'razon_social' ? 'default' : 'outline'}
+              variant={sortBy === 'fecha_creacion' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setSortBy(sortBy === 'razon_social' ? null : 'razon_social')}
+              onClick={() => setSortBy(sortBy === 'fecha_creacion' ? null : 'fecha_creacion')}
               className="gap-2"
             >
               <ChevronsUpDown className="h-4 w-4" />
-              Razón Social
+              Fecha
             </Button>
 
             <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2">
@@ -64,11 +69,14 @@ const AreaManagement = () => {
         </div>
       </div>
 
-      {/* Right Sidebar - Upload Panel */}
-      <AreaSidebar
-        isOpen={isSidebarOpen}
-        onClose={closeSidebar}
-      />
+      {/* Right Sidebar - Area Panel */}
+      {id_empresa && (
+        <AreaSidebar
+          isOpen={isSidebarOpen}
+          onClose={closeSidebar}
+          id_empresa={id_empresa}
+        />
+      )}
     </div>
   );
 };

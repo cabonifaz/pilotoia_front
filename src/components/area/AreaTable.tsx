@@ -1,12 +1,14 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FolderOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
 import { Badge } from '@/components/shadcn/badge';
 import { Checkbox } from '@/components/shadcn/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/table';
 import { Loader } from '@/components/loader/Loader';
-import { useGetCompanies } from '@/hooks/useCompanyQueries';
+import { useGetAreas } from '@/hooks/useAreaQueries';
+import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
+import { AreaRowActions } from './AreaRowActions';
 
 // Format date to readable format
 const formatDate = (isoDate: string): string => {
@@ -20,7 +22,7 @@ const formatDate = (isoDate: string): string => {
 
 interface AreaTableProps {
   searchTerm: string;
-  sortBy: 'ruc' | 'razon_social' | null;
+  sortBy: 'area' | 'fecha_creacion' | null;
 }
 
 export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
@@ -28,7 +30,25 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  const { data, isLoading, error } = useGetCompanies();
+  const { user } = useQueryAuthContext();
+  const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
+
+  const { data, isLoading, error } = useGetAreas(id_empresa || 0);
+
+  const handleEditArea = (areaId: number) => {
+    console.log(`Edit area: ${areaId}`);
+    // TODO: Implement edit functionality
+  };
+
+  const handleDeleteArea = (areaId: number) => {
+    console.log(`Delete area: ${areaId}`);
+    // TODO: Implement delete functionality
+  };
+
+  const handleReactivateArea = (areaId: number) => {
+    console.log(`Reactivate area: ${areaId}`);
+    // TODO: Implement reactivate functionality
+  };
 
   // Automatically calculate items per page based on container height
   useEffect(() => {
@@ -48,24 +68,27 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
     return () => window.removeEventListener('resize', calculateItemsPerPage);
   }, []);
 
-  const processedCompanies = useMemo(() => {
-    if (!data?.companies) return [];
+  const processedAreas = useMemo(() => {
+    if (!data?.areas) return [];
 
-    return data.companies
-      .filter(company =>
-        company.RUC.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        company.RAZON_SOCIAL.toLowerCase().includes(searchTerm.toLowerCase())
+    return data.areas
+      .filter(area =>
+        area.AREA.toLowerCase().includes(searchTerm.toLowerCase())
       );
-  }, [data?.companies, searchTerm]);
+  }, [data?.areas, searchTerm]);
 
-  // Sort companies
-  const sortedCompanies = useMemo(() => {
-    let sorted = [...processedCompanies];
+  // Sort areas
+  const sortedAreas = useMemo(() => {
+    let sorted = [...processedAreas];
 
-    if (sortBy === 'ruc') {
-      sorted.sort((a, b) => a.RUC.localeCompare(b.RUC));
-    } else if (sortBy === 'razon_social') {
-      sorted.sort((a, b) => a.RAZON_SOCIAL.localeCompare(b.RAZON_SOCIAL));
+    if (sortBy === 'area') {
+      sorted.sort((a, b) => a.AREA.localeCompare(b.AREA));
+    } else if (sortBy === 'fecha_creacion') {
+      sorted.sort((a, b) => {
+        const dateA = new Date(a.FCHCRE).getTime();
+        const dateB = new Date(b.FCHCRE).getTime();
+        return dateB - dateA;
+      });
     } else {
       // Default sorting: by created date (most recent first)
       sorted.sort((a, b) => {
@@ -76,11 +99,11 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
     }
 
     return sorted;
-  }, [processedCompanies, sortBy]);
+  }, [processedAreas, sortBy]);
 
-  const totalPages = Math.ceil(sortedCompanies.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedAreas.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const displayedCompanies = sortedCompanies.slice(startIndex, startIndex + itemsPerPage);
+  const displayedAreas = sortedAreas.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <Card className="flex-1 flex flex-col min-h-0">
@@ -107,14 +130,14 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
         )}
 
         {/* Empty State */}
-        {!isLoading && !error && displayedCompanies.length === 0 && (
+        {!isLoading && !error && displayedAreas.length === 0 && (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-muted-foreground">No se encontraron áreas</p>
           </div>
         )}
 
         {/* Table */}
-        {!isLoading && !error && displayedCompanies.length > 0 && (
+        {!isLoading && !error && displayedAreas.length > 0 && (
           <>
             <div ref={tableContainerRef} className="flex-1 min-h-0 border rounded-lg">
               <div className="h-full overflow-y-auto">
@@ -122,34 +145,41 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12"></TableHead>
-                    <TableHead>RUC</TableHead>
-                    <TableHead>Razón Social</TableHead>
+                    <TableHead>Área</TableHead>
+                    <TableHead>ID Área</TableHead>
                     <TableHead>Fecha de Creación</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {displayedCompanies.map((company) => (
-                    <TableRow key={company.ID_EMPRESA}>
+                  {displayedAreas.map((area) => (
+                    <TableRow key={area.ID_AREA}>
                       <TableCell>
                         <Checkbox />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-blue-500" />
-                          <span>{company.RUC}</span>
+                          <FolderOpen className="h-4 w-4 text-amber-500" />
+                          <span>{area.AREA}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{company.RAZON_SOCIAL}</TableCell>
-                      <TableCell>{formatDate(company.FCHCRE)}</TableCell>
+                      <TableCell>{area.ID_AREA}</TableCell>
+                      <TableCell>{formatDate(area.FCHCRE)}</TableCell>
                       <TableCell>
-                        <Badge variant={company.ID_ESTADO_REGISTRO === 1 ? 'success' : 'destructive'}>
-                          {company.ID_ESTADO_REGISTRO === 1 ? 'Activo' : 'Inactivo'}
+                        <Badge variant={area.ID_ESTADO_REGISTRO === 1 ? 'success' : 'destructive'}>
+                          {area.ID_ESTADO_REGISTRO === 1 ? 'Activo' : 'Inactivo'}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <button className="text-muted-foreground hover:text-foreground">...</button>
+                        <AreaRowActions
+                          areaId={area.ID_AREA}
+                          areaName={area.AREA}
+                          status={area.ID_ESTADO_REGISTRO}
+                          onEdit={handleEditArea}
+                          onDelete={handleDeleteArea}
+                          onReactivate={handleReactivateArea}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -195,7 +225,7 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Mostrando {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedCompanies.length)} de {sortedCompanies.length} áreas
+                Mostrando {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedAreas.length)} de {sortedAreas.length} áreas
               </p>
             </div>
           </>

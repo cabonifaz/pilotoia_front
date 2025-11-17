@@ -14,7 +14,7 @@ export const useCreateCompany = () => {
     onSuccess: (data) => {
       // Invalidate user and company-areas queries to refetch updated data
       queryClient.invalidateQueries({ queryKey: ['user'] });
-      queryClient.invalidateQueries({ queryKey: ['company-areas'] });
+      queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
       queryClient.invalidateQueries({ queryKey: ['companies'] });
 
       // Get message from results array (SP response) or from result wrapper
