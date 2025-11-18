@@ -7,7 +7,7 @@ import { useEffect } from "react";
 export const GuardRoute = ({ children }: { children: ReactNode }) => {
     const navigate = useNavigate();
     const matches = useMatches();
-    const { isAuthenticated, isLoading, user } = useQueryAuthContext();
+    const { isAuthenticated, isLoading, isLoggingOut, user } = useQueryAuthContext();
 
     const currentRoute = matches[matches.length - 1];
     const allowedRoles = (currentRoute?.handle as { allowedRoles?: number[] })?.allowedRoles;
@@ -31,8 +31,8 @@ export const GuardRoute = ({ children }: { children: ReactNode }) => {
     // Show loader while checking authentication
     if (isLoading) {
         return (
-            <div style={{ position: "relative" }}>
-                <Loader />
+            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
+                <Loader text={isLoggingOut ? "Cerrando Sesión" : undefined} />
             </div>
         );
     }

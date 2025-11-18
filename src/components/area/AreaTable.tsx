@@ -1,14 +1,15 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, FolderOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FolderOpen, Check, X } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
 import { Badge } from '@/components/shadcn/badge';
 import { Checkbox } from '@/components/shadcn/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/table';
 import { Loader } from '@/components/loader/Loader';
-import { useGetAreas } from '@/hooks/useAreaQueries';
+import { useGetAreas, useUpdateAreaStatus, useUpdateAreaName } from '@/hooks/useAreaQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 import { AreaRowActions } from './AreaRowActions';
+import { Input } from '@/components/shadcn/input';
 
 // Format date to readable format
 const formatDate = (isoDate: string): string => {
@@ -28,27 +29,98 @@ interface AreaTableProps {
 export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [editingAreaId, setEditingAreaId] = useState<number | null>(null);
+  const [editingAreaName, setEditingAreaName] = useState<string>('');
+  const [originalAreaName, setOriginalAreaName] = useState<string>('');
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { user } = useQueryAuthContext();
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
   const { data, isLoading, error } = useGetAreas(id_empresa || 0);
+  const updateAreaStatus = useUpdateAreaStatus(id_empresa || 0);
+  const updateAreaName = useUpdateAreaName(id_empresa || 0);
 
-  const handleEditArea = (areaId: number) => {
-    console.log(`Edit area: ${areaId}`);
-    // TODO: Implement edit functionality
+  const handleEditArea = (areaId: number, currentName: string) => {
+    setEditingAreaId(areaId);
+    setEditingAreaName(currentName);
+    setOriginalAreaName(currentName);
   };
 
   const handleDeleteArea = (areaId: number) => {
-    console.log(`Delete area: ${areaId}`);
-    // TODO: Implement delete functionality
+    updateAreaStatus.mutate({
+      id_empresa: id_empresa || 0,
+      id_area: areaId,
+      status: 0
+    });
   };
 
   const handleReactivateArea = (areaId: number) => {
-    console.log(`Reactivate area: ${areaId}`);
-    // TODO: Implement reactivate functionality
+    updateAreaStatus.mutate({
+      id_empresa: id_empresa || 0,
+      id_area: areaId,
+      status: 1
+    });
   };
+
+  const handleSaveAreaName = async () => {
+    if (!editingAreaId || editingAreaName.trim() === '') {
+      setEditingAreaId(null);
+      return;
+    }
+
+    if (editingAreaName.trim() === originalAreaName) {
+      setEditingAreaId(null);
+      return;
+    }
+
+    try {
+      const result = await updateAreaName.mutateAsync({
+        id_empresa: id_empresa || 0,
+        id_area: editingAreaId,
+        area: editingAreaName.trim()
+      });
+
+      // Check if the stored procedure returned an error (ID_TIPO_MENSAJE = 1)
+      if (result.results?.[0]?.ID_TIPO_MENSAJE === 1) {
+        // Revert the change
+        setEditingAreaName(originalAreaName);
+      }
+
+      // Clear editing state
+      setEditingAreaId(null);
+      setEditingAreaName('');
+      setOriginalAreaName('');
+    } catch (error) {
+      // On error, revert the change
+      setEditingAreaName(originalAreaName);
+      setEditingAreaId(null);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingAreaName(originalAreaName);
+    setEditingAreaId(null);
+    setOriginalAreaName('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveAreaName();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingAreaId !== null && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingAreaId]);
 
   // Automatically calculate items per page based on container height
   useEffect(() => {
@@ -159,10 +231,45 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
                         <Checkbox />
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <FolderOpen className="h-4 w-4 text-amber-500" />
-                          <span>{area.AREA}</span>
-                        </div>
+                        {editingAreaId === area.ID_AREA ? (
+                          <div className="flex items-center gap-2">
+                            <FolderOpen className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                            <Input
+                              ref={inputRef}
+                              value={editingAreaName}
+                              onChange={(e) => setEditingAreaName(e.target.value)}
+                              onKeyDown={handleKeyDown}
+                              onBlur={handleSaveAreaName}
+                              className="h-8 text-sm"
+                              disabled={updateAreaName.isPending}
+                            />
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                                onClick={handleSaveAreaName}
+                                disabled={updateAreaName.isPending}
+                              >
+                                <Check className="h-4 w-4 text-green-600" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                                onClick={handleCancelEdit}
+                                disabled={updateAreaName.isPending}
+                              >
+                                <X className="h-4 w-4 text-red-600" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <FolderOpen className="h-4 w-4 text-amber-500" />
+                            <span>{area.AREA}</span>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>{area.ID_AREA}</TableCell>
                       <TableCell>{formatDate(area.FCHCRE)}</TableCell>
@@ -174,9 +281,8 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
                       <TableCell>
                         <AreaRowActions
                           areaId={area.ID_AREA}
-                          areaName={area.AREA}
                           status={area.ID_ESTADO_REGISTRO}
-                          onEdit={handleEditArea}
+                          onEdit={() => handleEditArea(area.ID_AREA, area.AREA)}
                           onDelete={handleDeleteArea}
                           onReactivate={handleReactivateArea}
                         />

@@ -15,6 +15,7 @@ interface QueryAuthContextType {
     user: DecodedUserData | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    isLoggingOut: boolean;
     login: (usuario: string, clave_acceso: string) => Promise<{ success: boolean; user?: LoginResponse }>;
     logout: () => Promise<void>;
     refreshUser: () => void;
@@ -63,6 +64,7 @@ export const QueryAuthProvider = ({ children }: QueryAuthProviderProps) => {
         user: user || null,
         isAuthenticated,
         isLoading: isLoading || loginMutation.isPending || logoutMutation.isPending,
+        isLoggingOut: logoutMutation.isPending,
         login,
         logout,
         refreshUser,

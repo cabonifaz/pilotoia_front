@@ -31,3 +31,15 @@ export interface GetAreasResponse {
     mensaje: string;
   };
 }
+
+export interface UpdateAreaStatusRequest {
+  id_empresa: number;
+  id_area: number;
+  status: number;
+}
+
+export interface UpdateAreaNameRequest {
+  id_empresa: number;
+  id_area: number;
+  area: string;
+}

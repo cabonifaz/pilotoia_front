@@ -9,16 +9,14 @@ import {
 
 interface AreaRowActionsProps {
   areaId: number;
-  areaName: string;
   status: number; // 1 = Activo, 0 = Inactivo
-  onEdit: (areaId: number) => void;
+  onEdit: () => void;
   onDelete: (areaId: number) => void;
   onReactivate: (areaId: number) => void;
 }
 
 export const AreaRowActions = ({
   areaId,
-  areaName,
   status,
   onEdit,
   onDelete,
@@ -40,7 +38,7 @@ export const AreaRowActions = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem
-          onClick={() => onEdit(areaId)}
+          onClick={onEdit}
           className="flex items-center gap-2 cursor-pointer"
         >
           <Edit2 className="h-4 w-4" />
@@ -52,7 +50,7 @@ export const AreaRowActions = ({
             className="flex items-center gap-2 cursor-pointer text-red-600"
           >
             <Trash2 className="h-4 w-4" />
-            <span>Eliminar</span>
+            <span>Desactivar</span>
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem
