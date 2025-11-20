@@ -3,11 +3,15 @@ import { Search, ChevronsUpDown, CirclePlus } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { UsersTable, UsersSidebar } from '@/components/users';
+import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 
 const UsersManagement = () => {
+  const { user } = useQueryAuthContext();
+  const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'ruc' | 'razon_social' | null>(null);
+  const [sortBy, setSortBy] = useState<'usuario' | 'nombres' | 'area' | 'rol' | null>(null);
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
@@ -35,22 +39,40 @@ const UsersManagement = () => {
 
             {/* Sort/Filter Buttons */}
             <Button
-              variant={sortBy === 'ruc' ? 'default' : 'outline'}
+              variant={sortBy === 'usuario' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setSortBy(sortBy === 'ruc' ? null : 'ruc')}
+              onClick={() => setSortBy(sortBy === 'usuario' ? null : 'usuario')}
               className="gap-2"
             >
               <ChevronsUpDown className="h-4 w-4" />
-              RUC
+              Usuario
             </Button>
             <Button
-              variant={sortBy === 'razon_social' ? 'default' : 'outline'}
+              variant={sortBy === 'nombres' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setSortBy(sortBy === 'razon_social' ? null : 'razon_social')}
+              onClick={() => setSortBy(sortBy === 'nombres' ? null : 'nombres')}
               className="gap-2"
             >
               <ChevronsUpDown className="h-4 w-4" />
-              Razón Social
+              Nombres
+            </Button>
+            <Button
+              variant={sortBy === 'area' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSortBy(sortBy === 'area' ? null : 'area')}
+              className="gap-2"
+            >
+              <ChevronsUpDown className="h-4 w-4" />
+              Área
+            </Button>
+            <Button
+              variant={sortBy === 'rol' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSortBy(sortBy === 'rol' ? null : 'rol')}
+              className="gap-2"
+            >
+              <ChevronsUpDown className="h-4 w-4" />
+              Rol
             </Button>
 
             <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2">
@@ -68,6 +90,7 @@ const UsersManagement = () => {
       <UsersSidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
+        id_empresa={id_empresa}
       />
     </div>
   );

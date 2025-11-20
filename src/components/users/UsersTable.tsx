@@ -1,87 +1,101 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
 import { Badge } from '@/components/shadcn/badge';
 import { Checkbox } from '@/components/shadcn/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/table';
 import { Loader } from '@/components/loader/Loader';
-import { useGetCompanies } from '@/hooks/useCompanyQueries';
-
-// Format date to readable format
-const formatDate = (isoDate: string): string => {
-  const date = new Date(isoDate);
-  return date.toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
-  });
-};
+import { useGetUsuarios } from '@/hooks/useUsersQueries';
+import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 
 interface UsersTableProps {
   searchTerm: string;
-  sortBy: 'ruc' | 'razon_social' | null;
+  sortBy: 'usuario' | 'nombres' | 'area' | 'rol' | null;
 }
 
 export const UsersTable = ({ searchTerm, sortBy }: UsersTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(8);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  const { data, isLoading, error } = useGetCompanies();
+  const { user } = useQueryAuthContext();
+  const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
+
+  const { data, isLoading, error } = useGetUsuarios(id_empresa || 0);
 
   // Calculate items per page based on available height
   useEffect(() => {
     const calculateItemsPerPage = () => {
       if (tableContainerRef.current) {
         const containerHeight = tableContainerRef.current.clientHeight;
-        const rowHeight = 45; // Approximate height of a table row in pixels (h-9 + padding)
+        const rowHeight = 45; // Approximate height of a table row in pixels
         const headerHeight = 45; // Approximate height of table header
         const availableHeight = containerHeight - headerHeight;
         const calculatedItems = Math.floor(availableHeight / rowHeight);
-        setItemsPerPage(Math.max(5, calculatedItems)); // Minimum 5 items
+        // Be conservative - calculate for items that will definitely fit
+        setItemsPerPage(Math.max(3, Math.ceil(calculatedItems * 0.9)));
       }
     };
 
-    calculateItemsPerPage();
+    const timer = setTimeout(calculateItemsPerPage, 100);
     window.addEventListener('resize', calculateItemsPerPage);
 
-    return () => window.removeEventListener('resize', calculateItemsPerPage);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', calculateItemsPerPage);
+    };
   }, []);
 
-  const processedCompanies = useMemo(() => {
-    if (!data?.companies) return [];
+  const processedUsuarios = useMemo(() => {
+    if (!data?.usuarios) return [];
 
-    return data.companies
-      .filter(company =>
-        company.RUC.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        company.RAZON_SOCIAL.toLowerCase().includes(searchTerm.toLowerCase())
+    return data.usuarios
+      .filter(usuario =>
+        usuario.USUARIO.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        usuario.NOMBRES.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        usuario.APELLIDOS.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        usuario.AREA.toLowerCase().includes(searchTerm.toLowerCase())
       );
-  }, [data?.companies, searchTerm]);
+  }, [data?.usuarios, searchTerm]);
 
-  // Sort companies
-  const sortedCompanies = useMemo(() => {
-    let sorted = [...processedCompanies];
+  // Group usuarios by ID_USUARIO
+  const groupedUsuarios = useMemo(() => {
+    const grouped = new Map<number, typeof processedUsuarios>();
 
-    if (sortBy === 'ruc') {
-      sorted.sort((a, b) => a.RUC.localeCompare(b.RUC));
-    } else if (sortBy === 'razon_social') {
-      sorted.sort((a, b) => a.RAZON_SOCIAL.localeCompare(b.RAZON_SOCIAL));
+    processedUsuarios.forEach(usuario => {
+      if (!grouped.has(usuario.ID_USUARIO)) {
+        grouped.set(usuario.ID_USUARIO, []);
+      }
+      grouped.get(usuario.ID_USUARIO)!.push(usuario);
+    });
+
+    return Array.from(grouped.values());
+  }, [processedUsuarios]);
+
+  // Sort grouped usuarios
+  const sortedUsuarios = useMemo(() => {
+    let sorted = [...groupedUsuarios];
+
+    if (sortBy === 'usuario') {
+      sorted.sort((a, b) => a[0].USUARIO.localeCompare(b[0].USUARIO));
+    } else if (sortBy === 'nombres') {
+      sorted.sort((a, b) => a[0].NOMBRES.localeCompare(b[0].NOMBRES));
+    } else if (sortBy === 'area') {
+      sorted.sort((a, b) => a[0].AREA.localeCompare(b[0].AREA));
+    } else if (sortBy === 'rol') {
+      sorted.sort((a, b) => a[0].ROL.localeCompare(b[0].ROL));
     } else {
-      // Default sorting: by created date (most recent first)
-      sorted.sort((a, b) => {
-        const dateA = new Date(a.FCHCRE).getTime();
-        const dateB = new Date(b.FCHCRE).getTime();
-        return dateB - dateA;
-      });
+      // Default sorting: by username
+      sorted.sort((a, b) => a[0].USUARIO.localeCompare(b[0].USUARIO));
     }
 
     return sorted;
-  }, [processedCompanies, sortBy]);
+  }, [groupedUsuarios, sortBy]);
 
-  const totalPages = Math.ceil(sortedCompanies.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedUsuarios.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const displayedCompanies = sortedCompanies.slice(startIndex, startIndex + itemsPerPage);
+  const displayedUsuarios = sortedUsuarios.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <Card className="flex-1 flex flex-col min-h-0">
@@ -108,14 +122,14 @@ export const UsersTable = ({ searchTerm, sortBy }: UsersTableProps) => {
         )}
 
         {/* Empty State */}
-        {!isLoading && !error && displayedCompanies.length === 0 && (
+        {!isLoading && !error && displayedUsuarios.length === 0 && (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground">No se encontraron empresas</p>
+            <p className="text-muted-foreground">No se encontraron usuarios</p>
           </div>
         )}
 
         {/* Table */}
-        {!isLoading && !error && displayedCompanies.length > 0 && (
+        {!isLoading && !error && displayedUsuarios.length > 0 && (
           <>
             <div ref={tableContainerRef} className="flex-1 min-h-0 border rounded-lg">
               <div className="h-full overflow-y-auto">
@@ -123,30 +137,46 @@ export const UsersTable = ({ searchTerm, sortBy }: UsersTableProps) => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12"></TableHead>
-                    <TableHead>RUC</TableHead>
-                    <TableHead>Razón Social</TableHead>
-                    <TableHead>Fecha de Creación</TableHead>
+                    <TableHead>Usuario</TableHead>
+                    <TableHead>Nombres</TableHead>
+                    <TableHead>Apellidos</TableHead>
+                    <TableHead>Área</TableHead>
+                    <TableHead>Rol</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {displayedCompanies.map((company) => (
-                    <TableRow key={company.ID_EMPRESA}>
+                  {displayedUsuarios.map((usuarioGroup) => (
+                    <TableRow key={usuarioGroup[0].ID_USUARIO}>
                       <TableCell>
                         <Checkbox />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-blue-500" />
-                          <span>{company.RUC}</span>
+                          <User className="h-4 w-4 text-blue-500" />
+                          <span>{usuarioGroup[0].USUARIO}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{company.RAZON_SOCIAL}</TableCell>
-                      <TableCell>{formatDate(company.FCHCRE)}</TableCell>
+                      <TableCell>{usuarioGroup[0].NOMBRES}</TableCell>
+                      <TableCell>{usuarioGroup[0].APELLIDOS}</TableCell>
                       <TableCell>
-                        <Badge variant={company.ID_ESTADO_REGISTRO === 1 ? 'success' : 'destructive'}>
-                          {company.ID_ESTADO_REGISTRO === 1 ? 'Activo' : 'Inactivo'}
+                        <div className="flex flex-col gap-1">
+                          {usuarioGroup.map((usuario) => (
+                            <span key={usuario.ID_USUARIO_EMPR_AREA}>
+                              {usuario.AREA === 'Default' ? 'Todas' : usuario.AREA}
+                            </span>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={usuarioGroup[0].ID_TIPO_ROL === 1 ? 'orange' : usuarioGroup[0].ID_TIPO_ROL === 2 ? 'default' : 'outline'}>
+                          {usuarioGroup[0].ID_TIPO_ROL === 1 ? 'Super Administrador' : usuarioGroup[0].ID_TIPO_ROL === 2 ? 'Administrador' : 'Usuario'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={usuarioGroup[0].ID_ESTADO_REGISTRO === 1 ? 'success' : 'destructive'}>
+                          {usuarioGroup[0].ID_ESTADO_REGISTRO === 1 ? 'Activo' : 'Inactivo'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -196,7 +226,7 @@ export const UsersTable = ({ searchTerm, sortBy }: UsersTableProps) => {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Mostrando {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedCompanies.length)} de {sortedCompanies.length} empresas
+                Mostrando {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedUsuarios.length)} de {sortedUsuarios.length} usuarios
               </p>
             </div>
           </>

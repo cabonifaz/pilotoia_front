@@ -279,13 +279,15 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <AreaRowActions
-                          areaId={area.ID_AREA}
-                          status={area.ID_ESTADO_REGISTRO}
-                          onEdit={() => handleEditArea(area.ID_AREA, area.AREA)}
-                          onDelete={handleDeleteArea}
-                          onReactivate={handleReactivateArea}
-                        />
+                        {area.AREA !== 'Default' && (
+                          <AreaRowActions
+                            areaId={area.ID_AREA}
+                            status={area.ID_ESTADO_REGISTRO}
+                            onEdit={() => handleEditArea(area.ID_AREA, area.AREA)}
+                            onDelete={handleDeleteArea}
+                            onReactivate={handleReactivateArea}
+                          />
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
