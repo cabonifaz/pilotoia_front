@@ -25,9 +25,16 @@ export interface CreateUserRequest {
   password: string;
   nombres: string;
   apellidos: string;
-  id_tipo_rol: number;
+  nuevo_rol: number;
   id_empresa: number;
   areas_string: string;
+}
+
+export interface UpdateUserRequest {
+  id_usuario: number;
+  usuario: string;
+  nombres: string;
+  apellidos: string;
 }
 
 export interface CreateUserResult {
@@ -36,6 +43,27 @@ export interface CreateUserResult {
 }
 
 export interface CreateUserResponse {
+  results: CreateUserResult[];
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}
+
+export interface UpdateUserResponse {
+  results: CreateUserResult[];
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}
+
+export interface UpdateUserStatusRequest {
+  id_usuario: number;
+  status: number;
+}
+
+export interface UpdateUserStatusResponse {
   results: CreateUserResult[];
   result: {
     idTipoMensaje: number;

@@ -316,6 +316,9 @@ export const useChangeCompanyArea = () => {
                 idArea: selectedCompanyArea.ID_AREA
             }));
 
+            // Clear current_chat_id since we're switching company/area
+            sessionStorage.removeItem('current_chat_id');
+
             // Update cache ONCE with new company area
             queryClient.setQueryData(queryKeys.user.current(), {
                 ...currentUserData,

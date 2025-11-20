@@ -41,6 +41,7 @@ export const useGetAreas = (id_empresa: number) => {
     queryFn: async () => {
       return await getAreas(id_empresa);
     },
+    enabled: !!id_empresa && id_empresa > 0, // Only run when we have a valid company ID
     retry: false,
   });
 };

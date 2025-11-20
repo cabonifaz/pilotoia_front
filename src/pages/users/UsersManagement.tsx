@@ -3,18 +3,32 @@ import { Search, ChevronsUpDown, CirclePlus } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { UsersTable, UsersSidebar } from '@/components/users';
+import { UsersSidebarUpdate } from '@/components/users/UsersSidebarUpdate';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
+import type { Usuario } from '@/types/users';
 
 const UsersManagement = () => {
   const { user } = useQueryAuthContext();
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isUpdateSidebarOpen, setIsUpdateSidebarOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'usuario' | 'nombres' | 'area' | 'rol' | null>(null);
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
+  };
+
+  const closeUpdateSidebar = () => {
+    setIsUpdateSidebarOpen(false);
+    setSelectedUser(null);
+  };
+
+  const handleEditUser = (userToEdit: Usuario) => {
+    setSelectedUser(userToEdit);
+    setIsUpdateSidebarOpen(true);
   };
 
   return (
@@ -82,15 +96,23 @@ const UsersManagement = () => {
           </div>
 
           {/* Table Section */}
-          <UsersTable searchTerm={searchTerm} sortBy={sortBy} />
+          <UsersTable searchTerm={searchTerm} sortBy={sortBy} onEditUser={handleEditUser} />
         </div>
       </div>
 
-      {/* Right Sidebar - Upload Panel */}
+      {/* Right Sidebar - Create User */}
       <UsersSidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
         id_empresa={id_empresa}
+      />
+
+      {/* Right Sidebar - Update User */}
+      <UsersSidebarUpdate
+        isOpen={isUpdateSidebarOpen}
+        onClose={closeUpdateSidebar}
+        id_empresa={id_empresa}
+        user={selectedUser}
       />
     </div>
   );

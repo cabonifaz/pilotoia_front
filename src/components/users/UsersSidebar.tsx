@@ -80,7 +80,7 @@ export const UsersSidebar = ({
         password: password.trim(),
         nombres: nombres.trim(),
         apellidos: apellidos.trim(),
-        id_tipo_rol: parseInt(idTipoRol),
+        nuevo_rol: parseInt(idTipoRol),
         id_empresa: id_empresa || 0,
         areas_string: areasString,
       },
@@ -148,7 +148,7 @@ export const UsersSidebar = ({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-xs">Agregar usuario</CardTitle>
-              <CardDescription className="text-xs">Agregue una nuevo usuario.</CardDescription>
+              <CardDescription className="text-xs">Agregue un nuevo usuario.</CardDescription>
             </div>
             <Button
               variant="ghost"

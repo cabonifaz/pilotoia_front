@@ -6,15 +6,18 @@ import { Badge } from '@/components/shadcn/badge';
 import { Checkbox } from '@/components/shadcn/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/table';
 import { Loader } from '@/components/loader/Loader';
-import { useGetUsuarios } from '@/hooks/useUsersQueries';
+import { useGetUsuarios, useUpdateUsuarioStatus } from '@/hooks/useUsersQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
+import { UserRowActions } from './UserRowActions';
+import type { Usuario } from '@/types/users';
 
 interface UsersTableProps {
   searchTerm: string;
   sortBy: 'usuario' | 'nombres' | 'area' | 'rol' | null;
+  onEditUser: (user: Usuario) => void;
 }
 
-export const UsersTable = ({ searchTerm, sortBy }: UsersTableProps) => {
+export const UsersTable = ({ searchTerm, sortBy, onEditUser }: UsersTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -23,6 +26,15 @@ export const UsersTable = ({ searchTerm, sortBy }: UsersTableProps) => {
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
   const { data, isLoading, error } = useGetUsuarios(id_empresa || 0);
+  const updateStatus = useUpdateUsuarioStatus(id_empresa || 0);
+
+  const handleToggleStatus = (userId: number, currentStatus: number) => {
+    const newStatus = currentStatus === 1 ? 0 : 1;
+    updateStatus.mutate({
+      id_usuario: userId,
+      status: newStatus,
+    });
+  };
 
   // Calculate items per page based on available height
   useEffect(() => {
@@ -180,7 +192,11 @@ export const UsersTable = ({ searchTerm, sortBy }: UsersTableProps) => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <button className="text-muted-foreground hover:text-foreground">...</button>
+                        <UserRowActions
+                          status={usuarioGroup[0].ID_ESTADO_REGISTRO}
+                          onEdit={() => onEditUser(usuarioGroup[0])}
+                          onToggleStatus={() => handleToggleStatus(usuarioGroup[0].ID_USUARIO, usuarioGroup[0].ID_ESTADO_REGISTRO)}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}
