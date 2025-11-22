@@ -38,9 +38,9 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
   const { user } = useQueryAuthContext();
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
-  const { data, isLoading, error } = useGetAreas(id_empresa || 0);
-  const updateAreaStatus = useUpdateAreaStatus(id_empresa || 0);
-  const updateAreaName = useUpdateAreaName(id_empresa || 0);
+  const { data, isLoading, error } = useGetAreas(id_empresa);
+  const updateAreaStatus = useUpdateAreaStatus(id_empresa);
+  const updateAreaName = useUpdateAreaName(id_empresa);
 
   const handleEditArea = (areaId: number, currentName: string) => {
     setEditingAreaId(areaId);
@@ -50,7 +50,7 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
 
   const handleDeleteArea = (areaId: number) => {
     updateAreaStatus.mutate({
-      id_empresa: id_empresa || 0,
+      id_empresa,
       id_area: areaId,
       status: 0
     });
@@ -58,7 +58,7 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
 
   const handleReactivateArea = (areaId: number) => {
     updateAreaStatus.mutate({
-      id_empresa: id_empresa || 0,
+      id_empresa,
       id_area: areaId,
       status: 1
     });
@@ -77,7 +77,7 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
 
     try {
       const result = await updateAreaName.mutateAsync({
-        id_empresa: id_empresa || 0,
+        id_empresa,
         id_area: editingAreaId,
         area: editingAreaName.trim()
       });
@@ -135,10 +135,13 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
       }
     };
 
-    calculateItemsPerPage();
+    const timer = setTimeout(calculateItemsPerPage);
     window.addEventListener('resize', calculateItemsPerPage);
-    return () => window.removeEventListener('resize', calculateItemsPerPage);
-  }, []);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', calculateItemsPerPage);
+    };
+  }, [data]);
 
   const processedAreas = useMemo(() => {
     if (!data?.areas) return [];

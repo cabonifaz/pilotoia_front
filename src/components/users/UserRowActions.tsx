@@ -1,4 +1,4 @@
-import { Edit2, MoreVertical, UserX, UserCheck } from 'lucide-react';
+import { Edit2, MoreVertical, UserX, UserCheck, Key, Lock } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import {
   DropdownMenu,
@@ -11,12 +11,16 @@ interface UserRowActionsProps {
   status: number;
   onEdit: () => void;
   onToggleStatus: () => void;
+  onChangePassword: () => void;
+  onChangeAccess: () => void;
 }
 
 export const UserRowActions = ({
   status,
   onEdit,
   onToggleStatus,
+  onChangePassword,
+  onChangeAccess,
 }: UserRowActionsProps) => {
   return (
     <DropdownMenu>
@@ -53,6 +57,20 @@ export const UserRowActions = ({
               <span>Activar</span>
             </>
           )}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={onChangePassword}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <Key className="h-4 w-4" />
+          <span>Cambiar contraseña</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={onChangeAccess}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <Lock className="h-4 w-4" />
+          <span>Cambiar acceso</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

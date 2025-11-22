@@ -74,10 +74,13 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
       }
     };
 
-    calculateItemsPerPage();
+    const timer = setTimeout(calculateItemsPerPage, 100);
     window.addEventListener('resize', calculateItemsPerPage);
-    return () => window.removeEventListener('resize', calculateItemsPerPage);
-  }, []);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', calculateItemsPerPage);
+    };
+  }, [uploads]);
 
   // Process and filter documents
   const processedDocuments = useMemo(() => {

@@ -35,7 +35,7 @@ export const CompanyTable = ({ searchTerm, sortBy }: CompanyTableProps) => {
     const calculateItemsPerPage = () => {
       if (tableContainerRef.current) {
         const containerHeight = tableContainerRef.current.clientHeight;
-        const rowHeight = 45; // Approximate height of a table row in pixels (h-9 + padding)
+        const rowHeight = 45; // Approximate height of a table row in pixels
         const headerHeight = 45; // Approximate height of table header
         const availableHeight = containerHeight - headerHeight;
         const calculatedItems = Math.floor(availableHeight / rowHeight);
@@ -43,11 +43,14 @@ export const CompanyTable = ({ searchTerm, sortBy }: CompanyTableProps) => {
       }
     };
 
-    calculateItemsPerPage();
+    const timer = setTimeout(calculateItemsPerPage);
     window.addEventListener('resize', calculateItemsPerPage);
 
-    return () => window.removeEventListener('resize', calculateItemsPerPage);
-  }, []);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', calculateItemsPerPage);
+    };
+  }, [data]);
 
   const processedCompanies = useMemo(() => {
     if (!data?.companies) return [];

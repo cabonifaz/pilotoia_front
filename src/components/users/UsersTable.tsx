@@ -15,9 +15,11 @@ interface UsersTableProps {
   searchTerm: string;
   sortBy: 'usuario' | 'nombres' | 'area' | 'rol' | null;
   onEditUser: (user: Usuario) => void;
+  onChangePassword: (user: Usuario) => void;
+  onChangeAccess: (user: Usuario, userAreas: string[]) => void;
 }
 
-export const UsersTable = ({ searchTerm, sortBy, onEditUser }: UsersTableProps) => {
+export const UsersTable = ({ searchTerm, sortBy, onEditUser, onChangePassword, onChangeAccess }: UsersTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -25,8 +27,8 @@ export const UsersTable = ({ searchTerm, sortBy, onEditUser }: UsersTableProps) 
   const { user } = useQueryAuthContext();
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
-  const { data, isLoading, error } = useGetUsuarios(id_empresa || 0);
-  const updateStatus = useUpdateUsuarioStatus(id_empresa || 0);
+  const { data, isLoading, error } = useGetUsuarios(id_empresa);
+  const updateStatus = useUpdateUsuarioStatus(id_empresa);
 
   const handleToggleStatus = (userId: number, currentStatus: number) => {
     const newStatus = currentStatus === 1 ? 0 : 1;
@@ -57,7 +59,7 @@ export const UsersTable = ({ searchTerm, sortBy, onEditUser }: UsersTableProps) 
       clearTimeout(timer);
       window.removeEventListener('resize', calculateItemsPerPage);
     };
-  }, []);
+  }, [data]);
 
   const processedUsuarios = useMemo(() => {
     if (!data?.usuarios) return [];
@@ -196,6 +198,8 @@ export const UsersTable = ({ searchTerm, sortBy, onEditUser }: UsersTableProps) 
                           status={usuarioGroup[0].ID_ESTADO_REGISTRO}
                           onEdit={() => onEditUser(usuarioGroup[0])}
                           onToggleStatus={() => handleToggleStatus(usuarioGroup[0].ID_USUARIO, usuarioGroup[0].ID_ESTADO_REGISTRO)}
+                          onChangePassword={() => onChangePassword(usuarioGroup[0])}
+                          onChangeAccess={() => onChangeAccess(usuarioGroup[0], usuarioGroup.map((u) => u.AREA))}
                         />
                       </TableCell>
                     </TableRow>

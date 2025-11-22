@@ -70,3 +70,31 @@ export interface UpdateUserStatusResponse {
     mensaje: string;
   };
 }
+
+export interface UpdateUserPasswordRequest {
+  id_usuario: number;
+  clave_acceso: string;
+}
+
+export interface UpdateUserPasswordResponse {
+  results: CreateUserResult[];
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}
+
+export interface UpdateUserAccessRequest {
+  id_usuario: number;
+  nuevo_rol: number;
+  areas_string: string;
+  id_empresa: number;
+}
+
+export interface UpdateUserAccessResponse {
+  results: CreateUserResult[];
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}

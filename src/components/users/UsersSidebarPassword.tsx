@@ -4,68 +4,58 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
-import { useUpdateUsuario } from '@/hooks/useUsersQueries';
+import { useUpdateUsuarioPassword } from '@/hooks/useUsersQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 import type { Usuario } from '@/types/users';
 
-interface UsersSidebarUpdateProps {
+interface UsersSidebarPasswordProps {
   isOpen: boolean;
   onClose: () => void;
   id_empresa?: number;
   user: Usuario | null;
 }
 
-export const UsersSidebarUpdate = ({
+export const UsersSidebarPassword = ({
   isOpen,
   onClose,
   id_empresa: propsIdEmpresa,
   user: selectedUser,
-}: UsersSidebarUpdateProps) => {
+}: UsersSidebarPasswordProps) => {
   const { user } = useQueryAuthContext();
   const contextIdEmpresa = (user as any)?.actual_company_area?.ID_EMPRESA;
   const id_empresa = propsIdEmpresa || contextIdEmpresa;
 
-  const [usuario, setUsuario] = useState('');
-  const [nombres, setNombres] = useState('');
-  const [apellidos, setApellidos] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  const { mutate: updateUsuario, isPending } = useUpdateUsuario(id_empresa);
-
-  // Initialize form with user data when sidebar opens
-  useEffect(() => {
-    if (isOpen && selectedUser) {
-      setUsuario(selectedUser.USUARIO);
-      setNombres(selectedUser.NOMBRES);
-      setApellidos(selectedUser.APELLIDOS);
-    }
-  }, [isOpen, selectedUser]);
+  const { mutate: updatePassword, isPending } = useUpdateUsuarioPassword(id_empresa);
 
   // Reset state when sidebar closes
   useEffect(() => {
     if (!isOpen) {
-      setUsuario('');
-      setNombres('');
-      setApellidos('');
+      setNewPassword('');
+      setConfirmPassword('');
     }
   }, [isOpen]);
 
   const handleSubmit = () => {
-    if (!selectedUser || !usuario.trim() || !nombres.trim() || !apellidos.trim()) {
+    if (!selectedUser || !newPassword.trim()) {
       return;
     }
 
-    updateUsuario(
+    if (newPassword !== confirmPassword) {
+      return;
+    }
+
+    updatePassword(
       {
         id_usuario: selectedUser.ID_USUARIO,
-        usuario: usuario.trim(),
-        nombres: nombres.trim(),
-        apellidos: apellidos.trim(),
+        clave_acceso: newPassword.trim(),
       },
       {
         onSuccess: () => {
-          setUsuario('');
-          setNombres('');
-          setApellidos('');
+          setNewPassword('');
+          setConfirmPassword('');
           onClose();
         },
       }
@@ -83,8 +73,8 @@ export const UsersSidebarUpdate = ({
         <CardHeader className="pb-3 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-xs">Actualizar usuario</CardTitle>
-              <CardDescription className="text-xs">Actualice un usuario.</CardDescription>
+              <CardTitle className="text-xs">Cambiar contraseña</CardTitle>
+              <CardDescription className="text-xs">Actualice la contraseña del usuario.</CardDescription>
             </div>
             <Button
               variant="ghost"
@@ -98,44 +88,37 @@ export const UsersSidebarUpdate = ({
 
         {/* Contenido scrollable con altura definida */}
         <CardContent className="flex-1 overflow-y-auto py-4 space-y-4">
-          {/* Usuario Input */}
+          {/* Nueva Contraseña Input */}
           <div className="space-y-2">
-            <Label htmlFor="usuario" className="text-xs">Usuario</Label>
+            <Label htmlFor="newPassword" className="text-xs">Nueva contraseña</Label>
             <Input
-              id="usuario"
-              type="text"
-              placeholder="Ingrese el usuario"
-              value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
+              id="newPassword"
+              type="password"
+              placeholder="Ingrese la nueva contraseña"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
               disabled={isPending}
             />
           </div>
 
-          {/* Nombres Input */}
+          {/* Confirmar Contraseña Input */}
           <div className="space-y-2">
-            <Label htmlFor="nombres" className="text-xs">Nombres</Label>
+            <Label htmlFor="confirmPassword" className="text-xs">Confirmar contraseña</Label>
             <Input
-              id="nombres"
-              type="text"
-              placeholder="Ingrese los nombres"
-              value={nombres}
-              onChange={(e) => setNombres(e.target.value)}
+              id="confirmPassword"
+              type="password"
+              placeholder="Confirme la contraseña"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               disabled={isPending}
             />
           </div>
 
-          {/* Apellidos Input */}
-          <div className="space-y-2">
-            <Label htmlFor="apellidos" className="text-xs">Apellidos</Label>
-            <Input
-              id="apellidos"
-              type="text"
-              placeholder="Ingrese los apellidos"
-              value={apellidos}
-              onChange={(e) => setApellidos(e.target.value)}
-              disabled={isPending}
-            />
-          </div>
+          {newPassword && confirmPassword && newPassword !== confirmPassword && (
+            <div className="text-xs text-destructive">
+              Las contraseñas no coinciden
+            </div>
+          )}
         </CardContent>
 
         <div className="border-t p-4 flex gap-2 flex-shrink-0">
@@ -149,10 +132,10 @@ export const UsersSidebarUpdate = ({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isPending || !usuario.trim() || !nombres.trim() || !apellidos.trim()}
+            disabled={isPending || !newPassword.trim() || newPassword !== confirmPassword}
             className="flex-1"
           >
-            {isPending ? 'Actualizando...' : 'Actualizar'}
+            {isPending ? 'Cambiando...' : 'Cambiar contraseña'}
           </Button>
         </div>
       </Card>

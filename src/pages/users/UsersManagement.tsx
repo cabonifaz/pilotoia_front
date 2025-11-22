@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Search, ChevronsUpDown, CirclePlus } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
-import { UsersTable, UsersSidebar } from '@/components/users';
-import { UsersSidebarUpdate } from '@/components/users/UsersSidebarUpdate';
+import { UsersTable, UsersSidebar, UsersSidebarUpdate, UsersSidebarPassword, UsersSidebarAccess } from '@/components/users';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 import type { Usuario } from '@/types/users';
 
@@ -13,7 +12,10 @@ const UsersManagement = () => {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isUpdateSidebarOpen, setIsUpdateSidebarOpen] = useState(false);
+  const [isPasswordSidebarOpen, setIsPasswordSidebarOpen] = useState(false);
+  const [isAccessSidebarOpen, setIsAccessSidebarOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
+  const [selectedUserAreas, setSelectedUserAreas] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'usuario' | 'nombres' | 'area' | 'rol' | null>(null);
 
@@ -26,9 +28,30 @@ const UsersManagement = () => {
     setSelectedUser(null);
   };
 
+  const closePasswordSidebar = () => {
+    setIsPasswordSidebarOpen(false);
+    setSelectedUser(null);
+  };
+
+  const closeAccessSidebar = () => {
+    setIsAccessSidebarOpen(false);
+    setSelectedUser(null);
+  };
+
   const handleEditUser = (userToEdit: Usuario) => {
     setSelectedUser(userToEdit);
     setIsUpdateSidebarOpen(true);
+  };
+
+  const handleChangePassword = (userToChangePassword: Usuario) => {
+    setSelectedUser(userToChangePassword);
+    setIsPasswordSidebarOpen(true);
+  };
+
+  const handleChangeAccess = (userToChangeAccess: Usuario, userAreaList?: string[]) => {
+    setSelectedUser(userToChangeAccess);
+    setSelectedUserAreas(userAreaList || []);
+    setIsAccessSidebarOpen(true);
   };
 
   return (
@@ -96,7 +119,7 @@ const UsersManagement = () => {
           </div>
 
           {/* Table Section */}
-          <UsersTable searchTerm={searchTerm} sortBy={sortBy} onEditUser={handleEditUser} />
+          <UsersTable searchTerm={searchTerm} sortBy={sortBy} onEditUser={handleEditUser} onChangePassword={handleChangePassword} onChangeAccess={handleChangeAccess} />
         </div>
       </div>
 
@@ -113,6 +136,23 @@ const UsersManagement = () => {
         onClose={closeUpdateSidebar}
         id_empresa={id_empresa}
         user={selectedUser}
+      />
+
+      {/* Right Sidebar - Change Password */}
+      <UsersSidebarPassword
+        isOpen={isPasswordSidebarOpen}
+        onClose={closePasswordSidebar}
+        id_empresa={id_empresa}
+        user={selectedUser}
+      />
+
+      {/* Right Sidebar - Change Access */}
+      <UsersSidebarAccess
+        isOpen={isAccessSidebarOpen}
+        onClose={closeAccessSidebar}
+        id_empresa={id_empresa}
+        user={selectedUser}
+        userAreas={selectedUserAreas}
       />
     </div>
   );

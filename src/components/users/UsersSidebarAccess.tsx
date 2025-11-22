@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
-import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
 import { Checkbox } from '@/components/shadcn/checkbox';
 import {
@@ -12,84 +11,79 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/shadcn/select';
-import { useCreateUsuario } from '@/hooks/useUsersQueries';
+import { useUpdateUsuarioAccess } from '@/hooks/useUsersQueries';
 import { useGetAreas } from '@/hooks/useAreaQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
+import type { Usuario } from '@/types/users';
 
-interface UsersSidebarProps {
+interface UsersSidebarAccessProps {
   isOpen: boolean;
   onClose: () => void;
   id_empresa?: number;
+  user: Usuario | null;
+  userAreas?: string[];
 }
 
-export const UsersSidebar = ({
+export const UsersSidebarAccess = ({
   isOpen,
   onClose,
   id_empresa: propsIdEmpresa,
-}: UsersSidebarProps) => {
+  user: selectedUser,
+  userAreas = [],
+}: UsersSidebarAccessProps) => {
   const { user } = useQueryAuthContext();
   const contextIdEmpresa = (user as any)?.actual_company_area?.ID_EMPRESA;
   const id_empresa = propsIdEmpresa || contextIdEmpresa;
 
-  const [nuevoUsuario, setNuevoUsuario] = useState('');
-  const [password, setPassword] = useState('');
-  const [nombres, setNombres] = useState('');
-  const [apellidos, setApellidos] = useState('');
   const [idTipoRol, setIdTipoRol] = useState('3');
   const [selectedAreas, setSelectedAreas] = useState<number[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
 
-  const { mutate: createUsuario, isPending } = useCreateUsuario(id_empresa);
+  const { mutate: updateAccess, isPending } = useUpdateUsuarioAccess(id_empresa);
   const { data: areasData } = useGetAreas(id_empresa);
 
   // Get Default area ID
   const defaultAreaId = areasData?.areas?.find((area) => area.AREA === 'Default')?.ID_AREA;
 
-  // Initialize areas when sidebar opens and areas data is available
+  // Initialize form with user data when sidebar opens
   useEffect(() => {
-    if (isOpen && areasData && !isInitialized && defaultAreaId) {
-      // Since default role is Usuario (3), initialize with empty areas
-      // When role changes to Admin (2), the other useEffect will auto-select Default
-      setIsInitialized(true);
+    if (isOpen && selectedUser && areasData?.areas) {
+      setIdTipoRol(selectedUser.ID_TIPO_ROL.toString());
+      // Initialize with user's current areas by matching area names
+      if (userAreas && userAreas.length > 0) {
+        const selectedAreaIds = areasData.areas
+          .filter((area) => userAreas.includes(area.AREA))
+          .map((area) => area.ID_AREA);
+        setSelectedAreas(selectedAreaIds);
+      } else {
+        setSelectedAreas([]);
+      }
     }
-  }, [isOpen, areasData, isInitialized, defaultAreaId]);
+  }, [isOpen, selectedUser, areasData, userAreas]);
 
   // Reset state when sidebar closes
   useEffect(() => {
     if (!isOpen) {
-      setNuevoUsuario('');
-      setPassword('');
-      setNombres('');
-      setApellidos('');
       setIdTipoRol('3');
       setSelectedAreas([]);
-      setIsInitialized(false);
     }
   }, [isOpen]);
 
   const handleSubmit = () => {
-    if (!nuevoUsuario.trim() || !password.trim() || !nombres.trim() || !apellidos.trim() || selectedAreas.length === 0) {
+    if (!selectedUser || selectedAreas.length === 0) {
       return;
     }
 
     const areasString = selectedAreas.join(',');
 
-    createUsuario(
+    updateAccess(
       {
-        nuevo_usuario: nuevoUsuario.trim(),
-        password: password.trim(),
-        nombres: nombres.trim(),
-        apellidos: apellidos.trim(),
+        id_usuario: selectedUser.ID_USUARIO,
         nuevo_rol: parseInt(idTipoRol),
-        id_empresa,
         areas_string: areasString,
+        id_empresa,
       },
       {
         onSuccess: () => {
-          setNuevoUsuario('');
-          setPassword('');
-          setNombres('');
-          setApellidos('');
           setIdTipoRol('3');
           setSelectedAreas([]);
           onClose();
@@ -113,7 +107,6 @@ export const UsersSidebar = ({
       if (defaultAreaId) {
         setSelectedAreas([defaultAreaId]);
       } else if (areasData?.areas) {
-        // Try to find Default area ID if not already found
         const defaultArea = areasData.areas.find((area) => area.AREA === 'Default');
         if (defaultArea) {
           setSelectedAreas([defaultArea.ID_AREA]);
@@ -147,8 +140,8 @@ export const UsersSidebar = ({
         <CardHeader className="pb-3 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-xs">Agregar usuario</CardTitle>
-              <CardDescription className="text-xs">Agregue un nuevo usuario.</CardDescription>
+              <CardTitle className="text-xs">Actualizar acceso</CardTitle>
+              <CardDescription className="text-xs">Actualice el rol y áreas del usuario.</CardDescription>
             </div>
             <Button
               variant="ghost"
@@ -162,56 +155,12 @@ export const UsersSidebar = ({
 
         {/* Contenido scrollable con altura definida */}
         <CardContent className="flex-1 overflow-y-auto py-4 space-y-4">
-          {/* Usuario Input */}
+          {/* Usuario Display */}
           <div className="space-y-2">
-            <Label htmlFor="usuario" className="text-xs">Usuario</Label>
-            <Input
-              id="usuario"
-              type="text"
-              placeholder="Ingrese el usuario"
-              value={nuevoUsuario}
-              onChange={(e) => setNuevoUsuario(e.target.value)}
-              disabled={isPending}
-            />
-          </div>
-
-          {/* Password Input */}
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-xs">Contraseña</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Ingrese la contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isPending}
-            />
-          </div>
-
-          {/* Nombres Input */}
-          <div className="space-y-2">
-            <Label htmlFor="nombres" className="text-xs">Nombres</Label>
-            <Input
-              id="nombres"
-              type="text"
-              placeholder="Ingrese los nombres"
-              value={nombres}
-              onChange={(e) => setNombres(e.target.value)}
-              disabled={isPending}
-            />
-          </div>
-
-          {/* Apellidos Input */}
-          <div className="space-y-2">
-            <Label htmlFor="apellidos" className="text-xs">Apellidos</Label>
-            <Input
-              id="apellidos"
-              type="text"
-              placeholder="Ingrese los apellidos"
-              value={apellidos}
-              onChange={(e) => setApellidos(e.target.value)}
-              disabled={isPending}
-            />
+            <Label className="text-xs">Usuario</Label>
+            <div className="text-sm font-medium p-2 bg-muted rounded-md">
+              {selectedUser?.USUARIO || 'N/A'}
+            </div>
           </div>
 
           {/* Rol Select */}
@@ -267,10 +216,10 @@ export const UsersSidebar = ({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isPending || !nuevoUsuario.trim() || !password.trim() || !nombres.trim() || !apellidos.trim() || selectedAreas.length === 0}
+            disabled={isPending || selectedAreas.length === 0}
             className="flex-1"
           >
-            {isPending ? 'Guardando...' : 'Agregar'}
+            {isPending ? 'Actualizando...' : 'Actualizar'}
           </Button>
         </div>
       </Card>
