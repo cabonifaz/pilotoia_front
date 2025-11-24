@@ -8,25 +8,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader } from '@/components/loader/Loader';
 import { useProcessingLogs } from '@/hooks/useProcessingLogs';
 
+type BadgeVariant = "success" | "gray" | "destructive" | "info" | "purple" | "cyan" | "warning" | "orange" | "teal" | "default" | "outline" | "secondary" | "pink" | null | undefined;
+
+type StatusBadge = {
+  label: string;
+  variant?: BadgeVariant
+}
+
 // Map process_stage to status display
-const getStatusFromStage = (stage: number, isError: boolean) => {
-  if (isError) {
-    return { label: 'Error', variant: 'destructive' as const };
+const getStatusFromStage = (idEstadoProceso: number, estadoProceso: string) => {
+  const badgeColor: BadgeVariant[] = ['info', 'purple', 'cyan', 'warning', 'orange', 'teal', 'success']
+
+  let statusBadge: StatusBadge = { label: estadoProceso }
+
+  if (idEstadoProceso > 6) {
+    statusBadge.variant = 'destructive' as const;
+  } else {
+    statusBadge.variant = badgeColor[idEstadoProceso]
   }
 
-  const stages: Record<number, { label: string; variant: 'info' | 'purple' | 'gray' | 'warning' | 'orange' | 'success' | 'teal' | 'cyan' | 'pink' }> = {
-    0: { label: 'Subiendo', variant: 'info' },
-    1: { label: 'Evaluando', variant: 'purple' },
-    2: { label: 'En cola', variant: 'gray' },
-    3: { label: 'Extrayendo datos', variant: 'cyan' },
-    4: { label: 'Normalizando', variant: 'teal' },
-    5: { label: 'Dividiendo en partes', variant: 'warning' },
-    6: { label: 'Generando representaciones', variant: 'orange' },
-    7: { label: 'Guardando en la base de datos', variant: 'pink' },
-    8: { label: 'Completado', variant: 'success' },
-  };
-
-  return stages[stage] || { label: 'Desconocido', variant: 'gray' as const };
+  return statusBadge || { label: 'Desconocido', variant: 'gray' as const };
 };
 
 // Extract filename from pdf_key (format: process_id/filename.pdf)
@@ -88,12 +89,12 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
 
     return uploads
       .map(upload => ({
-        id: upload.process_id,
-        name: extractFilename(upload.pdf_key),
-        area: `Área ${upload.area_id}`,
-        createdDate: formatDate(upload.created_at),
-        uploadedBy: `Usuario ${upload.uploaded_by_id}`,
-        status: getStatusFromStage(upload.process_stage, upload.is_error),
+        id: upload.id,
+        name: upload.documento,
+        area: upload.area,
+        createdDate: formatDate(upload.fecha_inicio),
+        uploadedBy: upload.usuario_carga,
+        status: getStatusFromStage(upload.id_estado_proceso, upload.estado_proceso),
         rawData: upload,
       }))
       .filter(doc =>
@@ -114,15 +115,15 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
       // Default sorting: by created_at (most recent first), then by process_stage (lower first)
       sorted.sort((a, b) => {
         // Primary sort: created_at descending (most recent first)
-        const dateA = new Date(a.rawData.created_at).getTime();
-        const dateB = new Date(b.rawData.created_at).getTime();
+        const dateA = new Date(a.rawData.fecha_inicio).getTime();
+        const dateB = new Date(b.rawData.fecha_inicio).getTime();
 
         if (dateB !== dateA) {
           return dateB - dateA; // Most recent first
         }
 
         // Secondary sort: process_stage ascending (lower status first)
-        return a.rawData.process_stage - b.rawData.process_stage;
+        return a.rawData.id_estado_proceso - b.rawData.id_estado_proceso;
       });
     }
 
@@ -170,42 +171,42 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
             <div ref={tableContainerRef} className="flex-1 min-h-0 border rounded-lg">
               <div className="h-full overflow-y-auto">
                 <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12"></TableHead>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Área</TableHead>
-                    <TableHead>Creado el</TableHead>
-                    <TableHead>Subido por</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {displayedDocuments.map((doc) => (
-                    <TableRow key={doc.id}>
-                      <TableCell>
-                        <Checkbox />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-blue-500" />
-                          <span>{doc.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{doc.area}</TableCell>
-                      <TableCell>{doc.createdDate}</TableCell>
-                      <TableCell>{doc.uploadedBy}</TableCell>
-                      <TableCell>
-                        <Badge variant={doc.status.variant}>{doc.status.label}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <button className="text-muted-foreground hover:text-foreground">...</button>
-                      </TableCell>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12"></TableHead>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>Área</TableHead>
+                      <TableHead>Creado el</TableHead>
+                      <TableHead>Subido por</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="w-12"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {displayedDocuments.map((doc) => (
+                      <TableRow key={doc.id}>
+                        <TableCell>
+                          <Checkbox />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-blue-500" />
+                            <span>{doc.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{doc.area}</TableCell>
+                        <TableCell>{doc.createdDate}</TableCell>
+                        <TableCell>{doc.uploadedBy}</TableCell>
+                        <TableCell>
+                          <Badge variant={doc.status.variant}>{doc.status.label}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <button className="text-muted-foreground hover:text-foreground">...</button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </div>
 

@@ -1,6 +1,6 @@
 import type { MensajeResponse } from '@/types/Mensaje';
 import apiClient from './apiClient';
-import type { PresignedUrlRequest, PresignedUrlResponse, KnowledgeLogsResponse } from '@/types/upload';
+import type { PresignedUrlRequest, PresignedUrlResponse, KnowledgeLoadResponse } from '@/types/upload';
 
 export const getPresignedUrls = async (
   request: PresignedUrlRequest
@@ -25,8 +25,8 @@ export const getCompanyUploads = async (
   companyId: number,
   limit: number = 100,
   areaId: number
-): Promise<KnowledgeLogsResponse[]> => {
-  const response = await apiClient.post<KnowledgeLogsResponse[]>(
+): Promise<KnowledgeLoadResponse[]> => {
+  const response = await apiClient.post<KnowledgeLoadResponse[]>(
     '/v1/knowledge/get_company_uploads',
     {
       company_id: companyId,

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { getCompanyUploads } from '@/api/uploadApi';
 import { useCurrentUser } from '@/hooks/useUserQueries';
-import type { KnowledgeLogsResponse } from '@/types/upload';
+import type { KnowledgeLoadResponse } from '@/types/upload';
 
 interface UseProcessingLogsOptions {
   limit?: number;
@@ -19,7 +19,7 @@ export const useProcessingLogs = ({
   const companyId = user?.actual_company_area?.ID_EMPRESA;
   const areaId = user?.actual_company_area?.ID_AREA;
 
-  return useQuery<KnowledgeLogsResponse[], Error>({
+  return useQuery<KnowledgeLoadResponse[], Error>({
     queryKey: ['company-uploads', companyId, limit],
     queryFn: () => getCompanyUploads(companyId!, limit, areaId!),
     enabled: enabled && !!companyId && !!areaId,
