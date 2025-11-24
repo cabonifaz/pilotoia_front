@@ -16,7 +16,7 @@ interface QueryAuthContextType {
     isAuthenticated: boolean;
     isLoading: boolean;
     isLoggingOut: boolean;
-    login: (usuario: string, clave_acceso: string) => Promise<{ success: boolean; user?: LoginResponse }>;
+    login: (usuario: string, clave_acceso: string, ref?: string) => Promise<{ success: boolean; user?: LoginResponse }>;
     logout: () => Promise<void>;
     refreshUser: () => void;
     // Additional TanStack Query benefits
@@ -45,9 +45,9 @@ export const QueryAuthProvider = ({ children }: QueryAuthProviderProps) => {
     // Automatically fetch user chats when user is authenticated
     useUserChatsQuery();
 
-    const login = async (usuario: string, clave_acceso: string): Promise<{ success: boolean; user?: LoginResponse }> => {
+    const login = async (usuario: string, clave_acceso: string, ref?: string): Promise<{ success: boolean; user?: LoginResponse }> => {
         try {
-            const result = await loginMutation.mutateAsync({ usuario, clave_acceso });
+            const result = await loginMutation.mutateAsync({ usuario, clave_acceso, ...(ref && { ref }) });
             return { success: true, user: result };
         } catch (error) {
             console.error('Login error:', error);

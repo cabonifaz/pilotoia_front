@@ -43,6 +43,7 @@ export interface DecodedUserData {
 export interface LoginRequest {
     usuario: string;
     clave_acceso: string;
+    ref?: string;
 }
 
 export interface LoginResponse {

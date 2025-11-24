@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useState, useEffect } from "react";
@@ -15,6 +15,7 @@ type LoginFormData = {
 
 const REMEMBER_ME_USERNAME_KEY = 'login_remember_username';
 const REMEMBER_ME_PASSWORD_KEY = 'login_remember_password';
+const LOGIN_URL_PARAM_KEY = 'login_url_param';
 
 const ENCRYPTION_KEY = import.meta.env.VITE_LOGIN_ENCRYPTION_KEY || 'default-fallback-key';
 
@@ -34,12 +35,30 @@ const decryptData = (encryptedData: string): string => {
 
 export const LoginPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { register, handleSubmit, errors, onSubmit, isLoading, setValue } = useAuth();
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
 
-    // Load saved credentials on component mount
+    // Load saved credentials and handle URL parameters on component mount
     useEffect(() => {
+        // Extract URL parameter from query string
+        const params = new URLSearchParams(location.search);
+        const urlParam = params.get('ref');
+
+        if (urlParam) {
+            // If URL parameter exists, update localStorage with it
+            localStorage.setItem(LOGIN_URL_PARAM_KEY, urlParam);
+            // Update URL to use the new parameter
+            window.history.replaceState(null, '', `#/?ref=${encodeURIComponent(urlParam)}`);
+        } else {
+            // If no URL parameter, check localStorage and restore it
+            const storedParam = localStorage.getItem(LOGIN_URL_PARAM_KEY);
+            if (storedParam) {
+                window.history.replaceState(null, '', `#/?ref=${encodeURIComponent(storedParam)}`);
+            }
+        }
+
         const savedUsername = localStorage.getItem(REMEMBER_ME_USERNAME_KEY);
         const savedPassword = localStorage.getItem(REMEMBER_ME_PASSWORD_KEY);
         if (savedUsername && savedPassword) {
@@ -51,7 +70,7 @@ export const LoginPage = () => {
                 setRememberMe(true);
             }
         }
-    }, [setValue]);
+    }, [setValue, location]);
 
     const handleFormSubmit = async (data: LoginFormData) => {
         // Trim whitespace from credentials
@@ -69,7 +88,14 @@ export const LoginPage = () => {
             localStorage.removeItem(REMEMBER_ME_PASSWORD_KEY);
         }
 
-        const result = await onSubmit(trimmedData);
+        // Get the stored URL parameter and include it in the login request
+        const storedParam = localStorage.getItem(LOGIN_URL_PARAM_KEY);
+        const loginData = {
+            ...trimmedData,
+            ...(storedParam && { ref: storedParam })
+        };
+
+        const result = await onSubmit(loginData);
         if (result.success) {
             navigate('/rag');
         }
