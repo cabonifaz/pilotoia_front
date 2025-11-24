@@ -1,3 +1,4 @@
+import type { MensajeResponse } from '@/types/Mensaje';
 import apiClient from './apiClient';
 import type { PresignedUrlRequest, PresignedUrlResponse, KnowledgeLogsResponse } from '@/types/upload';
 
@@ -5,11 +6,20 @@ export const getPresignedUrls = async (
   request: PresignedUrlRequest
 ): Promise<PresignedUrlResponse[]> => {
   const response = await apiClient.post<PresignedUrlResponse[]>(
-    '/v1/uploads/get_presigned_urls',
+    '/v1/knowledge/get_presigned_urls',
     request
   );
   return response.data;
 };
+
+export const updateUploadInQueue = async (
+  uploadId: number
+): Promise<MensajeResponse> => {
+  const response = await apiClient.patch<MensajeResponse>(
+    `/v1/knowledge/get_company_uploads/${uploadId}/in_queue`
+  );
+  return response.data
+}
 
 export const getCompanyUploads = async (
   companyId: number,
@@ -17,7 +27,7 @@ export const getCompanyUploads = async (
   areaId: number
 ): Promise<KnowledgeLogsResponse[]> => {
   const response = await apiClient.post<KnowledgeLogsResponse[]>(
-    '/v1/uploads/get_company_uploads',
+    '/v1/knowledge/get_company_uploads',
     {
       company_id: companyId,
       limit: limit,
