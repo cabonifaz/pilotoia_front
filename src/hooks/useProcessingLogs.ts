@@ -6,7 +6,7 @@ import type { KnowledgeLoadResponse } from '@/types/upload';
 interface UseProcessingLogsOptions {
   limit?: number;
   enabled?: boolean;
-  refetchInterval?: number;
+  refetchInterval?: number | false | ((query: { state: { data: KnowledgeLoadResponse[] | undefined } }) => number | false);
 }
 
 export const useProcessingLogs = ({

@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/shadcn/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/table';
 import { Loader } from '@/components/loader/Loader';
 import { useProcessingLogs } from '@/hooks/useProcessingLogs';
+import type { KnowledgeLoadResponse } from '@/types/upload';
 
 type BadgeVariant = "success" | "gray" | "destructive" | "info" | "purple" | "cyan" | "warning" | "orange" | "teal" | "default" | "outline" | "secondary" | "pink" | null | undefined;
 
@@ -56,10 +57,19 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch company uploads (companyId is automatically retrieved from user context inside the hook)
+  const pollingInterval = Number(import.meta.env.VITE_POLLING_INTERVAL) || 30000;
+
+  const hasProcessingDocuments = (uploads: KnowledgeLoadResponse[] | undefined): boolean => {
+    if (!uploads || uploads.length === 0) return false;
+    return uploads.some((upload: KnowledgeLoadResponse) => upload.id_estado_proceso !== 6);
+  };
+
   const { data: uploads, isLoading, error } = useProcessingLogs({
     limit: 100,
     enabled: true,
+    refetchInterval: (query: { state: { data: KnowledgeLoadResponse[] | undefined } }): number | false => {
+      return hasProcessingDocuments(query.state.data) ? pollingInterval : false;
+    },
   });
 
   // Automatically calculate items per page based on container height
