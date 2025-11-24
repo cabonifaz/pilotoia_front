@@ -31,3 +31,24 @@ export interface KnowledgeLogsResponse {
   embedding_model: string;
   created_at: string;
 }
+
+export interface KnowledgeLoadResponse {
+  id: string;
+  id_usuario: number;
+  usuario_carga: string;
+  id_empresa: number;
+  empresa: string;
+  id_area: number;
+  area: string;
+  id_estado_proceso: number;
+  estado_proceso: string;
+  embedding_model_provider: string;
+  embedding_model: string;
+  documento: string;
+  fecha_ultima_actualizacion: string;
+  fecha_inicio: string;
+  fecha_extraccion: string;
+  fecha_segmentacion: string;
+  fecha_vectorizacion: string;
+  fecha_finalizado: string;
+}
