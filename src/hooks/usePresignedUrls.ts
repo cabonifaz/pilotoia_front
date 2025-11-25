@@ -1,29 +1,43 @@
 import { useMutation } from '@tanstack/react-query';
-import { getPresignedUrls, uploadPdfToS3 } from '../api/uploadApi';
-import type { PresignedUrlRequest, PresignedUrlResponse } from '../types/upload';
+import { uploadMultiplePdfs } from '../api/uploadApi';
+import type { BatchUploadKnowledgeResponse } from '../types/upload';
+import { useCurrentUser } from './useUserQueries';
 import { toast } from './use-toast';
 
 interface UploadPdfsParams {
-  request: PresignedUrlRequest;
   files: File[];
   onSuccess?: () => void;
   onError?: (error: Error) => void;
 }
 
 export const usePresignedUrls = () => {
+  const { user } = useCurrentUser();
+
   return useMutation({
-    mutationFn: async ({ request, files }: UploadPdfsParams): Promise<PresignedUrlResponse[]> => {
-      // Get presigned URLs
-      const presignedUrls = await getPresignedUrls(request);
+    mutationFn: async ({ files }: UploadPdfsParams): Promise<BatchUploadKnowledgeResponse['uploads']> => {
+      const companyId = user?.actual_company_area?.ID_EMPRESA;
+      const areaId = user?.actual_company_area?.ID_AREA;
+      const embeddingModel = user?.actual_company_area?.ID_EMBEDDINGS?.toString() || '4';
 
-      // Upload each file to S3 using presigned URLs
-      const uploadPromises = presignedUrls.map((response, index) => {
-        return uploadPdfToS3(response.presigned_url, files[index]);
-      });
+      if (!companyId || !areaId) {
+        throw new Error('Información de empresa/área incompleta');
+      }
 
-      await Promise.all(uploadPromises);
+      try {
+        // Use the uploadMultiplePdfs function which handles presigned URLs and S3 uploads
+        const presignedResponses = await uploadMultiplePdfs(
+          files,
+          companyId,
+          areaId,
+          embeddingModel
+        );
 
-      return presignedUrls;
+        console.log('Upload successful:', presignedResponses);
+        return presignedResponses;
+      } catch (error) {
+        console.error('Upload error:', error);
+        throw error;
+      }
     },
     // Disable automatic retry for uploads to prevent duplicates
     retry: false,

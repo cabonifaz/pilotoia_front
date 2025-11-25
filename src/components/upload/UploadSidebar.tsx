@@ -83,13 +83,6 @@ export const UploadSidebar = ({
 
     generatePresignedUrls(
       {
-        request: {
-          company_id: companyId as number,
-          area_id: areaId as number,
-          user_id: user.user_id,
-          embedding_model: embeddingModel,
-          pdf_keys: files.map((f) => f.file.name),
-        },
         files: files.map((f) => f.file),
       },
       {

@@ -36,6 +36,20 @@ export interface DecodedUserData {
     EMPRESA: string;
     ID_AREA: number;
     AREA: string;
+    ID_IA_AREA: number;
+    ID_EMBEDDINGS: number;
+    EMBEDDINGS_MODEL: string;
+    EMBEDDINGS_PROVIDER: string;
+    ID_LLM: number;
+    LLM_MODEL: string;
+    LLM_PROVIDER: string;
+    EMBEDDINGS_DIMENSIONS: number;
+    LLM_MAX_TOKENS: number;
+    LLM_TEMPERATURE: number;
+    LLM_TOP_P: number;
+    RAG_ALPHA: number;
+    RAG_TOP_K_RESULTS: number;
+    RAG_SIMILARITY_THRESHOLD: number;
   } | null;
   status: string;
 }

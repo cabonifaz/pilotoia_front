@@ -20,8 +20,8 @@ export const useProcessingLogs = ({
   const areaId = user?.actual_company_area?.ID_AREA;
 
   return useQuery<KnowledgeLoadResponse[], Error>({
-    queryKey: ['company-uploads', companyId, limit],
-    queryFn: () => getCompanyUploads(companyId!, limit, areaId!),
+    queryKey: ['company-uploads', companyId, areaId, limit],
+    queryFn: () => getCompanyUploads(companyId!, areaId!),
     enabled: enabled && !!companyId && !!areaId,
     refetchInterval,
     staleTime: 5 * 60 * 1000,

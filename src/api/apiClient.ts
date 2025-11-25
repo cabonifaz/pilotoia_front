@@ -137,7 +137,7 @@ apiClient.interceptors.response.use(
                 case 422:
                     // Error de validación or server error (tipo_mensaje = 3)
                     // Check if it's a tipo_mensaje = 3 error
-                    if (data?.detail?.result?.idTipoMensaje === 3) {
+                    if ((data as any)?.detail?.result?.idTipoMensaje === 3) {
                         toast({
                             title: "Error",
                             description: "Error en el servidor",

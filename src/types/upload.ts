@@ -6,6 +6,29 @@ export interface PresignedUrlRequest {
   pdf_keys: string[];
 }
 
+export interface BatchUploadKnowledgeRequest {
+  id_empresa: number;
+  id_area: number;
+  pdf_keys: string[];
+  id_modelo_embedding?: string;
+}
+
+export interface BatchUploadKnowledgeResponse {
+  uploads: Array<{
+    presigned_url: string;
+    s3_key: string;
+    document_name: string;
+    results: Array<{
+      ID_TIPO_MENSAJE: number;
+      MENSAJE: string;
+    }>;
+  }>;
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}
+
 export interface PresignedUrlResponse {
   process_id: string;
   pdf_key: string;

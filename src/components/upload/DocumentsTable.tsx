@@ -18,12 +18,14 @@ type StatusBadge = {
 
 // Map process_stage to status display
 const getStatusFromStage = (idEstadoProceso: number, estadoProceso: string) => {
-  const badgeColor: BadgeVariant[] = ['info', 'purple', 'cyan', 'warning', 'orange', 'teal', 'success']
+  const badgeColor: BadgeVariant[] = ['default', 'info', 'purple', 'cyan', 'warning', 'orange', 'teal', 'success', 'secondary', 'pink', 'outline']
 
   let statusBadge: StatusBadge = { label: estadoProceso }
 
-  if (idEstadoProceso > 6) {
+  if (idEstadoProceso > badgeColor.length - 1) {
     statusBadge.variant = 'destructive' as const;
+  } else if (idEstadoProceso < 0) {
+    statusBadge.variant = 'gray' as const;
   } else {
     statusBadge.variant = badgeColor[idEstadoProceso]
   }
@@ -31,19 +33,15 @@ const getStatusFromStage = (idEstadoProceso: number, estadoProceso: string) => {
   return statusBadge || { label: 'Desconocido', variant: 'gray' as const };
 };
 
-// Extract filename from pdf_key (format: process_id/filename.pdf)
-const extractFilename = (pdfKey: string): string => {
-  const parts = pdfKey.split('/');
-  return parts[parts.length - 1] || pdfKey;
-};
-
-// Format date to readable format
+// Format date to readable format with time
 const formatDate = (isoDate: string): string => {
   const date = new Date(isoDate);
   return date.toLocaleDateString('es-ES', {
     day: '2-digit',
     month: 'short',
-    year: 'numeric'
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
   });
 };
 
@@ -100,15 +98,28 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
     return uploads
       .map(upload => ({
         id: upload.id,
-        name: upload.documento,
-        area: upload.area,
+        id_usuario: upload.id_usuario,
+        usuario_carga: upload.usuario_carga || 'Sistema',
+        id_empresa: upload.id_empresa,
+        empresa: upload.empresa || 'Sin empresa',
+        id_area: upload.id_area,
+        area: upload.area || 'Sin área',
+        id_estado_proceso: upload.id_estado_proceso,
+        estado_proceso: upload.estado_proceso,
+        embedding_model_provider: upload.embedding_model_provider,
+        embedding_model: upload.embedding_model,
+        name: upload.documento || 'Sin nombre',
+        fecha_ultima_actualizacion: upload.fecha_ultima_actualizacion,
         createdDate: formatDate(upload.fecha_inicio),
-        uploadedBy: upload.usuario_carga,
+        fecha_extraccion: upload.fecha_extraccion,
+        fecha_segmentacion: upload.fecha_segmentacion,
+        fecha_vectorizacion: upload.fecha_vectorizacion,
+        fecha_finalizado: upload.fecha_finalizado,
         status: getStatusFromStage(upload.id_estado_proceso, upload.estado_proceso),
         rawData: upload,
       }))
       .filter(doc =>
-        doc.name.toLowerCase().includes(searchTerm.toLowerCase())
+        doc.name && doc.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
   }, [uploads, searchTerm]);
 
@@ -185,9 +196,13 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
                     <TableRow>
                       <TableHead className="w-12"></TableHead>
                       <TableHead>Nombre</TableHead>
-                      <TableHead>Área</TableHead>
+                      <TableHead>Usuario Carga</TableHead>
+                      <TableHead>Modelo Embedding</TableHead>
                       <TableHead>Creado el</TableHead>
-                      <TableHead>Subido por</TableHead>
+                      <TableHead>Extracción</TableHead>
+                      <TableHead>Segmentación</TableHead>
+                      <TableHead>Vectorización</TableHead>
+                      <TableHead>Finalizado</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
@@ -204,9 +219,13 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
                             <span>{doc.name}</span>
                           </div>
                         </TableCell>
-                        <TableCell>{doc.area}</TableCell>
+                        <TableCell>{doc.usuario_carga}</TableCell>
+                        <TableCell>{doc.embedding_model}</TableCell>
                         <TableCell>{doc.createdDate}</TableCell>
-                        <TableCell>{doc.uploadedBy}</TableCell>
+                        <TableCell>{doc.fecha_extraccion ? formatDate(doc.fecha_extraccion) : '-'}</TableCell>
+                        <TableCell>{doc.fecha_segmentacion ? formatDate(doc.fecha_segmentacion) : '-'}</TableCell>
+                        <TableCell>{doc.fecha_vectorizacion ? formatDate(doc.fecha_vectorizacion) : '-'}</TableCell>
+                        <TableCell>{doc.fecha_finalizado ? formatDate(doc.fecha_finalizado) : '-'}</TableCell>
                         <TableCell>
                           <Badge variant={doc.status.variant}>{doc.status.label}</Badge>
                         </TableCell>

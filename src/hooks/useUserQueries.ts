@@ -235,9 +235,12 @@ export const useCompanyAreasQuery = () => {
                 if (savedCompanyAreaIds) {
                     try {
                         const { idEmpresa, idArea } = JSON.parse(savedCompanyAreaIds);
-                        actualCompanyArea = companyAreas.find(
+                        const found = companyAreas.find(
                             ca => ca.ID_EMPRESA === idEmpresa && ca.ID_AREA === idArea
-                        ) || null;
+                        );
+                        if (found) {
+                            actualCompanyArea = found as any;
+                        }
                     } catch (e) {
                         console.error('Error parsing sessionStorage:', e);
                     }
@@ -245,7 +248,7 @@ export const useCompanyAreasQuery = () => {
 
                 // Fall back to first item if still no selection
                 if (!actualCompanyArea && companyAreas.length > 0) {
-                    actualCompanyArea = companyAreas[0];
+                    actualCompanyArea = companyAreas[0] as any;
                 }
             }
 
