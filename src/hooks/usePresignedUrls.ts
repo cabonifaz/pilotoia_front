@@ -35,6 +35,9 @@ export const usePresignedUrls = () => {
           embeddingModel
         );
 
+        // Invalidate knowledge query when URLs are consumed and files uploaded to S3
+        queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+
         return presignedResponses;
       } catch (error) {
         console.error('Upload error:', error);
@@ -44,8 +47,6 @@ export const usePresignedUrls = () => {
     // Disable automatic retry for uploads to prevent duplicates
     retry: false,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
-
       toast({
         title: 'Éxito',
         description: 'Documentos subidos correctamente',
