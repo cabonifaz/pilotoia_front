@@ -2,10 +2,17 @@ import { useRef, useCallback, useState, useEffect } from 'react';
 import { Upload, FileText, X, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
-import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/shadcn/select';
 import { usePresignedUrls } from '@/hooks/usePresignedUrls';
-import { useCurrentUser } from '@/hooks/useUserQueries';
+import { useGetAreas } from '@/hooks/useAreaQueries';
+import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 
 interface UploadedFile {
   file: File;
@@ -15,36 +22,41 @@ interface UploadedFile {
 interface UploadSidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  id_empresa?: number;
 }
 
 export const UploadSidebar = ({
   isOpen,
   onClose,
+  id_empresa: propsIdEmpresa,
 }: UploadSidebarProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<UploadedFile[]>([]);
-  const [companyId, setCompanyId] = useState<number | ''>('');
   const [areaId, setAreaId] = useState<number | ''>('');
-  const [embeddingModel, setEmbeddingModel] = useState('cohere.embed-multilingual-v3');
-  const { user } = useCurrentUser();
+  const [embeddingModelId, setEmbeddingModelId] = useState('4');
+
+  const { user } = useQueryAuthContext();
+  const contextIdEmpresa = (user as any)?.actual_company_area?.ID_EMPRESA;
+  const contextIdArea = (user as any)?.actual_company_area?.ID_AREA;
+  const id_empresa = propsIdEmpresa || contextIdEmpresa;
+
+  const { data: areasData } = useGetAreas(id_empresa || 0);
   const { mutate: generatePresignedUrls, isPending: isGeneratingUrls } = usePresignedUrls();
 
-  // Update values when user area changes or sidebar opens
+  // Update values when sidebar opens or company changes
   useEffect(() => {
-    if (isOpen && user?.actual_company_area) {
-      setCompanyId(user.actual_company_area.ID_EMPRESA);
-      setAreaId(user.actual_company_area.ID_AREA);
-      setEmbeddingModel('cohere.embed-multilingual-v3');
+    if (isOpen && id_empresa) {
+      setAreaId(contextIdArea || '');
+      setEmbeddingModelId('4');
     }
-  }, [isOpen, user?.actual_company_area]);
+  }, [isOpen, id_empresa, contextIdArea]);
 
   // Reset state when sidebar closes
   useEffect(() => {
     if (!isOpen) {
       setFiles([]);
-      setCompanyId('');
       setAreaId('');
-      setEmbeddingModel('cohere.embed-multilingual-v3');
+      setEmbeddingModelId('4');
     }
   }, [isOpen]);
 
@@ -77,13 +89,15 @@ export const UploadSidebar = ({
       return;
     }
 
-    if (!user || companyId === '' || areaId === '' || files.length === 0) {
+    if (!id_empresa || areaId === '' || files.length === 0) {
       return;
     }
 
     generatePresignedUrls(
       {
         files: files.map((f) => f.file),
+        areaId: typeof areaId === 'number' ? areaId : undefined,
+        embeddingModel: embeddingModelId,
       },
       {
         onSuccess: () => {
@@ -132,43 +146,33 @@ export const UploadSidebar = ({
 
         {/* Contenido scrollable con altura definida */}
         <CardContent className="flex-1 overflow-y-auto py-4 space-y-4">
-          {/* Company ID Input */}
+          {/* Area Select */}
           <div className="space-y-2">
-            <Label htmlFor="company-id" className="text-xs">ID Empresa</Label>
-            <Input
-              id="company-id"
-              type="number"
-              placeholder="ID Empresa"
-              value={companyId}
-              onChange={(e) => setCompanyId(e.target.value ? parseInt(e.target.value) : '')}
-              disabled={isGeneratingUrls}
-            />
+            <Label className="text-xs">Área</Label>
+            <Select
+              value={areaId === '' ? '' : areaId.toString()}
+              onValueChange={(value) => setAreaId(value ? parseInt(value) : '')}
+              disabled={isGeneratingUrls || !id_empresa}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un área" />
+              </SelectTrigger>
+              <SelectContent>
+                {areasData?.areas && areasData.areas.length > 0 ? (
+                  areasData.areas.map((area) => (
+                    <SelectItem key={area.ID_AREA} value={area.ID_AREA.toString()}>
+                      {area.AREA}
+                    </SelectItem>
+                  ))
+                ) : null}
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Area ID Input */}
+          {/* Embedding Model Display */}
           <div className="space-y-2">
-            <Label htmlFor="area-id" className="text-xs">ID Área</Label>
-            <Input
-              id="area-id"
-              type="number"
-              placeholder="ID Área"
-              value={areaId}
-              onChange={(e) => setAreaId(e.target.value ? parseInt(e.target.value) : '')}
-              disabled={isGeneratingUrls}
-            />
-          </div>
-
-          {/* Embedding Model Input */}
-          <div className="space-y-2">
-            <Label htmlFor="embedding-model" className="text-xs">Modelo de Embedding</Label>
-            <Input
-              id="embedding-model"
-              type="text"
-              placeholder="cohere.embed-multilingual-v3"
-              value={embeddingModel}
-              onChange={(e) => setEmbeddingModel(e.target.value)}
-              disabled={isGeneratingUrls}
-            />
+            <Label className="text-xs">Modelo de Embedding</Label>
+            <p className="text-xs text-gray-600 py-2">{embeddingModelId}</p>
           </div>
 
           {/* Drop Zone */}
@@ -243,7 +247,7 @@ export const UploadSidebar = ({
           </Button>
           <Button
             onClick={handleUpload}
-            disabled={isGeneratingUrls || companyId === '' || areaId === '' || !embeddingModel.trim() || files.length === 0 || !user}
+            disabled={isGeneratingUrls || !id_empresa || areaId === '' || !embeddingModelId.trim() || files.length === 0 || !user}
             className="flex-1"
           >
             {isGeneratingUrls ? 'Subiendo...' : 'Agregar'}

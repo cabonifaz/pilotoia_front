@@ -6,6 +6,8 @@ import { toast } from './use-toast';
 
 interface UploadPdfsParams {
   files: File[];
+  areaId?: number;
+  embeddingModel?: string;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
 }
@@ -14,10 +16,10 @@ export const usePresignedUrls = () => {
   const { user } = useCurrentUser();
 
   return useMutation({
-    mutationFn: async ({ files }: UploadPdfsParams): Promise<BatchUploadKnowledgeResponse['uploads']> => {
+    mutationFn: async ({ files, areaId: selectedAreaId, embeddingModel: selectedEmbeddingModel }: UploadPdfsParams): Promise<BatchUploadKnowledgeResponse['uploads']> => {
       const companyId = user?.actual_company_area?.ID_EMPRESA;
-      const areaId = user?.actual_company_area?.ID_AREA;
-      const embeddingModel = user?.actual_company_area?.ID_EMBEDDINGS?.toString() || '4';
+      const areaId = selectedAreaId || user?.actual_company_area?.ID_AREA;
+      const embeddingModel = selectedEmbeddingModel || user?.actual_company_area?.ID_EMBEDDINGS?.toString() || '4';
 
       if (!companyId || !areaId) {
         throw new Error('Información de empresa/área incompleta');

@@ -4,13 +4,11 @@ import { useCurrentUser } from '@/hooks/useUserQueries';
 import type { KnowledgeLoadResponse } from '@/types/upload';
 
 interface UseProcessingLogsOptions {
-  limit?: number;
   enabled?: boolean;
   refetchInterval?: number | false | ((query: { state: { data: KnowledgeLoadResponse[] | undefined } }) => number | false);
 }
 
 export const useProcessingLogs = ({
-  limit = 100,
   enabled = true,
   refetchInterval
 }: UseProcessingLogsOptions) => {
@@ -20,7 +18,7 @@ export const useProcessingLogs = ({
   const areaId = user?.actual_company_area?.ID_AREA;
 
   return useQuery<KnowledgeLoadResponse[], Error>({
-    queryKey: ['company-uploads', companyId, areaId, limit],
+    queryKey: ['knowledge', companyId, areaId],
     queryFn: () => getCompanyUploads(companyId!, areaId!),
     enabled: enabled && !!companyId && !!areaId,
     refetchInterval,
