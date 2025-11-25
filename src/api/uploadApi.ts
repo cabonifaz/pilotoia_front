@@ -56,7 +56,7 @@ export const uploadMultiplePdfs = async (
   companyId: number,
   areaId: number,
   embeddingModel: string
-): Promise<BatchUploadKnowledgeResponse> => {
+): Promise<BatchUploadKnowledgeResponse & { uploadCompanyId: number; uploadAreaId: number }> => {
   // Get presigned URLs for all files
   const batchRequest: BatchUploadKnowledgeRequest = {
     id_empresa: companyId,
@@ -74,7 +74,12 @@ export const uploadMultiplePdfs = async (
 
   await Promise.all(uploadPromises);
 
-  return fullResponse;
+  // Return response with the company and area IDs attached
+  return {
+    ...fullResponse,
+    uploadCompanyId: companyId,
+    uploadAreaId: areaId,
+  };
 };
 
 export const batchUpdateKnowledgeState = async (

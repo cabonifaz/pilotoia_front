@@ -1,25 +1,22 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { batchUpdateKnowledgeState } from '../api/uploadApi';
-import { useCurrentUser } from './useUserQueries';
 import { toast } from './use-toast';
 import type { MensajeResponse } from '@/types/Mensaje';
 
 interface BatchUpdateParams {
   idEstadoProceso: number;
+  companyId: number;
+  areaId: number;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
 }
 
 export const useBatchUpdateKnowledgeState = () => {
   const queryClient = useQueryClient();
-  const { user } = useCurrentUser();
 
   return useMutation({
-    mutationFn: async ({ idEstadoProceso }: BatchUpdateParams): Promise<MensajeResponse> => {
-      const companyId = user?.actual_company_area?.ID_EMPRESA;
-      const areaId = user?.actual_company_area?.ID_AREA;
-
-      // Get the created IDs directly from the query cache
+    mutationFn: async ({ idEstadoProceso, companyId, areaId }: BatchUpdateParams): Promise<MensajeResponse> => {
+      // Get the created IDs directly from the query cache using the upload's company/area
       const createdIds = queryClient.getQueryData<number[]>(['created_knowledge_ids', companyId, areaId]) || [];
 
       if (!createdIds || createdIds.length === 0) {
@@ -35,19 +32,13 @@ export const useBatchUpdateKnowledgeState = () => {
       }
     },
     retry: false,
-    onSuccess: () => {
-      // Get company and area IDs for cleanup
-      const companyId = user?.actual_company_area?.ID_EMPRESA;
-      const areaId = user?.actual_company_area?.ID_AREA;
-
+    onSuccess: (_, { companyId, areaId }) => {
       // Clear the stored created IDs after successful batch update
-      if (companyId && areaId) {
-        queryClient.removeQueries({
-          queryKey: ['created_knowledge_ids', companyId, areaId],
-          exact: true,
-          type: 'all'
-        });
-      }
+      queryClient.removeQueries({
+        queryKey: ['created_knowledge_ids', companyId, areaId],
+        exact: true,
+        type: 'all'
+      });
 
       // Invalidate knowledge query to refresh the list with proper query key
       queryClient.invalidateQueries({ queryKey: ['knowledge', companyId, areaId] });

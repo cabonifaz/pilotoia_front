@@ -53,15 +53,24 @@ export const usePresignedUrls = () => {
     },
     // Disable automatic retry for uploads to prevent duplicates
     retry: false,
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: 'Éxito',
         description: 'Documentos subidos correctamente',
         variant: 'success',
       });
 
-      // Trigger batch update with status 1 (in queue)
-      batchUpdateMutation.mutate({ idEstadoProceso: 1 });
+      // Get the company and area IDs from the mutation data
+      const mutationData = data as any;
+      const companyId = mutationData.uploadCompanyId;
+      const areaId = mutationData.uploadAreaId;
+
+      // Trigger batch update with status 1 (in queue) using the upload's company/area
+      batchUpdateMutation.mutate({
+        idEstadoProceso: 1,
+        companyId,
+        areaId
+      });
     },
     onError: (error: Error) => {
       toast({
