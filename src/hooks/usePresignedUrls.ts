@@ -32,7 +32,6 @@ export const usePresignedUrls = () => {
           embeddingModel
         );
 
-        console.log('Upload successful:', presignedResponses);
         return presignedResponses;
       } catch (error) {
         console.error('Upload error:', error);

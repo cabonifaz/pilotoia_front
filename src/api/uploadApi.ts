@@ -40,12 +40,9 @@ export const uploadPdfToS3 = async (
   file: File
 ): Promise<void> => {
   // Use fetch for S3 presigned URL upload (not axios)
-  // S3 presigned URLs require specific headers
+  // Do not add Content-Type header - it triggers CORS preflight
   const response = await fetch(presignedUrl, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/pdf',
-    },
     body: file,
   });
 
