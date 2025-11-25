@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { uploadMultiplePdfs } from '../api/uploadApi';
 import type { BatchUploadKnowledgeResponse } from '../types/upload';
 import { useCurrentUser } from './useUserQueries';
@@ -14,6 +14,7 @@ interface UploadPdfsParams {
 
 export const usePresignedUrls = () => {
   const { user } = useCurrentUser();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ files, areaId: selectedAreaId, embeddingModel: selectedEmbeddingModel }: UploadPdfsParams): Promise<BatchUploadKnowledgeResponse['uploads']> => {
@@ -43,6 +44,8 @@ export const usePresignedUrls = () => {
     // Disable automatic retry for uploads to prevent duplicates
     retry: false,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+
       toast({
         title: 'Éxito',
         description: 'Documentos subidos correctamente',
