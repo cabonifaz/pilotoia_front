@@ -19,10 +19,11 @@ export interface BatchUploadKnowledgeResponse {
     s3_key: string;
     document_name: string;
   }>;
-  results: Array<{
+  message_result: {
     ID_TIPO_MENSAJE: number;
     MENSAJE: string;
-  }>;
+  };
+  created_ids: number[];
   result: {
     idTipoMensaje: number;
     mensaje: string;

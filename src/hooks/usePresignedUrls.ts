@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { uploadMultiplePdfs } from '../api/uploadApi';
 import type { BatchUploadKnowledgeResponse } from '../types/upload';
 import { useCurrentUser } from './useUserQueries';
+import { useCreatedKnowledgeIds } from './useCreatedKnowledgeIds';
+import { useBatchUpdateKnowledgeState } from './useBatchUpdateKnowledgeState';
 import { toast } from './use-toast';
 
 interface UploadPdfsParams {
@@ -15,9 +17,11 @@ interface UploadPdfsParams {
 export const usePresignedUrls = () => {
   const { user } = useCurrentUser();
   const queryClient = useQueryClient();
+  const { setCreatedIds } = useCreatedKnowledgeIds();
+  const batchUpdateMutation = useBatchUpdateKnowledgeState();
 
   return useMutation({
-    mutationFn: async ({ files, areaId: selectedAreaId, embeddingModel: selectedEmbeddingModel }: UploadPdfsParams): Promise<BatchUploadKnowledgeResponse['uploads']> => {
+    mutationFn: async ({ files, areaId: selectedAreaId, embeddingModel: selectedEmbeddingModel }: UploadPdfsParams): Promise<BatchUploadKnowledgeResponse> => {
       const companyId = user?.actual_company_area?.ID_EMPRESA;
       const areaId = selectedAreaId || user?.actual_company_area?.ID_AREA;
       const embeddingModel = selectedEmbeddingModel || user?.actual_company_area?.ID_EMBEDDINGS?.toString() || '4';
@@ -28,17 +32,20 @@ export const usePresignedUrls = () => {
 
       try {
         // Use the uploadMultiplePdfs function which handles presigned URLs and S3 uploads
-        const presignedResponses = await uploadMultiplePdfs(
+        const response = await uploadMultiplePdfs(
           files,
           companyId,
           areaId,
           embeddingModel
         );
 
+        // Store the created IDs for batch update later
+        setCreatedIds(response.created_ids);
+
         // Invalidate knowledge query when URLs are consumed and files uploaded to S3
         queryClient.invalidateQueries({ queryKey: ['knowledge'] });
 
-        return presignedResponses;
+        return response;
       } catch (error) {
         console.error('Upload error:', error);
         throw error;
@@ -52,6 +59,9 @@ export const usePresignedUrls = () => {
         description: 'Documentos subidos correctamente',
         variant: 'success',
       });
+
+      // Trigger batch update with status 1 (in queue)
+      batchUpdateMutation.mutate({ idEstadoProceso: 1 });
     },
     onError: (error: Error) => {
       toast({

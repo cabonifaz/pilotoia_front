@@ -18,19 +18,26 @@ type StatusBadge = {
 
 // Map process_stage to status display
 const getStatusFromStage = (idEstadoProceso: number, estadoProceso: string) => {
-  const badgeColor: BadgeVariant[] = ['default', 'info', 'purple', 'cyan', 'warning', 'orange', 'teal', 'success', 'secondary', 'pink', 'outline']
+  const badgeColorMap: { [key: number]: BadgeVariant } = {
+    0: 'cyan',      // State 0 - Subiendo (Uploading)
+    1: 'warning',   // State 1 - En cola (In queue)
+    2: 'purple',    // State 2 - Procesando (Processing)
+    3: 'info',      // State 3 - Texto extraído (Text extracted)
+    4: 'orange',    // State 4 - Texto segmentado (Text segmented)
+    5: 'teal',      // State 5 - Segmentos vectorizados (Segments vectorized)
+    6: 'success',   // State 6 - Cargado (Loaded/Completed)
+    7: 'destructive', // State 7 - Error
+  }
 
   let statusBadge: StatusBadge = { label: estadoProceso }
 
-  if (idEstadoProceso > badgeColor.length - 1) {
+  if (idEstadoProceso < 0) {
     statusBadge.variant = 'destructive' as const;
-  } else if (idEstadoProceso < 0) {
-    statusBadge.variant = 'gray' as const;
   } else {
-    statusBadge.variant = badgeColor[idEstadoProceso]
+    statusBadge.variant = badgeColorMap[idEstadoProceso] || 'secondary' as const;
   }
 
-  return statusBadge || { label: 'Desconocido', variant: 'gray' as const };
+  return statusBadge || { label: 'Desconocido', variant: 'secondary' as const };
 };
 
 // Format date to readable format with time
@@ -63,7 +70,6 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
   };
 
   const { data: uploads, isLoading, error } = useProcessingLogs({
-    limit: 100,
     enabled: true,
     refetchInterval: (query: { state: { data: KnowledgeLoadResponse[] | undefined } }): number | false => {
       return hasProcessingDocuments(query.state.data) ? pollingInterval : false;

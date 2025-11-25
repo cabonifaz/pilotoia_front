@@ -22,6 +22,6 @@ export const useProcessingLogs = ({
     queryFn: () => getCompanyUploads(companyId!, areaId!),
     enabled: enabled && !!companyId && !!areaId,
     refetchInterval,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 20 * 60 * 1000, // 20 minutes
   });
 };
