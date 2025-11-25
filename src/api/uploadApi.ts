@@ -4,7 +4,7 @@ import type { KnowledgeLoadResponse, BatchUploadKnowledgeRequest, BatchUploadKno
 
 export const getPresignedUrls = async (
   batchRequest: BatchUploadKnowledgeRequest
-) => {
+): Promise<BatchUploadKnowledgeResponse['uploads']> => {
   const response = await apiClient.post<BatchUploadKnowledgeResponse>(
     '/v1/knowledge/batch_upload_knowledge',
     batchRequest

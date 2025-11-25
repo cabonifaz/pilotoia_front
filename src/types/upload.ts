@@ -18,10 +18,10 @@ export interface BatchUploadKnowledgeResponse {
     presigned_url: string;
     s3_key: string;
     document_name: string;
-    results: Array<{
-      ID_TIPO_MENSAJE: number;
-      MENSAJE: string;
-    }>;
+  }>;
+  results: Array<{
+    ID_TIPO_MENSAJE: number;
+    MENSAJE: string;
   }>;
   result: {
     idTipoMensaje: number;
