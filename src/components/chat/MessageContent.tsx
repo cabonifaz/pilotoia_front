@@ -3,6 +3,34 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 
+// Add \displaystyle to math formulas to prevent size reduction
+export const addDisplayStyle = (text: string): string => {
+  // Match both $...$ and $$...$$ patterns
+  const displayPattern = /\$\$([^$]+)\$\$/g;
+  const inlinePattern = /\$([^$]+)\$/g;
+
+  // First handle display math $$...$$
+  let result = text.replace(displayPattern, (match, formula) => {
+    if (!formula.trim().startsWith('\\displaystyle')) {
+      return `$$\\displaystyle ${formula}$$`;
+    }
+    return match;
+  });
+
+  // Then handle inline math $...$ but avoid double-processing
+  result = result.replace(inlinePattern, (match, formula) => {
+    if (!formula.trim().startsWith('\\displaystyle') && match.match(/^\$[^$]+\$$/)) {
+      return match; // Skip if it's part of $$
+    }
+    if (!formula.trim().startsWith('\\displaystyle')) {
+      return `$\\displaystyle ${formula}$`;
+    }
+    return match;
+  });
+
+  return result;
+};
+
 // Simplified table fix for remark-gfm
 export const fixTableMarkdown = (text: string): string => {
   // Split into lines and filter out empty/invalid rows

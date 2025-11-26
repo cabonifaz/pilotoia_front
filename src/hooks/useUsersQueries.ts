@@ -35,7 +35,9 @@ export const useCreateUsuario = (id_empresa: number) => {
       });
     },
     onError: (error: any) => {
-      const errorMessage = error.response?.data?.detail?.result?.mensaje ||
+      const errorMessage = error.response?.data?.error?.mensaje ||
+                          error.response?.data?.detail?.mensaje ||
+                          error.response?.data?.detail?.result?.mensaje ||
                           error.response?.data?.result?.mensaje ||
                           'Error al crear el usuario';
       toast({
@@ -68,7 +70,9 @@ export const useUpdateUsuario = (id_empresa: number) => {
       });
     },
     onError: (error: any) => {
-      const errorMessage = error.response?.data?.detail?.result?.mensaje ||
+      const errorMessage = error.response?.data?.error?.mensaje ||
+                          error.response?.data?.detail?.mensaje ||
+                          error.response?.data?.detail?.result?.mensaje ||
                           error.response?.data?.result?.mensaje ||
                           'Error al actualizar el usuario';
       toast({
@@ -101,7 +105,9 @@ export const useUpdateUsuarioStatus = (id_empresa: number) => {
       });
     },
     onError: (error: any) => {
-      const errorMessage = error.response?.data?.detail?.result?.mensaje ||
+      const errorMessage = error.response?.data?.error?.mensaje ||
+                          error.response?.data?.detail?.mensaje ||
+                          error.response?.data?.detail?.result?.mensaje ||
                           error.response?.data?.result?.mensaje ||
                           'Error al actualizar el estado del usuario';
       toast({
@@ -134,7 +140,9 @@ export const useUpdateUsuarioPassword = (id_empresa: number) => {
       });
     },
     onError: (error: any) => {
-      const errorMessage = error.response?.data?.detail?.result?.mensaje ||
+      const errorMessage = error.response?.data?.error?.mensaje ||
+                          error.response?.data?.detail?.mensaje ||
+                          error.response?.data?.detail?.result?.mensaje ||
                           error.response?.data?.result?.mensaje ||
                           'Error al actualizar la contraseña del usuario';
       toast({
@@ -167,7 +175,9 @@ export const useUpdateUsuarioAccess = (id_empresa: number) => {
       });
     },
     onError: (error: any) => {
-      const errorMessage = error.response?.data?.detail?.result?.mensaje ||
+      const errorMessage = error.response?.data?.error?.mensaje ||
+                          error.response?.data?.detail?.mensaje ||
+                          error.response?.data?.detail?.result?.mensaje ||
                           error.response?.data?.result?.mensaje ||
                           'Error al actualizar el acceso del usuario';
       toast({

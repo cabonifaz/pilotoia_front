@@ -5,7 +5,7 @@ import { Card, CardHeaderCompact, CardContentCompact } from '@/components/shadcn
 import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
 import { Badge } from '@/components/shadcn/badge';
 import { type Message, parseMessageTimestamp, getMessageType } from '@/types/message';
-import { MessageContent, fixTableMarkdown } from './MessageContent';
+import { MessageContent, fixTableMarkdown, addDisplayStyle } from './MessageContent';
 
 interface MessageBubbleProps {
   message: Message;
@@ -48,9 +48,10 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
   const timestamp = parseMessageTimestamp(message.created_at);
   const isTableOrList = hasTableOrList(message.message);
 
-  // Remove <br> tags
+  // Remove <br> tags and add displaystyle to formulas
   const cleanContent = message.message.replace(/<br\s*\/?>/gi, '');
-  const processedContent = isTableOrList ? fixTableMarkdown(cleanContent) : cleanContent;
+  const withDisplayStyle = addDisplayStyle(cleanContent);
+  const processedContent = isTableOrList ? fixTableMarkdown(withDisplayStyle) : withDisplayStyle;
 
   // Get display name based on sender
   const getDisplayName = () => {
