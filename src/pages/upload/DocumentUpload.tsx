@@ -7,7 +7,7 @@ import { DocumentsTable, UploadSidebar } from '@/components/upload';
 const DocumentUpload = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'area' | 'status' | null>(null);
+  const [sortBy, setSortBy] = useState<'status' | null>(null);
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
@@ -15,13 +15,8 @@ const DocumentUpload = () => {
 
   return (
     <div className="flex flex-1 overflow-hidden h-full">
-      {/* Main Content */}
-      <div
-        className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 h-full`}
-      >
-        {/* Header and Table Wrapper */}
+      <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 h-full`}>
         <div className="flex flex-col flex-1 overflow-hidden p-8 gap-4 h-full min-h-0">
-          {/* Search and Controls */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -32,17 +27,6 @@ const DocumentUpload = () => {
                 className="pl-10"
               />
             </div>
-
-            {/* Sort/Filter Buttons */}
-            <Button
-              variant={sortBy === 'area' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSortBy(sortBy === 'area' ? null : 'area')}
-              className="gap-2"
-            >
-              <ChevronsUpDown className="h-4 w-4" />
-              Área
-            </Button>
             <Button
               variant={sortBy === 'status' ? 'default' : 'outline'}
               size="sm"
@@ -58,13 +42,10 @@ const DocumentUpload = () => {
               Agregar documentos
             </Button>
           </div>
-
-          {/* Table Section */}
           <DocumentsTable searchTerm={searchTerm} sortBy={sortBy} />
         </div>
       </div>
 
-      {/* Right Sidebar - Upload Panel */}
       <UploadSidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}

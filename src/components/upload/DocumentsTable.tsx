@@ -54,7 +54,7 @@ const formatDate = (isoDate: string): string => {
 
 interface DocumentsTableProps {
   searchTerm: string;
-  sortBy: 'area' | 'status' | null;
+  sortBy: 'status' | null;
 }
 
 export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
@@ -97,6 +97,11 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
     };
   }, [uploads]);
 
+  // Reset to first page when search term or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortBy]);
+
   // Process and filter documents
   const processedDocuments = useMemo(() => {
     if (!uploads) return [];
@@ -134,9 +139,7 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
     let sorted = [...processedDocuments];
 
     // Apply user-selected sorting first if any
-    if (sortBy === 'area') {
-      sorted.sort((a, b) => a.area.localeCompare(b.area));
-    } else if (sortBy === 'status') {
+    if (sortBy === 'status') {
       sorted.sort((a, b) => a.status.label.localeCompare(b.status.label));
     } else {
       // Default sorting: by created_at (most recent first), then by process_stage (lower first)
@@ -173,26 +176,22 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
-        {/* Loading State */}
         {isLoading && (
           <Loader text="Cargando documentos..." />
         )}
 
-        {/* Error State */}
         {error && (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-red-500">Error: {error.message}</p>
           </div>
         )}
 
-        {/* Empty State */}
         {!isLoading && !error && displayedDocuments.length === 0 && (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-muted-foreground">No se encontraron documentos</p>
           </div>
         )}
 
-        {/* Table */}
         {!isLoading && !error && displayedDocuments.length > 0 && (
           <>
             <div ref={tableContainerRef} className="flex-1 min-h-0 border rounded-lg">
@@ -245,7 +244,6 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
               </div>
             </div>
 
-            {/* Pagination */}
             <div className="flex flex-col items-center gap-2 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <Button

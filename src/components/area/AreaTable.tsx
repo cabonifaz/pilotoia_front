@@ -143,6 +143,11 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
     };
   }, [data]);
 
+  // Reset to first page when search term or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortBy]);
+
   const processedAreas = useMemo(() => {
     if (!data?.areas) return [];
 

@@ -52,6 +52,11 @@ export const CompanyTable = ({ searchTerm, sortBy }: CompanyTableProps) => {
     };
   }, [data]);
 
+  // Reset to first page when search term or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortBy]);
+
   const processedCompanies = useMemo(() => {
     if (!data?.companies) return [];
 

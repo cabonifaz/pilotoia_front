@@ -61,6 +61,11 @@ export const UsersTable = ({ searchTerm, sortBy, onEditUser, onChangePassword, o
     };
   }, [data]);
 
+  // Reset to first page when search term or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortBy]);
+
   const processedUsuarios = useMemo(() => {
     if (!data?.usuarios) return [];
 
