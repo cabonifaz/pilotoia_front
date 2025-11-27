@@ -31,3 +31,21 @@ export interface GetCompaniesResponse {
     mensaje: string;
   };
 }
+
+export interface UpdateCompanyStatusRequest {
+  id_empresa: number;
+  status: number;
+}
+
+export interface UpdateCompanyStatusResult {
+  ID_TIPO_MENSAJE: number;
+  MENSAJE: string;
+}
+
+export interface UpdateCompanyStatusResponse {
+  results: UpdateCompanyStatusResult[];
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}

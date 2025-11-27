@@ -6,7 +6,8 @@ import { Badge } from '@/components/shadcn/badge';
 import { Checkbox } from '@/components/shadcn/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/table';
 import { Loader } from '@/components/loader/Loader';
-import { useGetCompanies } from '@/hooks/useCompanyQueries';
+import { useGetCompanies, useUpdateCompanyStatus } from '@/hooks/useCompanyQueries';
+import { CompanyRowActions } from '@/components/company';
 
 // Format date to readable format
 const formatDate = (isoDate: string): string => {
@@ -29,6 +30,21 @@ export const CompanyTable = ({ searchTerm, sortBy }: CompanyTableProps) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, error } = useGetCompanies();
+  const updateCompanyStatus = useUpdateCompanyStatus();
+
+  const handleDeleteCompany = (companyId: number) => {
+    updateCompanyStatus.mutate({
+      id_empresa: companyId,
+      status: 0
+    });
+  };
+
+  const handleReactivateCompany = (companyId: number) => {
+    updateCompanyStatus.mutate({
+      id_empresa: companyId,
+      status: 1
+    });
+  };
 
   // Calculate items per page based on available height
   useEffect(() => {
@@ -158,7 +174,13 @@ export const CompanyTable = ({ searchTerm, sortBy }: CompanyTableProps) => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <button className="text-muted-foreground hover:text-foreground">...</button>
+                        <CompanyRowActions
+                          companyId={company.ID_EMPRESA}
+                          status={company.ID_ESTADO_REGISTRO}
+                          onDelete={handleDeleteCompany}
+                          onReactivate={handleReactivateCompany}
+                          isPending={updateCompanyStatus.isPending}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

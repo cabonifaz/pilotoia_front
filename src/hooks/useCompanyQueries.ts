@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createCompany, getCompanies } from '../api/companyApi';
-import type { CreateCompanyRequest } from '@/types/company';
+import { createCompany, getCompanies, updateCompanyStatus } from '../api/companyApi';
+import type { CreateCompanyRequest, UpdateCompanyStatusRequest } from '@/types/company';
 import { toast } from './use-toast';
 
 export const useCreateCompany = () => {
@@ -44,5 +44,38 @@ export const useGetCompanies = () => {
       return await getCompanies();
     },
     retry: false,
+  });
+};
+
+export const useUpdateCompanyStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: UpdateCompanyStatusRequest) => {
+      return await updateCompanyStatus(request);
+    },
+    retry: false,
+    onSuccess: (data) => {
+      // Invalidate companies and company-areas queries to refetch updated data
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
+
+      // Get message from results array (SP response) or from result wrapper
+      const successMessage = data.results?.[0]?.MENSAJE || data.result?.mensaje || 'Estado de empresa actualizado exitosamente';
+
+      toast({
+        title: 'Éxito',
+        description: successMessage,
+        variant: 'success',
+      });
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.error?.result?.mensaje || 'Error al actualizar el estado de la empresa';
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    },
   });
 };

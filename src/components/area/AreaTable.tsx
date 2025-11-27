@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader } from '@/components/loader/Loader';
 import { useGetAreas, useUpdateAreaStatus, useUpdateAreaName } from '@/hooks/useAreaQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
-import { AreaRowActions } from './AreaRowActions';
+import { AreaRowActions } from '@/components/area';
 import { Input } from '@/components/shadcn/input';
 
 // Format date to readable format
