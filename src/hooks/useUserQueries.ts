@@ -253,10 +253,15 @@ export const useCompanyAreasQuery = () => {
             }
 
             // ========= UPDATE CACHE ONCE with complete data =========
+            // Find the current actual_company_area from the newly fetched company_areas list
+            const updatedActualCompanyArea = actualCompanyArea
+              ? companyAreas.find(ca => ca.ID_EMPRESA === actualCompanyArea.ID_EMPRESA && ca.ID_AREA === actualCompanyArea.ID_AREA)
+              : actualCompanyArea;
+
             queryClient.setQueryData(queryKeys.user.current(), {
                 ...currentUser,
                 company_areas: companyAreas,
-                actual_company_area: actualCompanyArea
+                actual_company_area: updatedActualCompanyArea
             });
 
             return companyAreas;

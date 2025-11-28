@@ -24,6 +24,7 @@ export const useUpdateIaAreaConfig = (id_empresa: number, id_area: number) => {
     },
     retry: false,
     onSuccess: (data) => {
+      // Invalidate queries to trigger refetch
       queryClient.invalidateQueries({ queryKey: ['ia_config', id_empresa, id_area] });
       queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
 
@@ -34,6 +35,12 @@ export const useUpdateIaAreaConfig = (id_empresa: number, id_area: number) => {
         description: successMessage,
         variant: 'success',
       });
+    },
+    onSettled: async () => {
+      // After refetch completes, the useCompanyAreasQuery will have updated
+      // the actual_company_area with the newly fetched data
+      // No additional action needed - just let the refetch complete
+      await queryClient.refetchQueries({ queryKey: ['user', 'company-areas'] });
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.result?.mensaje || 'Error al actualizar la configuración del área IA';
