@@ -1,0 +1,133 @@
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { MessageCircle, Clipboard, Menu, Building2, Network, User, BrainCircuit } from 'lucide-react';
+import { Button } from '../shadcn/button';
+import { cn } from '@/lib/utils';
+import { ChatListSidebar } from './ChatListSidebar';
+import UserDropdown from '../user/UserDropdown';
+import CompanyAreaDropdown from '../user/CompanyAreaDropdown';
+import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
+
+interface SidebarProps {
+  isStreaming?: boolean;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (isOpen: boolean) => void;
+}
+
+const Sidebar = ({
+  isStreaming = false,
+  isMobileMenuOpen,
+  setIsMobileMenuOpen,
+}: SidebarProps) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useQueryAuthContext();
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = sessionStorage.getItem('sidebar-collapsed');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem('sidebar-collapsed', JSON.stringify(isCollapsed));
+  }, [isCollapsed]);
+
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    setIsMobileMenuOpen(false); // Close mobile menu on navigation
+  };
+
+  const navigationItems = [
+    { path: '/rag', label: 'Chat', icon: MessageCircle, allowedRoles: [1, 2, 3] },
+    { path: '/upload', label: 'Documentos', icon: Clipboard, allowedRoles: [1, 2] },
+    { path: '/company', label: 'Empresas', icon: Building2, allowedRoles: [1] },
+    { path: '/area', label: 'Áreas', icon: Network, allowedRoles: [1, 2] },
+    { path: '/users', label: 'Usuarios', icon: User, allowedRoles: [1, 2] },
+    { path: '/ai-models', label: 'Modelos IA', icon: BrainCircuit, allowedRoles: [1] },
+  ].filter(item => {
+    if (!item.allowedRoles) return true; // si no tiene restricción, se muestra
+    return item.allowedRoles.includes(user?.id_tipo_rol ?? -1); // compara rol
+  });
+
+  const isActive = (path: string) => location.pathname === path;
+
+  return (
+    <aside
+      className={cn(
+        'bg-muted border-r border-border flex flex-col transition-all duration-300',
+        'fixed md:static inset-y-0 left-0 z-40', // Mobile: fixed overlay; Desktop: static
+        'w-60', // Fixed width for mobile and expanded desktop
+        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full', // Mobile slide in/out
+        'md:translate-x-0', // Desktop always visible
+        isCollapsed ? 'md:w-14' : 'md:w-60' // Desktop collapse
+      )}
+    >
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Collapse/Expand Button - Desktop only */}
+        <div
+          className={cn(
+            'border-b border-border p-1.5 flex-shrink-0 transition-all duration-300 hidden md:flex',
+            isCollapsed ? 'justify-center' : 'justify-end'
+          )}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            title={isCollapsed ? 'Expandir' : 'Contraer'}
+          >
+            <Menu className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        <nav className="p-1.5 space-y-0.5 flex flex-col flex-shrink-0">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.path);
+            return (
+              <Button
+                key={item.path}
+                variant={active ? 'secondary' : 'ghost'}
+                className={cn(
+                  'transition-all duration-300 h-8 w-full justify-start gap-2 px-2',
+                  isCollapsed && 'md:justify-center md:px-1.5'
+                )}
+                onClick={() => handleNavigate(item.path)}
+                disabled={isStreaming}
+                title={isCollapsed ? item.label : undefined}
+              >
+                <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+                <span
+                  className={cn('text-xs', isCollapsed && 'md:hidden')}
+                >
+                  {item.label}
+                </span>
+              </Button>
+            );
+          })}
+        </nav>
+
+        {/* Separator */}
+        <div className="border-t border-border flex-shrink-0"></div>
+
+        {/* Chat List - Only on /rag route */}
+        {location.pathname === '/rag' && (
+          <ChatListSidebar
+            isStreaming={isStreaming}
+            isCollapsed={isCollapsed}
+          />
+        )}
+      </div>
+
+      {/* Mobile-only footer for user/company controls */}
+      <div className="p-2 border-t md:hidden">
+        <div className="space-y-2">
+          <CompanyAreaDropdown isDisabled={isStreaming} />
+          <UserDropdown />
+        </div>
+      </div>
+    </aside>
+  );
+};
+
+export default Sidebar;

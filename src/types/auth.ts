@@ -1,0 +1,88 @@
+import type { MensajeResponse } from './Mensaje';
+
+export interface JWTPayload {
+  ID_USUARIO: number;
+  USUARIO: string;
+  NOMBRES: string;
+  APELLIDOS: string;
+  ID_TIPO_ROL: number;
+  ROL: string;
+  company_areas: Array<{
+    ID_EMPRESA: number;
+    EMPRESA: string;
+    ID_AREA: number;
+    AREA: string;
+  }>;
+  exp: number;
+  iat: number;
+  iss: string;
+}
+
+export interface DecodedUserData {
+  user_id: number;
+  user: string;
+  nombres: string;
+  apellidos: string;
+  id_tipo_rol: number;
+  rol_nombre: string;
+  company_areas: Array<{
+    ID_EMPRESA: number;
+    EMPRESA: string;
+    ID_AREA: number;
+    AREA: string;
+  }>;
+  actual_company_area?: {
+    ID_EMPRESA: number;
+    EMPRESA: string;
+    ID_AREA: number;
+    AREA: string;
+    ID_IA_AREA: number;
+    ID_EMBEDDINGS: number;
+    EMBEDDINGS_MODEL: string;
+    EMBEDDINGS_PROVIDER: string;
+    ID_LLM: number;
+    LLM_MODEL: string;
+    LLM_PROVIDER: string;
+    EMBEDDINGS_DIMENSIONS: number;
+    LLM_MAX_TOKENS: number;
+    LLM_TEMPERATURE: number;
+    LLM_TOP_P: number;
+    RAG_ALPHA: number;
+    RAG_TOP_K_RESULTS: number;
+    RAG_SIMILARITY_THRESHOLD: number;
+  } | null;
+  status: string;
+}
+
+export interface LoginRequest {
+    usuario: string;
+    clave_acceso: string;
+    ref?: string;
+}
+
+export interface LoginResponse {
+    token: string;  // JWT token containing all user information
+    status: string;
+}
+
+export interface ChatData {
+    ID_CHAT: number;
+    ID_AREA: number;
+    ID_EMPRESA: number;
+    TITULO: string;
+    ULTIMO_MENSAJE_FECHA?: string;
+}
+
+export interface UserInfo {
+    id_usuario: number;
+    usuario: string;
+    nombres: string;
+    apellidos: string;
+    email?: string;
+    ultimo_ingreso?: string;
+    id_estado_registro: number;
+}
+
+export interface LogoutResponse {
+    result: MensajeResponse;
+}

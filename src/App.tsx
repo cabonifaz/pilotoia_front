@@ -1,10 +1,14 @@
 import { Outlet } from "react-router-dom";
-import "./App.css";
+import { Toaster } from "./components/shadcn/toaster";
+import { QueryAuthProvider } from "./contexts/QueryAuthContext";
 
 export const App = () => {
   return (
-    <div className="app">
-      <Outlet />
-    </div>
+    <QueryAuthProvider>
+      <div className="app font-sans">
+        <Outlet />
+        <Toaster />
+      </div>
+    </QueryAuthProvider>
   );
 };

@@ -1,56 +1,39 @@
 import apiClient from './apiClient';
-import type { MensajeResponse } from './interfaces/Mensaje';
+import type { LoginRequest, LoginResponse, LogoutResponse } from '@/types/auth';
 
 export const authApi = {
     login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-        const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
-
-        if (response.data.result.idTipoMensaje === 2) {
-            sessionStorage.setItem('auth_token', response.data.token);
-            return response.data;
-        }
-
+        const response = await apiClient.post<LoginResponse>('/v1/auth/login', credentials);
         return response.data;
     },
 
-    logout: async () => {
-        sessionStorage.removeItem('auth_token');
-        window.dispatchEvent(new Event('storage'));
-    },
-
-    validateToken: async () => {
+    logout: async (userId?: number): Promise<LogoutResponse | void> => {
         try {
-            const authToken = sessionStorage.getItem("auth_token");
-
-            if (!authToken) return false;
-
-            const response = await apiClient.get<ValidateTokenResponse>('/auth/validar-token', {
-                headers: {
-                    Authorization: `Bearer ${authToken}`,
-                },
-            });
-
-            return response.data;
-        } catch (error) {
-            if (!(error instanceof Error)) {
-                console.error('Error al validar el token:', error);
+            if (userId) {
+                const response = await apiClient.post<LogoutResponse>('/v1/auth/logout', { user_id: userId });
+                authApi.clearUserSession();
+                return response.data;
+            } else {
+                // Clear session if no user ID provided
+                authApi.clearUserSession();
             }
-            return false;
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Clear local session even if API call fails
+            authApi.clearUserSession();
         }
     },
-};
 
-interface LoginRequest {
-    username: string;
-    password: string;
-}
+    getCompanyAreas: async (): Promise<any[]> => {
+        const response = await apiClient.get<{ company_areas: any[] }>('/v1/auth/company-areas');
+        return response.data.company_areas;
+    },
 
-interface LoginResponse {
-    token: string;
-    result: MensajeResponse;
-}
-
-interface ValidateTokenResponse {
-    isValid: boolean;
-    result: MensajeResponse;
-}
+    // Session management now handled by React Context
+    clearUserSession: (): void => {
+        // Clear JWT from sessionStorage
+        sessionStorage.removeItem('jwt_token');
+        // Trigger storage event to notify other tabs
+        window.dispatchEvent(new Event('storage'));
+    }
+} as const;

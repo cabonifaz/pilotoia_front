@@ -1,0 +1,42 @@
+"use client"
+
+import * as React from "react"
+import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
+import { Check } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+interface CheckboxProps extends React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> {
+  variant?: "primary" | "secondary"
+}
+
+const Checkbox = React.forwardRef<
+  React.ElementRef<typeof CheckboxPrimitive.Root>,
+  CheckboxProps
+>(({ className, variant = "primary", ...props }, ref) => {
+  const variantClasses = {
+    primary: "border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground focus-visible:ring-primary",
+    secondary: "border-secondary data-[state=checked]:bg-secondary data-[state=checked]:text-secondary-foreground focus-visible:ring-secondary",
+  }
+
+  return (
+    <CheckboxPrimitive.Root
+      ref={ref}
+      className={cn(
+        "peer h-3.5 w-3.5 shrink-0 rounded-sm border ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        variantClasses[variant],
+        className
+      )}
+      {...props}
+    >
+      <CheckboxPrimitive.Indicator
+        className={cn("flex items-center justify-center text-current")}
+      >
+        <Check className="h-3 w-3" />
+      </CheckboxPrimitive.Indicator>
+    </CheckboxPrimitive.Root>
+  )
+})
+Checkbox.displayName = CheckboxPrimitive.Root.displayName
+
+export { Checkbox }
