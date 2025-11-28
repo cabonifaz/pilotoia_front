@@ -235,9 +235,12 @@ export const useCompanyAreasQuery = () => {
                 if (savedCompanyAreaIds) {
                     try {
                         const { idEmpresa, idArea } = JSON.parse(savedCompanyAreaIds);
-                        actualCompanyArea = companyAreas.find(
+                        const found = companyAreas.find(
                             ca => ca.ID_EMPRESA === idEmpresa && ca.ID_AREA === idArea
-                        ) || null;
+                        );
+                        if (found) {
+                            actualCompanyArea = found as any;
+                        }
                     } catch (e) {
                         console.error('Error parsing sessionStorage:', e);
                     }
@@ -245,15 +248,20 @@ export const useCompanyAreasQuery = () => {
 
                 // Fall back to first item if still no selection
                 if (!actualCompanyArea && companyAreas.length > 0) {
-                    actualCompanyArea = companyAreas[0];
+                    actualCompanyArea = companyAreas[0] as any;
                 }
             }
 
             // ========= UPDATE CACHE ONCE with complete data =========
+            // Find the current actual_company_area from the newly fetched company_areas list
+            const updatedActualCompanyArea = actualCompanyArea
+              ? companyAreas.find(ca => ca.ID_EMPRESA === actualCompanyArea.ID_EMPRESA && ca.ID_AREA === actualCompanyArea.ID_AREA)
+              : actualCompanyArea;
+
             queryClient.setQueryData(queryKeys.user.current(), {
                 ...currentUser,
                 company_areas: companyAreas,
-                actual_company_area: actualCompanyArea
+                actual_company_area: updatedActualCompanyArea
             });
 
             return companyAreas;
@@ -315,6 +323,9 @@ export const useChangeCompanyArea = () => {
                 idEmpresa: selectedCompanyArea.ID_EMPRESA,
                 idArea: selectedCompanyArea.ID_AREA
             }));
+
+            // Clear current_chat_id since we're switching company/area
+            sessionStorage.removeItem('current_chat_id');
 
             // Update cache ONCE with new company area
             queryClient.setQueryData(queryKeys.user.current(), {

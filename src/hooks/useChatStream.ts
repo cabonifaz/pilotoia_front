@@ -277,16 +277,9 @@ export const useChatStream = (): UseChatStreamReturn => {
             case "chat_created":
               // Add the new chat to the chats list cache
               const chatCreatedEvt = evt as ChatCreatedEvent;
-              console.log('💬 [chat_created] Event received:', {
-                chat: chatCreatedEvt.chat
-              });
               queryClient.setQueryData<any[]>(
                 ['user', 'chats'],
                 (old = []) => {
-                  console.log('💬 [chat_created] Adding to cache:', {
-                    oldChatsCount: old.length,
-                    newChat: chatCreatedEvt.chat
-                  });
                   return [chatCreatedEvt.chat, ...old];
                 }
               );
@@ -471,16 +464,9 @@ export const useChatStream = (): UseChatStreamReturn => {
             case "chat_created":
               // Add the new chat to the chats list cache
               const chatCreatedEvt = evt as ChatCreatedEvent;
-              console.log('💬 [chat_created] Event received:', {
-                chat: chatCreatedEvt.chat
-              });
               queryClient.setQueryData<any[]>(
                 ['user', 'chats'],
                 (old = []) => {
-                  console.log('💬 [chat_created] Adding to cache:', {
-                    oldChatsCount: old.length,
-                    newChat: chatCreatedEvt.chat
-                  });
                   return [chatCreatedEvt.chat, ...old];
                 }
               );

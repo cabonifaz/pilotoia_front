@@ -55,9 +55,6 @@ class FileTranscribeApiClient {
             formData.append('language_code', config.language_code);
         }
 
-        console.log('FormData to send:', formData);
-        console.log('FormData entries:', Array.from(formData.entries()));
-
         // Use multipartClient - it automatically handles:
         // - JWT token from sessionStorage
         // - Multipart/form-data headers

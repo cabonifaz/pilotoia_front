@@ -79,7 +79,7 @@ const CompanyAreaDropdown = ({ isDisabled = false }: CompanyAreaDropdownProps) =
       </DropdownMenuTrigger>
 
       {hasMultipleCompanyAreas && (
-        <DropdownMenuContent align="end" className="w-56 text-xs">
+        <DropdownMenuContent align="end" className="w-56 text-xs max-h-64 overflow-y-auto">
           {user.company_areas?.map((companyArea: any) => {
             const key = `${companyArea.ID_EMPRESA}-${companyArea.ID_AREA}`;
             const isCurrent = key === currentKey;

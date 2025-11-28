@@ -2,8 +2,6 @@ import axios, { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig 
 import type { MensajeResponse } from '@/types/Mensaje';
 import { toast } from '../hooks/use-toast';
 
-// JWT is now stored in sessionStorage and sent via Authorization header
-
 const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/api`;
 
 interface ApiResponse {
@@ -137,8 +135,15 @@ apiClient.interceptors.response.use(
                     break;
 
                 case 422:
-                    // Error de validación
-                    if (mensaje) {
+                    // Error de validación or server error (tipo_mensaje = 3)
+                    // Check if it's a tipo_mensaje = 3 error
+                    if ((data as any)?.detail?.result?.idTipoMensaje === 3) {
+                        toast({
+                            title: "Error",
+                            description: "Error en el servidor",
+                            variant: "destructive"
+                        });
+                    } else if (mensaje) {
                         toast({
                             title: "Error de validación",
                             description: mensaje.mensaje,

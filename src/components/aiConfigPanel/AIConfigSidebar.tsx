@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shadcn/card';
-import { Button } from '@/components/shadcn/button';
 import { Label } from '@/components/shadcn/label';
 import { Slider } from '@/components/shadcn/slider';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
@@ -53,7 +52,7 @@ export const AIConfigSidebar = ({
 
   return (
     <div
-      className={`fixed inset-y-0 right-0 w-96 bg-background border-l shadow-lg transform transition-all duration-300 flex flex-col ${
+      className={`fixed top-16 bottom-0 right-0 w-96 bg-background border-l shadow-lg transform transition-all duration-300 flex flex-col ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}
     >
@@ -192,17 +191,6 @@ export const AIConfigSidebar = ({
             </div>
           </div>
         </CardContent>
-
-        {/* Footer Buttons */}
-        <div className="border-t p-4 flex gap-2 flex-shrink-0">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="flex-1"
-          >
-            Cerrar
-          </Button>
-        </div>
       </Card>
     </div>
   );
