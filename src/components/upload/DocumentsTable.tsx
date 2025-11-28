@@ -253,20 +253,81 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Anterior
+                  <span className="hidden md:inline">Anterior</span>
                 </Button>
 
-                <div className="flex gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setCurrentPage(page)}
-                    >
-                      {page}
-                    </Button>
-                  ))}
+                <div className="hidden md:flex gap-1">
+                  {(() => {
+                    const maxButtons = 5;
+                    const halfRange = Math.floor(maxButtons / 2);
+                    let startPage = Math.max(1, currentPage - halfRange);
+                    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+                    if (endPage - startPage + 1 < maxButtons) {
+                      startPage = Math.max(1, endPage - maxButtons + 1);
+                    }
+
+                    const pages = [];
+
+                    if (startPage > 1) {
+                      pages.push(1);
+                      if (startPage > 2) {
+                        pages.push('...');
+                      }
+                    }
+
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(i);
+                    }
+
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push('...');
+                      }
+                      pages.push(totalPages);
+                    }
+
+                    return pages.map((page, idx) => (
+                      <Button
+                        key={`${page}-${idx}`}
+                        variant={currentPage === page ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => typeof page === 'number' && setCurrentPage(page)}
+                        disabled={page === '...'}
+                      >
+                        {page}
+                      </Button>
+                    ));
+                  })()}
+                </div>
+
+                <div className="flex md:hidden gap-1">
+                  {(() => {
+                    const maxButtons = 4;
+                    const halfRange = Math.floor(maxButtons / 2);
+                    let startPage = Math.max(1, currentPage - halfRange);
+                    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+                    if (endPage - startPage + 1 < maxButtons) {
+                      startPage = Math.max(1, endPage - maxButtons + 1);
+                    }
+
+                    const pages = [];
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(i);
+                    }
+
+                    return pages.map((page) => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </Button>
+                    ));
+                  })()}
                 </div>
 
                 <Button
@@ -275,7 +336,7 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
                   onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
                 >
-                  Siguiente
+                  <span className="hidden md:inline">Siguiente</span>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

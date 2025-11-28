@@ -113,33 +113,37 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
           {!isLoading && (
             <div className="absolute right-3 bottom-1 flex gap-1">
               {transcribeProvider === 'aws' ? (
-                <VoiceRecordButton
-                  isRecording={isRecording}
-                  isConnecting={isConnecting}
-                  isDisabled={isLoading}
-                  onClick={() => {
-                    onMicrophoneClick();
-                    focusTextarea();
-                  }}
-                  onStart={startMicrophoneRecording}
-                  onStop={() => {
-                    stopMicrophoneRecording();
-                    focusTextarea();
-                  }}
-                />
+                <div className="hidden md:block">
+                  <VoiceRecordButton
+                    isRecording={isRecording}
+                    isConnecting={isConnecting}
+                    isDisabled={isLoading}
+                    onClick={() => {
+                      onMicrophoneClick();
+                      focusTextarea();
+                    }}
+                    onStart={startMicrophoneRecording}
+                    onStop={() => {
+                      stopMicrophoneRecording();
+                      focusTextarea();
+                    }}
+                  />
+                </div>
               ) : (
-                <FileTranscribeButton
-                  isRecording={isFileRecording}
-                  isTranscribing={isFileTranscribing}
-                  isDisabled={isLoading}
-                  onPrepareRecording={onPrepareRecording}
-                  onCancelPrepareRecording={onCancelPrepareRecording}
-                  onStartRecording={onStartRecording}
-                  onStopRecording={() => {
-                    onStopRecording();
-                    focusTextarea();
-                  }}
-                />
+                <div className="hidden md:block">
+                  <FileTranscribeButton
+                    isRecording={isFileRecording}
+                    isTranscribing={isFileTranscribing}
+                    isDisabled={isLoading}
+                    onPrepareRecording={onPrepareRecording}
+                    onCancelPrepareRecording={onCancelPrepareRecording}
+                    onStartRecording={onStartRecording}
+                    onStopRecording={() => {
+                      onStopRecording();
+                      focusTextarea();
+                    }}
+                  />
+                </div>
               )}
             </div>
           )}

@@ -61,9 +61,9 @@ const UsersManagement = () => {
         className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 h-full`}
       >
         {/* Header and Table Wrapper */}
-        <div className="flex flex-col flex-1 overflow-hidden p-8 gap-4 h-full min-h-0">
+        <div className="flex flex-col flex-1 overflow-hidden p-4 md:p-8 gap-4 h-full min-h-0">
           {/* Search and Controls */}
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
@@ -75,47 +75,49 @@ const UsersManagement = () => {
             </div>
 
             {/* Sort/Filter Buttons */}
-            <Button
-              variant={sortBy === 'usuario' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSortBy(sortBy === 'usuario' ? null : 'usuario')}
-              className="gap-2"
-            >
-              <ChevronsUpDown className="h-4 w-4" />
-              Usuario
-            </Button>
-            <Button
-              variant={sortBy === 'nombres' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSortBy(sortBy === 'nombres' ? null : 'nombres')}
-              className="gap-2"
-            >
-              <ChevronsUpDown className="h-4 w-4" />
-              Nombres
-            </Button>
-            <Button
-              variant={sortBy === 'area' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSortBy(sortBy === 'area' ? null : 'area')}
-              className="gap-2"
-            >
-              <ChevronsUpDown className="h-4 w-4" />
-              Área
-            </Button>
-            <Button
-              variant={sortBy === 'rol' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSortBy(sortBy === 'rol' ? null : 'rol')}
-              className="gap-2"
-            >
-              <ChevronsUpDown className="h-4 w-4" />
-              Rol
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={sortBy === 'usuario' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSortBy(sortBy === 'usuario' ? null : 'usuario')}
+                className="gap-2"
+              >
+                <ChevronsUpDown className="h-4 w-4 flex-shrink-0" />
+                Usuario
+              </Button>
+              <Button
+                variant={sortBy === 'nombres' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSortBy(sortBy === 'nombres' ? null : 'nombres')}
+                className="gap-2"
+              >
+                <ChevronsUpDown className="h-4 w-4 flex-shrink-0" />
+                Nombres
+              </Button>
+              <Button
+                variant={sortBy === 'area' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSortBy(sortBy === 'area' ? null : 'area')}
+                className="gap-2"
+              >
+                <ChevronsUpDown className="h-4 w-4 flex-shrink-0" />
+                Área
+              </Button>
+              <Button
+                variant={sortBy === 'rol' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSortBy(sortBy === 'rol' ? null : 'rol')}
+                className="gap-2"
+              >
+                <ChevronsUpDown className="h-4 w-4 flex-shrink-0" />
+                Rol
+              </Button>
 
-            <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2">
-              <CirclePlus className="h-4 w-4" />
-              Agregar usuario
-            </Button>
+              <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2">
+                <CirclePlus className="h-4 w-4 flex-shrink-0" />
+                Agregar usuario
+              </Button>
+            </div>
           </div>
 
           {/* Table Section */}
