@@ -1,4 +1,4 @@
-import { Edit2, Trash2, RotateCw, MoreVertical } from 'lucide-react';
+import { Edit2, Trash2, RotateCw, MoreVertical, BrainCircuit } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import {
   DropdownMenu,
@@ -9,20 +9,25 @@ import {
 
 interface AreaRowActionsProps {
   areaId: number;
+  areaName: string;
   status: number; // 1 = Activo, 0 = Inactivo
   onEdit: () => void;
   onDelete: (areaId: number) => void;
   onReactivate: (areaId: number) => void;
+  onConfigureAi?: () => void;
 }
 
 export const AreaRowActions = ({
   areaId,
+  areaName,
   status,
   onEdit,
   onDelete,
   onReactivate,
+  onConfigureAi,
 }: AreaRowActionsProps) => {
   const isActive = status === 1;
+  const isSpecialArea = ['Default', 'General'].includes(areaName);
 
   return (
     <DropdownMenu>
@@ -37,29 +42,42 @@ export const AreaRowActions = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          onClick={onEdit}
-          className="flex items-center gap-2 cursor-pointer"
-        >
-          <Edit2 className="h-4 w-4" />
-          <span>Editar</span>
-        </DropdownMenuItem>
-        {isActive ? (
+        {!isSpecialArea && (
           <DropdownMenuItem
-            onClick={() => onDelete(areaId)}
-            className="flex items-center gap-2 cursor-pointer text-red-600"
+            onClick={onEdit}
+            className="flex items-center gap-2 cursor-pointer"
           >
-            <Trash2 className="h-4 w-4" />
-            <span>Desactivar</span>
+            <Edit2 className="h-4 w-4" />
+            <span>Editar</span>
           </DropdownMenuItem>
-        ) : (
+        )}
+        {onConfigureAi && (
           <DropdownMenuItem
-            onClick={() => onReactivate(areaId)}
-            className="flex items-center gap-2 cursor-pointer text-green-600"
+            onClick={onConfigureAi}
+            className="flex items-center gap-2 cursor-pointer"
           >
-            <RotateCw className="h-4 w-4" />
-            <span>Reactivar</span>
+            <BrainCircuit className="h-4 w-4" />
+            <span>Configuración de IA</span>
           </DropdownMenuItem>
+        )}
+        {!isSpecialArea && (
+          isActive ? (
+            <DropdownMenuItem
+              onClick={() => onDelete(areaId)}
+              className="flex items-center gap-2 cursor-pointer text-red-600"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Desactivar</span>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              onClick={() => onReactivate(areaId)}
+              className="flex items-center gap-2 cursor-pointer text-green-600"
+            >
+              <RotateCw className="h-4 w-4" />
+              <span>Reactivar</span>
+            </DropdownMenuItem>
+          )
         )}
       </DropdownMenuContent>
     </DropdownMenu>

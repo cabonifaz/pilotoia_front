@@ -2,17 +2,29 @@ import { useState } from 'react';
 import { Search, ChevronsUpDown, CirclePlus } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
-import { AreaTable, AreaSidebar } from '@/components/area';
+import { AreaTable, AreaSidebar, AreaAiSidebar } from '@/components/area';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 
 const AreaManagement = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
+  const [selectedAreaForAi, setSelectedAreaForAi] = useState<{ id_area: number; id_empresa: number } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'area' | 'fecha_creacion' | null>(null);
   const { user } = useQueryAuthContext();
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
+  };
+
+  const closeAiSidebar = () => {
+    setIsAiSidebarOpen(false);
+    setSelectedAreaForAi(null);
+  };
+
+  const handleConfigureAi = (id_area: number, id_empresa: number) => {
+    setSelectedAreaForAi({ id_area, id_empresa });
+    setIsAiSidebarOpen(true);
   };
 
   // Get the current company ID from user's actual_company_area
@@ -65,7 +77,7 @@ const AreaManagement = () => {
           </div>
 
           {/* Table Section */}
-          <AreaTable searchTerm={searchTerm} sortBy={sortBy} />
+          <AreaTable searchTerm={searchTerm} sortBy={sortBy} onConfigureAi={handleConfigureAi} />
         </div>
       </div>
 
@@ -75,6 +87,16 @@ const AreaManagement = () => {
           isOpen={isSidebarOpen}
           onClose={closeSidebar}
           id_empresa={id_empresa}
+        />
+      )}
+
+      {/* Right Sidebar - AI Config Panel */}
+      {selectedAreaForAi && (
+        <AreaAiSidebar
+          isOpen={isAiSidebarOpen}
+          onClose={closeAiSidebar}
+          id_empresa={selectedAreaForAi.id_empresa}
+          id_area={selectedAreaForAi.id_area}
         />
       )}
     </div>

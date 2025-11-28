@@ -24,9 +24,10 @@ const formatDate = (isoDate: string): string => {
 interface AreaTableProps {
   searchTerm: string;
   sortBy: 'area' | 'fecha_creacion' | null;
+  onConfigureAi?: (areaId: number, idEmpresa: number) => void;
 }
 
-export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
+export const AreaTable = ({ searchTerm, sortBy, onConfigureAi }: AreaTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [editingAreaId, setEditingAreaId] = useState<number | null>(null);
@@ -287,15 +288,15 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {!['Default', 'General'].includes(area.AREA) && (
-                          <AreaRowActions
-                            areaId={area.ID_AREA}
-                            status={area.ID_ESTADO_REGISTRO}
-                            onEdit={() => handleEditArea(area.ID_AREA, area.AREA)}
-                            onDelete={handleDeleteArea}
-                            onReactivate={handleReactivateArea}
-                          />
-                        )}
+                        <AreaRowActions
+                          areaId={area.ID_AREA}
+                          areaName={area.AREA}
+                          status={area.ID_ESTADO_REGISTRO}
+                          onEdit={() => handleEditArea(area.ID_AREA, area.AREA)}
+                          onDelete={handleDeleteArea}
+                          onReactivate={handleReactivateArea}
+                          onConfigureAi={onConfigureAi ? () => onConfigureAi(area.ID_AREA, id_empresa) : undefined}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}
