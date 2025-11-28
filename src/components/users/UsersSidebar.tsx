@@ -42,17 +42,17 @@ export const UsersSidebar = ({
   const { mutate: createUsuario, isPending } = useCreateUsuario(id_empresa);
   const { data: areasData } = useGetAreas(id_empresa);
 
-  // Get Default area ID
-  const defaultAreaId = areasData?.areas?.find((area) => area.AREA === 'Default')?.ID_AREA;
+  // Get General area ID for Administrador role
+  const generalAreaId = areasData?.areas?.find((area) => area.AREA === 'General')?.ID_AREA;
 
   // Initialize areas when sidebar opens and areas data is available
   useEffect(() => {
-    if (isOpen && areasData && !isInitialized && defaultAreaId) {
+    if (isOpen && areasData && !isInitialized && generalAreaId) {
       // Since default role is Usuario (3), initialize with empty areas
-      // When role changes to Admin (2), the other useEffect will auto-select Default
+      // When role changes to Admin (2), the other useEffect will auto-select General
       setIsInitialized(true);
     }
-  }, [isOpen, areasData, isInitialized, defaultAreaId]);
+  }, [isOpen, areasData, isInitialized, generalAreaId]);
 
   // Reset state when sidebar closes
   useEffect(() => {
@@ -106,24 +106,24 @@ export const UsersSidebar = ({
     );
   };
 
-  // Auto-select Default area when role changes to Administrador (2)
+  // Auto-select General area when role changes to Administrador (2)
   useEffect(() => {
     if (idTipoRol === '2') {
-      // Administrador: automatically select Default area
-      if (defaultAreaId) {
-        setSelectedAreas([defaultAreaId]);
+      // Administrador: automatically select General area
+      if (generalAreaId) {
+        setSelectedAreas([generalAreaId]);
       } else if (areasData?.areas) {
-        // Try to find Default area ID if not already found
-        const defaultArea = areasData.areas.find((area) => area.AREA === 'Default');
-        if (defaultArea) {
-          setSelectedAreas([defaultArea.ID_AREA]);
+        // Try to find General area ID if not already found
+        const generalArea = areasData.areas.find((area) => area.AREA === 'General');
+        if (generalArea) {
+          setSelectedAreas([generalArea.ID_AREA]);
         }
       }
     } else if (idTipoRol === '3') {
       // Usuario: reset areas to empty
       setSelectedAreas([]);
     }
-  }, [idTipoRol, defaultAreaId, areasData]);
+  }, [idTipoRol, generalAreaId, areasData]);
 
   // Filter areas based on role
   const displayedAreas = areasData?.areas?.filter((area) => {

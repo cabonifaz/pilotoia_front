@@ -12,6 +12,7 @@ import {
 } from '@/components/shadcn/select';
 import { usePresignedUrls } from '@/hooks/usePresignedUrls';
 import { useGetAreas } from '@/hooks/useAreaQueries';
+import { useGetModels } from '@/hooks/useIAModelsQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 
 interface UploadedFile {
@@ -41,6 +42,7 @@ export const UploadSidebar = ({
   const id_empresa = propsIdEmpresa || contextIdEmpresa;
 
   const { data: areasData } = useGetAreas(id_empresa || 0);
+  const { data: modelsData } = useGetModels();
   const { mutate: generatePresignedUrls, isPending: isGeneratingUrls } = usePresignedUrls();
 
   // Update values when sidebar opens or company changes
@@ -182,10 +184,29 @@ export const UploadSidebar = ({
             )}
           </div>
 
-          {/* Embedding Model Display */}
+          {/* Embedding Model Select */}
           <div className="space-y-2">
             <Label className="text-xs">Modelo de Embedding</Label>
-            <p className="text-xs text-gray-600 py-2">{embeddingModelId}</p>
+            <Select
+              value={embeddingModelId}
+              onValueChange={(value) => setEmbeddingModelId(value)}
+              disabled={isGeneratingUrls}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un modelo" />
+              </SelectTrigger>
+              <SelectContent className="max-h-48">
+                {modelsData?.models && modelsData.models.length > 0 ? (
+                  modelsData.models
+                    .filter((model) => model.ID_TIPO === 1)
+                    .map((model) => (
+                      <SelectItem key={model.ID_MODELO} value={model.ID_MODELO.toString()}>
+                        {model.NOMBRE} ({model.PROVEEDOR})
+                      </SelectItem>
+                    ))
+                ) : null}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Drop Zone */}

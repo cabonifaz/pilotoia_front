@@ -202,10 +202,10 @@ export const AreaAiSidebar = ({
                 <SelectTrigger className="w-full text-xs h-8">
                   <SelectValue placeholder="Seleccionar modelo de embeddings" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-48">
                   {embeddingsModels.map((model) => (
                     <SelectItem key={model.ID_MODELO} value={model.ID_MODELO.toString()}>
-                      {model.NOMBRE}
+                      {model.NOMBRE} ({model.PROVEEDOR})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -241,10 +241,10 @@ export const AreaAiSidebar = ({
                 <SelectTrigger className="w-full text-xs h-8">
                   <SelectValue placeholder="Seleccionar modelo LLM" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-48">
                   {llmModels.map((model) => (
                     <SelectItem key={model.ID_MODELO} value={model.ID_MODELO.toString()}>
-                      {model.NOMBRE}
+                      {model.NOMBRE} ({model.PROVEEDOR})
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -41,8 +41,8 @@ export const UsersSidebarAccess = ({
   const { mutate: updateAccess, isPending } = useUpdateUsuarioAccess(id_empresa);
   const { data: areasData } = useGetAreas(id_empresa);
 
-  // Get Default area ID
-  const defaultAreaId = areasData?.areas?.find((area) => area.AREA === 'Default')?.ID_AREA;
+  // Get General area ID for Administrador role
+  const generalAreaId = areasData?.areas?.find((area) => area.AREA === 'General')?.ID_AREA;
 
   // Initialize form with user data when sidebar opens
   useEffect(() => {
@@ -100,23 +100,23 @@ export const UsersSidebarAccess = ({
     );
   };
 
-  // Auto-select Default area when role changes to Administrador (2)
+  // Auto-select General area when role changes to Administrador (2)
   useEffect(() => {
     if (idTipoRol === '2') {
-      // Administrador: automatically select Default area
-      if (defaultAreaId) {
-        setSelectedAreas([defaultAreaId]);
+      // Administrador: automatically select General area
+      if (generalAreaId) {
+        setSelectedAreas([generalAreaId]);
       } else if (areasData?.areas) {
-        const defaultArea = areasData.areas.find((area) => area.AREA === 'Default');
-        if (defaultArea) {
-          setSelectedAreas([defaultArea.ID_AREA]);
+        const generalArea = areasData.areas.find((area) => area.AREA === 'General');
+        if (generalArea) {
+          setSelectedAreas([generalArea.ID_AREA]);
         }
       }
     } else if (idTipoRol === '3') {
       // Usuario: reset areas to empty
       setSelectedAreas([]);
     }
-  }, [idTipoRol, defaultAreaId, areasData]);
+  }, [idTipoRol, generalAreaId, areasData]);
 
   // Filter areas based on role
   const displayedAreas = areasData?.areas?.filter((area) => {
