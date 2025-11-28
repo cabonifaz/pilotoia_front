@@ -128,11 +128,11 @@ export const UsersSidebar = ({
   // Filter areas based on role
   const displayedAreas = areasData?.areas?.filter((area) => {
     if (idTipoRol === '2') {
-      // Administrador: only show Default area
-      return area.AREA === 'Default';
+      // Administrador: only show Default and General areas
+      return ['Default', 'General'].includes(area.AREA);
     } else {
-      // Usuario: show all areas except Default
-      return area.AREA !== 'Default';
+      // Usuario: show all areas except Default and General
+      return !['Default', 'General'].includes(area.AREA);
     }
   }) || [];
 
@@ -231,6 +231,11 @@ export const UsersSidebar = ({
           {/* Áreas Checkboxes */}
           <div className="space-y-2">
             <Label className="text-xs">Áreas {idTipoRol === '2' && '(Automático)'}</Label>
+            {idTipoRol === '3' && (
+              <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                La información del área General está disponible para todos los usuarios
+              </p>
+            )}
             <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
               {displayedAreas && displayedAreas.length > 0 ? (
                 displayedAreas.map((area) => (

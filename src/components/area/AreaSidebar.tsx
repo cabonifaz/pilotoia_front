@@ -97,7 +97,7 @@ export const AreaSidebar = ({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isPending || !area.trim() || area.trim().toLowerCase() === 'default'}
+            disabled={isPending || !area.trim() || ['default', 'general'].includes(area.trim().toLowerCase())}
             className="flex-1"
           >
             {isPending ? 'Guardando...' : 'Agregar'}

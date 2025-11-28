@@ -79,9 +79,13 @@ export const CompanySidebar = ({
             <Input
               id="ruc"
               type="text"
+              inputMode="numeric"
               placeholder="Ingrese el RUC"
               value={ruc}
-              onChange={(e) => setRuc(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '');
+                setRuc(value);
+              }}
               disabled={isPending}
             />
           </div>

@@ -12,15 +12,6 @@ export const getPresignedUrls = async (
   return response.data;
 };
 
-export const updateUploadInQueue = async (
-  uploadId: number
-): Promise<MensajeResponse> => {
-  const response = await apiClient.patch<MensajeResponse>(
-    `/v1/knowledge/get_company_uploads/${uploadId}/in_queue`
-  );
-  return response.data
-}
-
 export const getCompanyUploads = async (
   companyId: number,
   areaId?: number

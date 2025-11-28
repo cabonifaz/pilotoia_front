@@ -287,7 +287,7 @@ export const AreaTable = ({ searchTerm, sortBy }: AreaTableProps) => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {area.AREA !== 'Default' && (
+                        {!['Default', 'General'].includes(area.AREA) && (
                           <AreaRowActions
                             areaId={area.ID_AREA}
                             status={area.ID_ESTADO_REGISTRO}

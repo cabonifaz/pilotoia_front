@@ -8,6 +8,7 @@ import DocumentUpload from "../pages/upload/DocumentUpload";
 import CompanyManagement from "../pages/company/CompanyManagement";
 import AreaManagement from "../pages/area/AreaManagement";
 import UsersManagement from "../pages/users/UsersManagement";
+import AiManagement from "../pages/ai_models/AiManagement";
 
 export const router = createHashRouter([
   {
@@ -49,6 +50,11 @@ export const router = createHashRouter([
             path: "users",
             element: <UsersManagement />,
             handle: { allowedRoles: [1, 2] },
+          },
+          {
+            path: "ai-models",
+            element: <AiManagement />,
+            handle: { allowedRoles: [1] },
           },
           {
             path: "unauthorized",

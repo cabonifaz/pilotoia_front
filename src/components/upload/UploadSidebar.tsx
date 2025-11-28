@@ -167,6 +167,19 @@ export const UploadSidebar = ({
                 ) : null}
               </SelectContent>
             </Select>
+            {areaId !== '' && areasData?.areas && (
+              (() => {
+                const selectedArea = areasData.areas.find((area) => area.ID_AREA === areaId);
+                if (selectedArea && ['Default', 'General'].includes(selectedArea.AREA)) {
+                  return (
+                    <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                      Información compartida para todos los usuarios de la empresa
+                    </p>
+                  );
+                }
+                return null;
+              })()
+            )}
           </div>
 
           {/* Embedding Model Display */}
