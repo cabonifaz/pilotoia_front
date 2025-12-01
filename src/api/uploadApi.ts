@@ -1,30 +1,29 @@
+import type { MensajeResponse } from '@/types/Mensaje';
 import apiClient from './apiClient';
-import type { PresignedUrlRequest, PresignedUrlResponse, KnowledgeLogsResponse } from '@/types/upload';
+import type { KnowledgeLoadResponse, BatchUploadKnowledgeRequest, BatchUploadKnowledgeResponse } from '@/types/upload';
 
 export const getPresignedUrls = async (
-  request: PresignedUrlRequest
-): Promise<PresignedUrlResponse[]> => {
-  const response = await apiClient.post<PresignedUrlResponse[]>(
-    '/v1/uploads/get_presigned_urls',
-    request
+  batchRequest: BatchUploadKnowledgeRequest
+): Promise<BatchUploadKnowledgeResponse> => {
+  const response = await apiClient.post<BatchUploadKnowledgeResponse>(
+    '/v1/knowledge/batch_upload_knowledge',
+    batchRequest
   );
   return response.data;
 };
 
 export const getCompanyUploads = async (
   companyId: number,
-  limit: number = 100,
-  areaId: number
-): Promise<KnowledgeLogsResponse[]> => {
-  const response = await apiClient.post<KnowledgeLogsResponse[]>(
-    '/v1/uploads/get_company_uploads',
+  areaId?: number
+): Promise<KnowledgeLoadResponse[]> => {
+  const response = await apiClient.post<{ knowledge: KnowledgeLoadResponse[] }>(
+    '/v1/knowledge/get_knowledge',
     {
-      company_id: companyId,
-      limit: limit,
-      area_id: areaId
+      id_empresa: companyId,
+      id_area: areaId
     }
   );
-  return response.data;
+  return response.data.knowledge;
 };
 
 export const uploadPdfToS3 = async (
@@ -32,12 +31,9 @@ export const uploadPdfToS3 = async (
   file: File
 ): Promise<void> => {
   // Use fetch for S3 presigned URL upload (not axios)
-  // S3 presigned URLs require specific headers
+  // Do not add Content-Type header - it triggers CORS preflight
   const response = await fetch(presignedUrl, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/pdf',
-    },
     body: file,
   });
 
@@ -50,26 +46,43 @@ export const uploadMultiplePdfs = async (
   files: File[],
   companyId: number,
   areaId: number,
-  userId: number,
   embeddingModel: string
-): Promise<PresignedUrlResponse[]> => {
+): Promise<BatchUploadKnowledgeResponse & { uploadCompanyId: number; uploadAreaId: number }> => {
   // Get presigned URLs for all files
-  const request: PresignedUrlRequest = {
-    company_id: companyId,
-    area_id: areaId,
-    user_id: userId,
-    embedding_model: embeddingModel,
+  const batchRequest: BatchUploadKnowledgeRequest = {
+    id_empresa: companyId,
+    id_area: areaId,
     pdf_keys: files.map(file => file.name),
+    id_modelo_embedding: embeddingModel,
   };
 
-  const presignedResponses = await getPresignedUrls(request);
+  const fullResponse = await getPresignedUrls(batchRequest);
 
   // Upload each file to S3 using its presigned URL
-  const uploadPromises = presignedResponses.map((response, index) => {
-    return uploadPdfToS3(response.presigned_url, files[index]);
+  const uploadPromises = fullResponse.uploads.map((upload, index) => {
+    return uploadPdfToS3(upload.presigned_url, files[index]);
   });
 
   await Promise.all(uploadPromises);
 
-  return presignedResponses;
+  // Return response with the company and area IDs attached
+  return {
+    ...fullResponse,
+    uploadCompanyId: companyId,
+    uploadAreaId: areaId,
+  };
+};
+
+export const batchUpdateKnowledgeState = async (
+  idCargas: number[],
+  idEstadoProceso: number
+): Promise<MensajeResponse> => {
+  const response = await apiClient.patch<MensajeResponse>(
+    '/v1/knowledge/batch_update_knowledge_state',
+    {
+      id_cargas: idCargas,
+      id_estado_proceso: idEstadoProceso,
+    }
+  );
+  return response.data;
 };

@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Card } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
-import { Settings, Loader2 } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import ChatComponent from '../../components/chat/ChatComponent';
 import { AIConfigSidebar } from '../../components/aiConfigPanel/AIConfigSidebar';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 import { useChatState } from '../../contexts/ChatStateContext';
 import { type AIConfig, type ChatContext } from '@/types/aiConfig';
+import { Loader } from '@/components/loader/Loader';
 
 const StreamingChat = () => {
   const { user } = useQueryAuthContext();
@@ -144,65 +144,60 @@ const StreamingChat = () => {
   }, []);
 
   if (!chatContext) {
-    return (
-      <div className="flex-1 flex items-center justify-center h-full">
-        <Card className="p-8">
-          <div className="flex flex-col items-center justify-center text-center">
-            <Loader2 className="h-12 w-12 mb-4 animate-spin text-primary" />
-            <p className="text-lg">Cargando configuración...</p>
-          </div>
-        </Card>
-      </div>
-    );
+    return <Loader text="Cargando configuración..." />;
   }
 
   return (
-     <div className="relative flex flex-1 overflow-hidden min-h-0 h-full">
-      {/* Main Content */}
-      <div
-        className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 min-h-0`}
-      >
+    <div className="flex justify-center p-4 md:py-6 md:px-0 h-full overflow-hidden min-h-0">
+      <div className="w-full md:max-w-4xl h-full flex flex-col">
+        <div className="relative flex flex-1 overflow-hidden min-h-0 h-full">
+          {/* Main Content */}
+          <div
+            className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 min-h-0`}
+          >
 
 
-        {/* Chat Section */}
-        <div className="flex-1 flex flex-col overflow-hidden min-h-0 h-full">
-          <div className="flex-1 rounded-lg overflow-hidden min-h-0 h-full">
-            <ChatComponent
-              aiConfig={aiConfig}
-              chatContext={chatContext}
-              onChatIdChange={handleChatIdChange}
-              onStreamingStateChange={handleStreamingStateChange}
-            />
+            {/* Chat Section */}
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0 h-full">
+              <div className="flex-1 rounded-lg overflow-hidden min-h-0 h-full">
+                <ChatComponent
+                  aiConfig={aiConfig}
+                  chatContext={chatContext}
+                  onChatIdChange={handleChatIdChange}
+                  onStreamingStateChange={handleStreamingStateChange}
+                />
+              </div>
+            </div>
           </div>
+
+          {/* Settings Button */}
+          <div className="fixed top-20 right-4 z-10">
+            {user?.id_tipo_rol !== 3 && !isConfigSidebarOpen && (
+              <Button
+                onClick={() => setIsConfigSidebarOpen(true)}
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                title="Configuración"
+              >
+                <Settings className="h-5 w-5 text-primary" />
+              </Button>
+            )}
+          </div>
+
+          {/* Right Sidebar - Config Panel */}
+          {user?.id_tipo_rol !== 3 && (
+            <AIConfigSidebar
+              isOpen={isConfigSidebarOpen}
+              config={aiConfig}
+              chatContext={chatContext}
+              onClose={closeConfigSidebar}
+              onConfigChange={setAiConfig}
+              onChatContextChange={setChatContext}
+            />
+          )}
         </div>
       </div>
-
-      {/* Settings Button */}
-      <div className="fixed top-20 right-4 z-10">
-        {user?.id_tipo_rol !== 3 && !isConfigSidebarOpen && (
-          <Button
-            onClick={() => setIsConfigSidebarOpen(true)}
-            variant="ghost"
-            size="icon"
-            className="rounded-full"
-            title="Configuración"
-          >
-            <Settings className="h-5 w-5 text-primary" />
-          </Button>
-        )}
-      </div>
-
-      {/* Right Sidebar - Config Panel */}
-      {user?.id_tipo_rol !== 3 && (
-        <AIConfigSidebar
-          isOpen={isConfigSidebarOpen}
-          config={aiConfig}
-          chatContext={chatContext}
-          onClose={closeConfigSidebar}
-          onConfigChange={setAiConfig}
-          onChatContextChange={setChatContext}
-        />
-      )}
     </div>
   );
 };

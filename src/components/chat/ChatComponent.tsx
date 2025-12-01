@@ -10,6 +10,7 @@ import { QueryInputSection } from './QueryInputSection';
 import { CommandProvider } from '../../contexts/CommandContext';
 import { TranscriptionProvider } from '../../contexts/TranscriptionContext';
 import { type AIConfig, type ChatContext } from '@/types/aiConfig';
+import { Loader } from '@/components/loader/Loader';
 
 interface ChatComponentProps {
   aiConfig: AIConfig;
@@ -195,9 +196,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
     >
       <div className="h-full flex flex-col">
         {isLoadingMessages ? (
-          <div className="flex items-center justify-center h-full">
-            <p>Cargando mensajes...</p>
-          </div>
+          <Loader text="Cargando mensajes..." />
         ) : errorMessages ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-red-500">Error al cargar los mensajes.</p>

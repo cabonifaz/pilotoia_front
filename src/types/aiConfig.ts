@@ -19,3 +19,45 @@ export interface ChatContext {
   chat_id?: number | null;
   titulo?: string;
 }
+
+// IA area configuration update request
+export interface UpdateIaAreaConfigRequest {
+  id_empresa: number;
+  id_area: number;
+  id_embeddings: number;
+  id_llm: number;
+  embeddings_dimensions: number;
+  llm_max_tokens: number;
+  llm_temperature: number;
+  llm_top_p: number;
+  rag_top_k_results: number;
+  rag_similarity_threshold: number;
+  rag_alpha: number;
+  role_behavior: string;
+}
+
+// IA configuration API response (for update)
+export interface IaConfigResponse {
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}
+
+// IA area configuration GET response
+export interface GetIaAreaConfigResponse {
+  result: {
+    id_ia_area: number;
+    id_area: number;
+    id_embeddings: number;
+    id_llm: number;
+    embeddings_dimensions: number;
+    llm_max_tokens: number;
+    llm_temperature: number;
+    llm_top_p: number;
+    rag_top_k_results: number;
+    rag_similarity_threshold: number;
+    rag_alpha: number;
+    role_behavior: string;
+  };
+}
