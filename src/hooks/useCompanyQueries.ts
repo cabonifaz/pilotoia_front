@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createCompany, getCompanies, updateCompanyStatus } from '../api/companyApi';
+import { createCompany, getCompanies, updateCompanyStatus, getCompaniesLogin } from '../api/companyApi';
 import type { CreateCompanyRequest, UpdateCompanyStatusRequest } from '@/types/company';
 import { toast } from './use-toast';
 
@@ -77,5 +77,25 @@ export const useUpdateCompanyStatus = () => {
         variant: 'destructive',
       });
     },
+  });
+};
+
+export const useGetCompaniesLogin = () => {
+  return useQuery({
+    queryKey: ['companies-login'],
+    queryFn: async () => {
+      const data = await getCompaniesLogin();
+      // Store in localStorage for persistence across page reloads
+      localStorage.setItem('companies-login', JSON.stringify(data));
+      return data;
+    },
+    initialData: () => {
+      // Load from localStorage on initial load
+      const stored = localStorage.getItem('companies-login');
+      return stored ? JSON.parse(stored) : undefined;
+    },
+    staleTime: 12 * 60 * 60 * 1000, // 12 hours
+    gcTime: 12 * 60 * 60 * 1000, // 12 hours
+    retry: false,
   });
 };
