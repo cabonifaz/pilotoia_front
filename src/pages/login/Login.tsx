@@ -15,7 +15,6 @@ type LoginFormData = {
 // Constants
 const REMEMBER_ME_USERNAME_KEY = 'login_remember_username';
 const REMEMBER_ME_PASSWORD_KEY = 'login_remember_password';
-const LOGIN_URL_PARAM_KEY = 'login_url_param';
 const ENCRYPTION_KEY = import.meta.env.VITE_LOGIN_ENCRYPTION_KEY || 'default-fallback-key';
 
 // Encryption utilities
@@ -32,22 +31,11 @@ const decryptData = (encryptedData: string): string => {
     }
 };
 
-// Company ref (secret key) utilities
-const getStoredCompanyRef = (): string | null => {
-    return localStorage.getItem(LOGIN_URL_PARAM_KEY);
-};
+// Company ref (secret key) utilities - no longer using localStorage
 
 const getUrlCompanyRef = (): string | null => {
     const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
     return urlParams.get('ref');
-};
-
-const restoreUrlCompanyRef = (ref: string): void => {
-    if (ref) {
-        window.history.replaceState(null, '', `#/?ref=${encodeURIComponent(ref)}`);
-    } else {
-        window.history.replaceState(null, '', `#/`);
-    }
 };
 
 export const LoginPage = () => {
@@ -56,6 +44,7 @@ export const LoginPage = () => {
     const [rememberMe, setRememberMe] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState<string>("");
     const [urlRef, setUrlRef] = useState<string | null>(getUrlCompanyRef());
+    const [hasValidRef, setHasValidRef] = useState<boolean>(false);
     const { data: companiesLogin = [] } = useGetCompaniesLogin();
 
     // Listen for URL hash changes to detect manual URL edits
@@ -84,38 +73,30 @@ export const LoginPage = () => {
         }
     }, [setValue]);
 
-    // Handle company preselection and ref synchronization
-    // Priority: URL ref > localStorage ref
+    // Handle company preselection based on URL ref only
     useEffect(() => {
         if (companiesLogin.length === 0) return;
 
-        // Check URL first (highest priority), then localStorage
-        const storedRef = getStoredCompanyRef();
-        const refToValidate = urlRef || storedRef;
-
-        if (refToValidate) {
+        if (urlRef) {
             // Try to find matching company
-            const matchedCompany = companiesLogin.find((c: CompanyLogin) => c.SECRET_KEY === refToValidate);
+            const matchedCompany = companiesLogin.find((c: CompanyLogin) => c.SECRET_KEY === urlRef);
 
             if (matchedCompany) {
-                // Valid ref found - sync everything
-                localStorage.setItem(LOGIN_URL_PARAM_KEY, refToValidate);
+                // Valid ref found - pre-select and hide select
                 setSelectedCompany(matchedCompany.RAZON_SOCIAL);
-                setValue('ref', refToValidate);
-                restoreUrlCompanyRef(refToValidate);
+                setValue('ref', urlRef);
+                setHasValidRef(true);
             } else {
-                // Invalid ref - clear everything
-                localStorage.setItem(LOGIN_URL_PARAM_KEY, "");
+                // Invalid ref - show select
                 setSelectedCompany("");
                 setValue('ref', '');
-                restoreUrlCompanyRef("");
+                setHasValidRef(false);
             }
         } else {
-            // No ref in URL or localStorage - show default state
-            localStorage.setItem(LOGIN_URL_PARAM_KEY, "");
+            // No ref in URL - show select
             setSelectedCompany("");
             setValue('ref', '');
-            restoreUrlCompanyRef("");
+            setHasValidRef(false);
         }
     }, [companiesLogin, setValue, urlRef]);
 
@@ -123,12 +104,9 @@ export const LoginPage = () => {
         const selectedComp = companiesLogin.find((c: CompanyLogin) => c.RAZON_SOCIAL === companyName);
         if (selectedComp) {
             const secretKey = selectedComp.SECRET_KEY;
-            // Update all related state in one place
-            localStorage.setItem(LOGIN_URL_PARAM_KEY, secretKey);
-            restoreUrlCompanyRef(secretKey);
+            // Just update form value and UI - don't touch localStorage or URL
             setValue('ref', secretKey);
             setSelectedCompany(companyName);
-            setUrlRef(secretKey); // Update URL ref state
         }
     };
 
@@ -160,6 +138,7 @@ export const LoginPage = () => {
                 setRememberMe={setRememberMe}
                 selectedCompany={selectedCompany}
                 onCompanySelect={handleCompanySelect}
+                shouldShowCompanySelect={!hasValidRef}
                 REMEMBER_ME_USERNAME_KEY={REMEMBER_ME_USERNAME_KEY}
                 REMEMBER_ME_PASSWORD_KEY={REMEMBER_ME_PASSWORD_KEY}
             />
