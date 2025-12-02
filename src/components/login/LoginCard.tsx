@@ -125,7 +125,7 @@ export const LoginCard = ({
                             <Input
                                 {...register("clave_acceso")}
                                 type={showPassword ? "text" : "password"}
-                                placeholder="Contrase�a"
+                                placeholder="Contraseña"
                                 disabled={isLoading}
                                 className="h-11 text-base pr-10"
                                 autoComplete="current-password"
