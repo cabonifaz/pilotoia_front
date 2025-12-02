@@ -98,6 +98,11 @@ export const AreaAiSidebar = ({
       rag_similarity_threshold: editConfig.rag_similarity_threshold,
       rag_alpha: editConfig.rag_alpha,
       role_behavior: editConfig.role_behavior,
+    }, {
+      onSuccess: () => {
+        // Deactivate edit mode after successful save
+        setIsEditable(false);
+      }
     });
   }, [editConfig, updateIaConfig, id_empresa, id_area]);
 
@@ -260,6 +265,9 @@ export const AreaAiSidebar = ({
                 {editConfig.rag_similarity_threshold.toFixed(2)}
               </span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Determina qué tan parecido debe ser un documento respecto a la consulta para ser considerado relevante.
+            </p>
             <Slider
               value={[editConfig.rag_similarity_threshold]}
               onValueChange={!isEditable || isPending ? undefined : ([value]) => handleChange('rag_similarity_threshold', value)}
@@ -283,6 +291,9 @@ export const AreaAiSidebar = ({
                 {editConfig.llm_temperature.toFixed(2)}
               </span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Controla qué tan "creativa" o "arriesgada" es la respuesta del modelo.
+            </p>
             <Slider
               value={[editConfig.llm_temperature]}
               onValueChange={!isEditable || isPending ? undefined : ([value]) => handleChange('llm_temperature', value)}
@@ -306,6 +317,9 @@ export const AreaAiSidebar = ({
                 {editConfig.llm_max_tokens}
               </span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Define el tamaño máximo de la respuesta generada por el modelo.
+            </p>
             <Slider
               value={[editConfig.llm_max_tokens]}
               onValueChange={!isEditable || isPending ? undefined : ([value]) => handleChange('llm_max_tokens', value)}
@@ -329,6 +343,9 @@ export const AreaAiSidebar = ({
                 {editConfig.rag_top_k_results}
               </span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Cuántos documentos se consideran antes de aplicar otros filtros.
+            </p>
             <Slider
               value={[editConfig.rag_top_k_results]}
               onValueChange={!isEditable || isPending ? undefined : ([value]) => handleChange('rag_top_k_results', value)}
@@ -352,6 +369,9 @@ export const AreaAiSidebar = ({
                 {editConfig.rag_alpha.toFixed(2)}
               </span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Combina búsqueda por palabras clave y búsqueda semántica.
+            </p>
             <Slider
               value={[editConfig.rag_alpha]}
               onValueChange={!isEditable || isPending ? undefined : ([value]) => handleChange('rag_alpha', value)}
@@ -370,11 +390,14 @@ export const AreaAiSidebar = ({
           {/* LLM Top-P */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-foreground font-semibold text-xs">LLM Top-P (Controla qué tan amplio es el conjunto de palabras considerado):</Label>
+              <Label className="text-foreground font-semibold text-xs">LLM Top-P:</Label>
               <span className="text-xs font-mono bg-primary/10 text-primary px-2 py-1 rounded">
                 {editConfig.llm_top_p.toFixed(2)}
               </span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Controla qué tan amplio es el conjunto de palabras que el modelo considera al generar texto.
+            </p>
             <Slider
               value={[editConfig.llm_top_p]}
               onValueChange={!isEditable || isPending ? undefined : ([value]) => handleChange('llm_top_p', value)}
