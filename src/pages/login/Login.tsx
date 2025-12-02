@@ -4,6 +4,7 @@ import { useGetCompaniesLogin } from "../../hooks/useCompanyQueries";
 import { useState, useEffect } from "react";
 import { LoginCard } from "../../components/login/LoginCard";
 import CryptoJS from 'crypto-js';
+import { type CompanyLogin } from "../../types/company";
 
 type LoginFormData = {
     usuario: string;
@@ -36,10 +37,16 @@ const getStoredCompanyRef = (): string | null => {
     return localStorage.getItem(LOGIN_URL_PARAM_KEY);
 };
 
-const restoreUrlCompanyRef = (urlRef: string | null, storedRef: string | null): void => {
-    const refToUse = urlRef || storedRef;
-    if (refToUse) {
-        window.history.replaceState(null, '', `#/?ref=${encodeURIComponent(refToUse)}`);
+const getUrlCompanyRef = (): string | null => {
+    const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
+    return urlParams.get('ref');
+};
+
+const restoreUrlCompanyRef = (ref: string): void => {
+    if (ref) {
+        window.history.replaceState(null, '', `#/?ref=${encodeURIComponent(ref)}`);
+    } else {
+        window.history.replaceState(null, '', `#/`);
     }
 };
 
@@ -48,19 +55,24 @@ export const LoginPage = () => {
     const { register, handleSubmit, errors, onSubmit, isLoading, setValue } = useAuth();
     const [rememberMe, setRememberMe] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState<string>("");
+    const [urlRef, setUrlRef] = useState<string | null>(getUrlCompanyRef());
     const { data: companiesLogin = [] } = useGetCompaniesLogin();
 
-    // Load saved credentials and handle URL parameters on component mount
+    // Listen for URL hash changes to detect manual URL edits
     useEffect(() => {
-        const storedRef = getStoredCompanyRef();
+        const handleHashChange = () => {
+            setUrlRef(getUrlCompanyRef());
+        };
 
-        if (storedRef) {
-            restoreUrlCompanyRef(storedRef, null);
-        }
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+    }, []);
 
-        // Load saved credentials
+    // Load saved credentials on initial mount
+    useEffect(() => {
         const savedUsername = localStorage.getItem(REMEMBER_ME_USERNAME_KEY);
         const savedPassword = localStorage.getItem(REMEMBER_ME_PASSWORD_KEY);
+
         if (savedUsername && savedPassword) {
             const decryptedUsername = decryptData(savedUsername);
             const decryptedPassword = decryptData(savedPassword);
@@ -72,47 +84,51 @@ export const LoginPage = () => {
         }
     }, [setValue]);
 
-    // Preselect company based on stored secret key
+    // Handle company preselection and ref synchronization
+    // Priority: URL ref > localStorage ref
     useEffect(() => {
-        if (companiesLogin.length > 0) {
-            const storedRef = getStoredCompanyRef();
-            if (storedRef) {
-                const matchedCompany = companiesLogin.find((c: any) => c.SECRET_KEY === storedRef);
-                if (matchedCompany) {
-                    setSelectedCompany(matchedCompany.RAZON_SOCIAL);
-                    setValue('ref', storedRef);
-                } else {
-                    // If stored ref doesn't exist in companies list, clear it
-                    localStorage.removeItem(LOGIN_URL_PARAM_KEY);
-                    setSelectedCompany("");
-                    setValue('ref', '');
-                }
+        if (companiesLogin.length === 0) return;
+
+        // Check URL first (highest priority), then localStorage
+        const storedRef = getStoredCompanyRef();
+        const refToValidate = urlRef || storedRef;
+
+        if (refToValidate) {
+            // Try to find matching company
+            const matchedCompany = companiesLogin.find((c: CompanyLogin) => c.SECRET_KEY === refToValidate);
+
+            if (matchedCompany) {
+                // Valid ref found - sync everything
+                localStorage.setItem(LOGIN_URL_PARAM_KEY, refToValidate);
+                setSelectedCompany(matchedCompany.RAZON_SOCIAL);
+                setValue('ref', refToValidate);
+                restoreUrlCompanyRef(refToValidate);
+            } else {
+                // Invalid ref - clear everything
+                localStorage.setItem(LOGIN_URL_PARAM_KEY, "");
+                setSelectedCompany("");
+                setValue('ref', '');
+                restoreUrlCompanyRef("");
             }
+        } else {
+            // No ref in URL or localStorage - show default state
+            localStorage.setItem(LOGIN_URL_PARAM_KEY, "");
+            setSelectedCompany("");
+            setValue('ref', '');
+            restoreUrlCompanyRef("");
         }
-    }, [companiesLogin, setValue]);
-
-    // Set form ref field when selected company changes
-    useEffect(() => {
-        const storedRef = getStoredCompanyRef();
-        if (storedRef) {
-            setValue('ref', storedRef);
-        }
-    }, [selectedCompany, setValue]);
-
-    // Keep URL in sync with localStorage when company selection changes
-    useEffect(() => {
-        const storedRef = getStoredCompanyRef();
-        if (storedRef) {
-            restoreUrlCompanyRef(storedRef, null);
-        }
-    }, [selectedCompany]);
+    }, [companiesLogin, setValue, urlRef]);
 
     const handleCompanySelect = (companyName: string): void => {
-        const selectedComp = companiesLogin.find((c: any) => c.RAZON_SOCIAL === companyName);
+        const selectedComp = companiesLogin.find((c: CompanyLogin) => c.RAZON_SOCIAL === companyName);
         if (selectedComp) {
-            localStorage.setItem(LOGIN_URL_PARAM_KEY, selectedComp.SECRET_KEY);
-            restoreUrlCompanyRef(selectedComp.SECRET_KEY, null);
+            const secretKey = selectedComp.SECRET_KEY;
+            // Update all related state in one place
+            localStorage.setItem(LOGIN_URL_PARAM_KEY, secretKey);
+            restoreUrlCompanyRef(secretKey);
+            setValue('ref', secretKey);
             setSelectedCompany(companyName);
+            setUrlRef(secretKey); // Update URL ref state
         }
     };
 
