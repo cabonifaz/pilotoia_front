@@ -150,7 +150,7 @@ export const AiTable = ({ searchTerm, sortBy }: AiTableProps) => {
                       <TableCell>{model.TIPO}</TableCell>
                       <TableCell>
                         <span className="text-muted-foreground">{getExtraParameterLabel(model.TIPO)}:</span>
-                        <span className="ml-1 font-medium">{model.EXTRA.toLocaleString()}</span>
+                        <span className="ml-1 font-medium">{Math.floor(model.EXTRA)}</span>
                       </TableCell>
                       <TableCell>
                         <Badge variant={model.ID_ESTADO_REGISTRO === 1 ? 'success' : 'destructive'}>
