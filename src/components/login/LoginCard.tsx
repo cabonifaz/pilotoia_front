@@ -26,6 +26,7 @@ interface LoginCardProps {
     selectedCompany: string;
     onCompanySelect: (company: string) => void;
     shouldShowCompanySelect: boolean;
+    isCompanySelectDisabled?: boolean;
     REMEMBER_ME_USERNAME_KEY: string;
     REMEMBER_ME_PASSWORD_KEY: string;
 }
@@ -41,6 +42,7 @@ export const LoginCard = ({
     selectedCompany,
     onCompanySelect,
     shouldShowCompanySelect,
+    isCompanySelectDisabled = false,
     REMEMBER_ME_USERNAME_KEY,
     REMEMBER_ME_PASSWORD_KEY,
 }: LoginCardProps) => {
@@ -90,7 +92,7 @@ export const LoginCard = ({
                             <Select
                                 value={selectedCompany}
                                 onValueChange={onCompanySelect}
-                                disabled={isLoading}
+                                disabled={isLoading || isCompanySelectDisabled}
                             >
                                 <SelectTrigger className="h-11 text-xs">
                                     <SelectValue placeholder="Selecciona una empresa" />
