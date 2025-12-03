@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ChevronDown, LogOut, User, Shield, Lock } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import {
@@ -12,20 +11,13 @@ import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 
 const UserDropdown = () => {
   const { user, logout } = useQueryAuthContext();
-  const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
       await logout();
-      // Redirect to login page with preserved URL parameter
-      const storedParam = localStorage.getItem('login_url_param');
-      if (storedParam) {
-        navigate(`/?ref=${encodeURIComponent(storedParam)}`);
-      } else {
-        navigate('/');
-      }
+      // Redirect is handled by useLogoutMutation with ref preservation
     } catch (error) {
       console.error('Logout error:', error);
     } finally {

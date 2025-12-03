@@ -9,7 +9,7 @@ import { type CompanyLogin } from "../../types/company";
 type LoginFormData = {
     usuario: string;
     clave_acceso: string;
-    empresa?: string;
+    ref?: string;
 };
 
 // Constants
@@ -45,6 +45,7 @@ export const LoginPage = () => {
     const [selectedCompany, setSelectedCompany] = useState<string>("");
     const [urlRef, setUrlRef] = useState<string | null>(getUrlCompanyRef());
     const [hasValidRef, setHasValidRef] = useState<boolean>(false);
+    const [wasManuallySelected, setWasManuallySelected] = useState(false);
     const { data: companiesLogin = [] } = useGetCompaniesLogin();
 
     // Listen for URL hash changes to detect manual URL edits
@@ -73,19 +74,29 @@ export const LoginPage = () => {
         }
     }, [setValue]);
 
-    // Handle company preselection based on URL ref only
+    // Handle company preselection based on URL ref or stored ref from previous login
     useEffect(() => {
         if (companiesLogin.length === 0) return;
 
-        if (urlRef) {
+        // Use URL ref if present, otherwise fall back to stored ref from previous login
+        const refToUse = urlRef || localStorage.getItem('last_login_ref');
+
+        if (refToUse) {
             // Try to find matching company
-            const matchedCompany = companiesLogin.find((c: CompanyLogin) => c.SECRET_KEY === urlRef);
+            const matchedCompany = companiesLogin.find((c: CompanyLogin) => c.SECRET_KEY === refToUse);
 
             if (matchedCompany) {
                 // Valid ref found - pre-select and hide select
                 setSelectedCompany(matchedCompany.RAZON_SOCIAL);
-                setValue('ref', urlRef);
+                setValue('ref', refToUse);
                 setHasValidRef(true);
+
+                // Update URL to include ref if it came from localStorage (not from URL)
+                if (!urlRef && localStorage.getItem('last_login_ref')) {
+                    window.location.hash = `#/?ref=${refToUse}`;
+                    // Clear the temporary ref from localStorage after using it for redirect
+                    localStorage.removeItem('last_login_ref');
+                }
             } else {
                 // Invalid ref - show select
                 setSelectedCompany("");
@@ -93,7 +104,7 @@ export const LoginPage = () => {
                 setHasValidRef(false);
             }
         } else {
-            // No ref in URL - show select
+            // No ref in URL or storage - show select
             setSelectedCompany("");
             setValue('ref', '');
             setHasValidRef(false);
@@ -107,6 +118,8 @@ export const LoginPage = () => {
             // Just update form value and UI - don't touch localStorage or URL
             setValue('ref', secretKey);
             setSelectedCompany(companyName);
+            // Mark that this was a manual selection (not from URL)
+            setWasManuallySelected(true);
         }
     };
 
@@ -122,6 +135,15 @@ export const LoginPage = () => {
 
         const result = await onSubmit(formData);
         if (result.success) {
+            // Store the ref in localStorage after successful login
+            // Only store if it came from URL (not manually selected from dropdown)
+            if (urlRef && formData.ref && !wasManuallySelected) {
+                // User logged in with valid ref from URL - store for logout redirect
+                localStorage.setItem('last_login_ref', formData.ref);
+            } else {
+                // User selected from dropdown - never store
+                localStorage.removeItem('last_login_ref');
+            }
             navigate('/rag');
         }
     };
