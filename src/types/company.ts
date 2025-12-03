@@ -49,3 +49,8 @@ export interface UpdateCompanyStatusResponse {
     mensaje: string;
   };
 }
+
+export interface CompanyLogin {
+  RAZON_SOCIAL: string;
+  SECRET_KEY: string;
+}

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { uploadMultiplePdfs } from '../api/uploadApi';
-import type { BatchUploadKnowledgeResponse } from '../types/upload';
+import { getPresignedUrls, uploadPdfToS3 } from '../api/uploadApi';
+import type { BatchUploadKnowledgeResponse, BatchUploadKnowledgeRequest } from '../types/upload';
 import { useCurrentUser } from './useUserQueries';
 import { useCreatedKnowledgeIds } from './useCreatedKnowledgeIds';
 import { useBatchUpdateKnowledgeState } from './useBatchUpdateKnowledgeState';
@@ -21,7 +21,7 @@ export const usePresignedUrls = () => {
   const batchUpdateMutation = useBatchUpdateKnowledgeState();
 
   return useMutation({
-    mutationFn: async ({ files, areaId: selectedAreaId, embeddingModel: selectedEmbeddingModel }: UploadPdfsParams): Promise<BatchUploadKnowledgeResponse> => {
+    mutationFn: async ({ files, areaId: selectedAreaId, embeddingModel: selectedEmbeddingModel }: UploadPdfsParams): Promise<BatchUploadKnowledgeResponse & { uploadCompanyId: number; uploadAreaId: number }> => {
       const companyId = user?.actual_company_area?.ID_EMPRESA;
       const areaId = selectedAreaId || user?.actual_company_area?.ID_AREA;
       const embeddingModel = selectedEmbeddingModel || user?.actual_company_area?.ID_EMBEDDINGS?.toString() || '4';
@@ -31,23 +31,39 @@ export const usePresignedUrls = () => {
       }
 
       try {
-        // Use the uploadMultiplePdfs function which handles presigned URLs and S3 uploads
-        const response = await uploadMultiplePdfs(
-          files,
-          companyId,
-          areaId,
-          embeddingModel
-        );
+        // Step 1: Get presigned URLs from backend
+        const batchRequest: BatchUploadKnowledgeRequest = {
+          id_empresa: companyId,
+          id_area: areaId,
+          pdf_keys: files.map(file => file.name),
+          id_modelo_embedding: embeddingModel,
+        };
 
-        // Store the created IDs for batch update later
+        const response = await getPresignedUrls(batchRequest);
+
+        // Step 2: Store created IDs IMMEDIATELY (before S3 upload attempts)
+        // This ensures IDs are available even if S3 uploads fail
         setCreatedIds(response.created_ids);
 
-        // Invalidate knowledge query when URLs are consumed and files uploaded to S3
+        // Step 3: Upload files to S3 using presigned URLs
+        const uploadPromises = response.uploads.map((upload, index) => {
+          return uploadPdfToS3(upload.presigned_url, files[index]);
+        });
+
+        await Promise.all(uploadPromises);
+
+        // Step 4: Invalidate cache after successful uploads
         queryClient.invalidateQueries({ queryKey: ['knowledge'] });
 
-        return response;
+        // Return response with company/area IDs attached
+        return {
+          ...response,
+          uploadCompanyId: companyId,
+          uploadAreaId: areaId,
+        };
       } catch (error) {
         console.error('Upload error:', error);
+        // Re-throw with context to handle in onError
         throw error;
       }
     },
@@ -72,12 +88,25 @@ export const usePresignedUrls = () => {
         areaId
       });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables: UploadPdfsParams) => {
       toast({
         title: 'Error',
         description: `Error en la carga: ${error.message}`,
         variant: 'destructive',
       });
+
+      // Get company and area IDs from user context
+      const companyId = user?.actual_company_area?.ID_EMPRESA;
+      const areaId = variables.areaId || user?.actual_company_area?.ID_AREA;
+
+      // Trigger batch update with status 7 (error) to mark failed uploads
+      if (companyId && areaId) {
+        batchUpdateMutation.mutate({
+          idEstadoProceso: 7,
+          companyId,
+          areaId
+        });
+      }
     },
   });
 };

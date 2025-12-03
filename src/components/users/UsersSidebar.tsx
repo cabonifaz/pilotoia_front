@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Eye, EyeOff } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
@@ -33,6 +33,7 @@ export const UsersSidebar = ({
 
   const [nuevoUsuario, setNuevoUsuario] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [nombres, setNombres] = useState('');
   const [apellidos, setApellidos] = useState('');
   const [idTipoRol, setIdTipoRol] = useState('3');
@@ -178,14 +179,29 @@ export const UsersSidebar = ({
           {/* Password Input */}
           <div className="space-y-2">
             <Label htmlFor="password" className="text-xs">Contraseña</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Ingrese la contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isPending}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Ingrese la contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isPending}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                disabled={isPending}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Nombres Input */}

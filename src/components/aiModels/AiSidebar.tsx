@@ -174,10 +174,15 @@ export const AiSidebar = ({
             <Label htmlFor="extra_parameter" className="text-xs">{getParameterLabel()}</Label>
             <Input
               id="extra_parameter"
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               placeholder={formData.type_id === '1' ? 'ej: 1024' : 'ej: 4096'}
               value={formData.extra_parameter}
-              onChange={(e) => setFormData({ ...formData, extra_parameter: e.target.value })}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '');
+                setFormData({ ...formData, extra_parameter: value });
+              }}
               disabled={isPending}
             />
           </div>
