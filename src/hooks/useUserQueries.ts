@@ -123,6 +123,9 @@ export const useLogoutMutation = () => {
             }
         },
         onSuccess: () => {
+            // Extract stored ref BEFORE clearing localStorage
+            const storedRef = localStorage.getItem('last_login_ref');
+
             // Clear TanStack Query cache
             clearUserCache();
 
@@ -143,8 +146,10 @@ export const useLogoutMutation = () => {
                 variant: "success"
             });
 
-            // Redirect to login page immediately after logout completes
-            window.location.href = '/#/';
+            // Redirect to login page with stored ref if available
+            const redirectUrl = storedRef ? `/#/?ref=${storedRef}` : '/#/';
+            const fullUrl = window.location.origin + redirectUrl;
+            window.location.href = fullUrl;
         },
         onError: (error: Error) => {
             console.error('Logout error:', error);

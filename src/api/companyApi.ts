@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import type { CreateCompanyRequest, CreateCompanyResponse, GetCompaniesResponse, UpdateCompanyStatusRequest, UpdateCompanyStatusResponse } from '@/types/company';
+import type { CreateCompanyRequest, CreateCompanyResponse, GetCompaniesResponse, UpdateCompanyStatusRequest, UpdateCompanyStatusResponse, CompanyLogin } from '@/types/company';
 
 export const createCompany = async (
   request: CreateCompanyRequest
@@ -24,6 +24,13 @@ export const updateCompanyStatus = async (
   const response = await apiClient.post<UpdateCompanyStatusResponse>(
     '/v1/company/update_company_status',
     request
+  );
+  return response.data;
+};
+
+export const getCompaniesLogin = async (): Promise<CompanyLogin[]> => {
+  const response = await apiClient.get<CompanyLogin[]>(
+    '/v1/company/get_companies_login'
   );
   return response.data;
 };
