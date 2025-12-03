@@ -31,7 +31,8 @@ const decryptData = (encryptedData: string): string => {
     }
 };
 
-// Company ref (secret key) utilities - no longer using localStorage
+// Company ref (secret key) utilities
+const LAST_LOGIN_REF_KEY = 'last_login_ref';
 
 const getUrlCompanyRef = (): string | null => {
     const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
@@ -79,32 +80,23 @@ export const LoginPage = () => {
         if (companiesLogin.length === 0) return;
 
         // Use URL ref if present, otherwise fall back to stored ref from previous login
-        const refToUse = urlRef || localStorage.getItem('last_login_ref');
+        const refToUse = urlRef || localStorage.getItem(LAST_LOGIN_REF_KEY);
+        const matchedCompany = refToUse ? companiesLogin.find((c: CompanyLogin) => c.SECRET_KEY === refToUse) : null;
 
-        if (refToUse) {
-            // Try to find matching company
-            const matchedCompany = companiesLogin.find((c: CompanyLogin) => c.SECRET_KEY === refToUse);
+        if (matchedCompany) {
+            // Valid ref found - pre-select and hide select
+            setSelectedCompany(matchedCompany.RAZON_SOCIAL);
+            setValue('ref', refToUse!);
+            setHasValidRef(true);
 
-            if (matchedCompany) {
-                // Valid ref found - pre-select and hide select
-                setSelectedCompany(matchedCompany.RAZON_SOCIAL);
-                setValue('ref', refToUse);
-                setHasValidRef(true);
-
-                // Update URL to include ref if it came from localStorage (not from URL)
-                if (!urlRef && localStorage.getItem('last_login_ref')) {
-                    window.location.hash = `#/?ref=${refToUse}`;
-                    // Clear the temporary ref from localStorage after using it for redirect
-                    localStorage.removeItem('last_login_ref');
-                }
-            } else {
-                // Invalid ref - show select
-                setSelectedCompany("");
-                setValue('ref', '');
-                setHasValidRef(false);
+            // Update URL to include ref if it came from localStorage (not from URL)
+            if (!urlRef && localStorage.getItem(LAST_LOGIN_REF_KEY)) {
+                window.location.hash = `#/?ref=${refToUse}`;
+                // Clear the temporary ref from localStorage after using it for redirect
+                localStorage.removeItem(LAST_LOGIN_REF_KEY);
             }
         } else {
-            // No ref in URL or storage - show select
+            // No valid ref in URL or storage - show select
             setSelectedCompany("");
             setValue('ref', '');
             setHasValidRef(false);
@@ -139,10 +131,10 @@ export const LoginPage = () => {
             // Only store if it came from URL (not manually selected from dropdown)
             if (urlRef && formData.ref && !wasManuallySelected) {
                 // User logged in with valid ref from URL - store for logout redirect
-                localStorage.setItem('last_login_ref', formData.ref);
+                localStorage.setItem(LAST_LOGIN_REF_KEY, formData.ref);
             } else {
                 // User selected from dropdown - never store
-                localStorage.removeItem('last_login_ref');
+                localStorage.removeItem(LAST_LOGIN_REF_KEY);
             }
             navigate('/rag');
         }
