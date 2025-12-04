@@ -70,7 +70,7 @@ export const UsersSidebarUpdate = ({
         usuario: usuario.trim(),
         nombres: nombres.trim(),
         apellidos: apellidos.trim(),
-        telefono: telefono.trim() || null,
+        telefono: telefono.trim(),
       },
       {
         onSuccess: () => {
