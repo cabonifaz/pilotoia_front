@@ -158,7 +158,7 @@ export const UsersSidebarUpdate = ({
               placeholder="Ingrese el teléfono"
               value={telefono}
               onChange={(e) => setTelefono(e.target.value)}
-              disabled={isPending}
+              disabled={true}
               pattern="[0-9\-\+\(\)\s]*"
             />
           </div>
