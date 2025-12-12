@@ -116,6 +116,12 @@ export const UsersTable = ({ searchTerm, sortBy, onEditUser, onChangePassword, o
   const startIndex = (currentPage - 1) * itemsPerPage;
   const displayedUsuarios = sortedUsuarios.slice(startIndex, startIndex + itemsPerPage);
 
+  // Assign badge variant based on role ID
+  const getRoleBadgeVariant = (idTipoRol: number): 'info' | 'default' | 'outline' | 'teal' => {
+    const variants: Array<'info' | 'default' | 'outline' | 'teal'> = ['info', 'default', 'outline', 'teal'];
+    return variants[(idTipoRol - 1) % 4];
+  };
+
   return (
     <Card className="flex-1 flex flex-col min-h-0">
       <CardHeader className="pb-3">
@@ -189,8 +195,8 @@ export const UsersTable = ({ searchTerm, sortBy, onEditUser, onChangePassword, o
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={usuarioGroup[0].ID_TIPO_ROL === 1 ? 'orange' : usuarioGroup[0].ID_TIPO_ROL === 2 ? 'default' : 'outline'}>
-                          {usuarioGroup[0].ID_TIPO_ROL === 1 ? 'Super Administrador' : usuarioGroup[0].ID_TIPO_ROL === 2 ? 'Administrador' : 'Usuario'}
+                        <Badge variant={getRoleBadgeVariant(usuarioGroup[0].ID_TIPO_ROL)}>
+                          {usuarioGroup[0].ROL}
                         </Badge>
                       </TableCell>
                       <TableCell>

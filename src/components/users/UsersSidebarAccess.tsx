@@ -68,8 +68,20 @@ export const UsersSidebarAccess = ({
     }
   }, [isOpen]);
 
+  // Check if there are any changes from the original data
+  const originalRoleId = selectedUser?.ID_TIPO_ROL.toString();
+  const originalAreaIds = selectedUser && areasData?.areas
+    ? areasData.areas
+        .filter((area) => userAreas.includes(area.AREA))
+        .map((area) => area.ID_AREA)
+    : [];
+
+  const hasChanges = idTipoRol !== originalRoleId ||
+    selectedAreas.length !== originalAreaIds.length ||
+    !selectedAreas.every(id => originalAreaIds.includes(id));
+
   const handleSubmit = () => {
-    if (!selectedUser || selectedAreas.length === 0) {
+    if (!selectedUser || selectedAreas.length === 0 || !hasChanges) {
       return;
     }
 
@@ -221,7 +233,7 @@ export const UsersSidebarAccess = ({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isPending || selectedAreas.length === 0}
+            disabled={isPending || selectedAreas.length === 0 || !hasChanges}
             className="flex-1"
           >
             {isPending ? 'Actualizando...' : 'Actualizar'}

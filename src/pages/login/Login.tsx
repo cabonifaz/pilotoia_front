@@ -152,7 +152,6 @@ export const LoginPage = () => {
                 setRememberMe={setRememberMe}
                 selectedCompany={selectedCompany}
                 onCompanySelect={handleCompanySelect}
-                shouldShowCompanySelect={true}
                 isCompanySelectDisabled={hasValidRef}
                 REMEMBER_ME_USERNAME_KEY={REMEMBER_ME_USERNAME_KEY}
                 REMEMBER_ME_PASSWORD_KEY={REMEMBER_ME_PASSWORD_KEY}

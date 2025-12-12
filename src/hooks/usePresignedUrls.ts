@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getPresignedUrls, uploadPdfToS3 } from '../api/uploadApi';
 import type { BatchUploadKnowledgeResponse, BatchUploadKnowledgeRequest } from '../types/upload';
 import { useCurrentUser } from './useUserQueries';
-import { useCreatedKnowledgeIds } from './useCreatedKnowledgeIds';
 import { useBatchUpdateKnowledgeState } from './useBatchUpdateKnowledgeState';
 import { toast } from './use-toast';
 
@@ -17,13 +16,12 @@ interface UploadPdfsParams {
 export const usePresignedUrls = () => {
   const { user } = useCurrentUser();
   const queryClient = useQueryClient();
-  const { setCreatedIds } = useCreatedKnowledgeIds();
   const batchUpdateMutation = useBatchUpdateKnowledgeState();
 
   return useMutation({
     mutationFn: async ({ files, areaId: selectedAreaId, embeddingModel: selectedEmbeddingModel }: UploadPdfsParams): Promise<BatchUploadKnowledgeResponse & { uploadCompanyId: number; uploadAreaId: number }> => {
       const companyId = user?.actual_company_area?.ID_EMPRESA;
-      const areaId = selectedAreaId || user?.actual_company_area?.ID_AREA;
+      const areaId = selectedAreaId;
       const embeddingModel = selectedEmbeddingModel || user?.actual_company_area?.ID_EMBEDDINGS?.toString() || '4';
 
       if (!companyId || !areaId) {
@@ -43,7 +41,8 @@ export const usePresignedUrls = () => {
 
         // Step 2: Store created IDs IMMEDIATELY (before S3 upload attempts)
         // This ensures IDs are available even if S3 uploads fail
-        setCreatedIds(response.created_ids);
+        // Store with the actual upload company/area IDs to match retrieval
+        queryClient.setQueryData(['created_knowledge_ids', companyId, areaId], response.created_ids);
 
         // Step 3: Upload files to S3 using presigned URLs
         const uploadPromises = response.uploads.map((upload, index) => {
@@ -95,9 +94,9 @@ export const usePresignedUrls = () => {
         variant: 'destructive',
       });
 
-      // Get company and area IDs from user context
+      // Get company and area IDs from upload variables
       const companyId = user?.actual_company_area?.ID_EMPRESA;
-      const areaId = variables.areaId || user?.actual_company_area?.ID_AREA;
+      const areaId = variables.areaId;
 
       // Trigger batch update with status 7 (error) to mark failed uploads
       if (companyId && areaId) {

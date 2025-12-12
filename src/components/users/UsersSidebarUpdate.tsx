@@ -28,6 +28,7 @@ export const UsersSidebarUpdate = ({
   const [usuario, setUsuario] = useState('');
   const [nombres, setNombres] = useState('');
   const [apellidos, setApellidos] = useState('');
+  const [telefono, setTelefono] = useState('');
 
   const { mutate: updateUsuario, isPending } = useUpdateUsuario(id_empresa);
 
@@ -37,6 +38,7 @@ export const UsersSidebarUpdate = ({
       setUsuario(selectedUser.USUARIO);
       setNombres(selectedUser.NOMBRES);
       setApellidos(selectedUser.APELLIDOS);
+      setTelefono(selectedUser.TELEFONO || '');
     }
   }, [isOpen, selectedUser]);
 
@@ -46,11 +48,19 @@ export const UsersSidebarUpdate = ({
       setUsuario('');
       setNombres('');
       setApellidos('');
+      setTelefono('');
     }
   }, [isOpen]);
 
+  const hasChanges = selectedUser && (
+    usuario !== selectedUser.USUARIO ||
+    nombres !== selectedUser.NOMBRES ||
+    apellidos !== selectedUser.APELLIDOS ||
+    telefono !== (selectedUser.TELEFONO || '')
+  );
+
   const handleSubmit = () => {
-    if (!selectedUser || !usuario.trim() || !nombres.trim() || !apellidos.trim()) {
+    if (!selectedUser || !usuario.trim() || !nombres.trim() || !apellidos.trim() || !hasChanges) {
       return;
     }
 
@@ -60,12 +70,14 @@ export const UsersSidebarUpdate = ({
         usuario: usuario.trim(),
         nombres: nombres.trim(),
         apellidos: apellidos.trim(),
+        telefono: telefono.trim(),
       },
       {
         onSuccess: () => {
           setUsuario('');
           setNombres('');
           setApellidos('');
+          setTelefono('');
           onClose();
         },
       }
@@ -136,6 +148,20 @@ export const UsersSidebarUpdate = ({
               disabled={isPending}
             />
           </div>
+
+          {/* Telefono Input */}
+          <div className="space-y-2">
+            <Label htmlFor="telefono" className="text-xs">Teléfono (Opcional)</Label>
+            <Input
+              id="telefono"
+              type="tel"
+              placeholder="Ingrese el teléfono"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              disabled={true}
+              pattern="[0-9\-\+\(\)\s]*"
+            />
+          </div>
         </CardContent>
 
         <div className="border-t p-4 flex gap-2 flex-shrink-0">
@@ -149,7 +175,7 @@ export const UsersSidebarUpdate = ({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isPending || !usuario.trim() || !nombres.trim() || !apellidos.trim()}
+            disabled={isPending || !usuario.trim() || !nombres.trim() || !apellidos.trim() || !hasChanges}
             className="flex-1"
           >
             {isPending ? 'Actualizando...' : 'Actualizar'}
