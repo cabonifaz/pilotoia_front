@@ -205,10 +205,15 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
           <div className="flex-1 flex items-center justify-center">
             <div className="w-full flex flex-col gap-3">
               <div className="flex items-center justify-center mb-2">
-                <img
+                {/*<img
                   src="/fractal-logo.svg"
                   className="h-6 w-auto"
                   alt="Logo Fractal"
+                />*/}
+                <img
+                  src="/norma-logo.jpg"
+                  className="h-12 w-auto"
+                  alt="Logo Norma"
                 />
               </div>
               <h3 className="text-3xl font-semibold text-center">

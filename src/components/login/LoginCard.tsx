@@ -61,10 +61,15 @@ export const LoginCard = ({
         <Card className="w-full max-w-md">
             <CardHeader className="text-center space-y-4">
                 <div className="flex justify-center">
-                    <img
+                    {/*<img
                         src="/fractal-logo.svg"
                         alt="Logo Fractal"
                         className="h-16"
+                    />*/}
+                    <img
+                        src="/norma-logo.jpg"
+                        alt="Logo Norma"
+                        className="h-32"
                     />
                 </div>
                 <h2 className="text-2xl font-semibold text-slate-900">
