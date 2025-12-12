@@ -11,7 +11,9 @@ export interface AIConfig {
 export interface ChatContext {
   user_id: number;
   user: string;
+  company: string;
   company_id: number;
+  area: string;
   area_id: number;
   id_ia_area: number;
   chat_id?: number | null;
