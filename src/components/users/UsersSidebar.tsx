@@ -36,6 +36,7 @@ export const UsersSidebar = ({
   const [showPassword, setShowPassword] = useState(false);
   const [nombres, setNombres] = useState('');
   const [apellidos, setApellidos] = useState('');
+  const [telefono, setTelefono] = useState('');
   const [idTipoRol, setIdTipoRol] = useState('3');
   const [selectedAreas, setSelectedAreas] = useState<number[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -62,6 +63,7 @@ export const UsersSidebar = ({
       setPassword('');
       setNombres('');
       setApellidos('');
+      setTelefono('');
       setIdTipoRol('3');
       setSelectedAreas([]);
       setIsInitialized(false);
@@ -81,6 +83,7 @@ export const UsersSidebar = ({
         password: password.trim(),
         nombres: nombres.trim(),
         apellidos: apellidos.trim(),
+        telefono: telefono.trim() || null,
         nuevo_rol: parseInt(idTipoRol),
         id_empresa,
         areas_string: areasString,
@@ -91,6 +94,7 @@ export const UsersSidebar = ({
           setPassword('');
           setNombres('');
           setApellidos('');
+          setTelefono('');
           setIdTipoRol('3');
           setSelectedAreas([]);
           onClose();
@@ -227,6 +231,20 @@ export const UsersSidebar = ({
               value={apellidos}
               onChange={(e) => setApellidos(e.target.value)}
               disabled={isPending}
+            />
+          </div>
+
+          {/* Telefono Input */}
+          <div className="space-y-2">
+            <Label htmlFor="telefono" className="text-xs">Teléfono (Opcional)</Label>
+            <Input
+              id="telefono"
+              type="tel"
+              placeholder="Ingrese el teléfono"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              disabled={true}
+              pattern="[0-9\-\+\(\)\s]*"
             />
           </div>
 

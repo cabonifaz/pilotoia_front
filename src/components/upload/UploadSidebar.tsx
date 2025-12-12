@@ -51,7 +51,7 @@ export const UploadSidebar = ({
       setAreaId(contextIdArea || '');
       setEmbeddingModelId('4');
     }
-  }, [isOpen, id_empresa, contextIdArea]);
+  }, [isOpen, id_empresa]);
 
   // Reset state when sidebar closes
   useEffect(() => {

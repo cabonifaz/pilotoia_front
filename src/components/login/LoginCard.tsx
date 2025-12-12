@@ -25,7 +25,6 @@ interface LoginCardProps {
     setRememberMe: (value: boolean) => void;
     selectedCompany: string;
     onCompanySelect: (company: string) => void;
-    shouldShowCompanySelect: boolean;
     isCompanySelectDisabled?: boolean;
     REMEMBER_ME_USERNAME_KEY: string;
     REMEMBER_ME_PASSWORD_KEY: string;
@@ -41,7 +40,6 @@ export const LoginCard = ({
     setRememberMe,
     selectedCompany,
     onCompanySelect,
-    shouldShowCompanySelect,
     isCompanySelectDisabled = false,
     REMEMBER_ME_USERNAME_KEY,
     REMEMBER_ME_PASSWORD_KEY,
@@ -84,29 +82,27 @@ export const LoginCard = ({
                     action="/login"
                 >
                     {/* Company Selection */}
-                    {shouldShowCompanySelect && (
-                        <div className="space-y-2">
-                            <label className="text-xs text-slate-700 font-medium">
-                                Empresa
-                            </label>
-                            <Select
-                                value={selectedCompany}
-                                onValueChange={onCompanySelect}
-                                disabled={isLoading || isCompanySelectDisabled}
-                            >
-                                <SelectTrigger className="h-11 text-xs">
-                                    <SelectValue placeholder="Selecciona una empresa" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-48">
-                                    {companiesLogin.map((company: CompanyLogin) => (
-                                        <SelectItem key={company.RAZON_SOCIAL} value={company.RAZON_SOCIAL}>
-                                            {company.RAZON_SOCIAL}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
+                    <div className="space-y-2">
+                        <label className="text-xs text-slate-700 font-medium">
+                            Empresa
+                        </label>
+                        <Select
+                            value={selectedCompany}
+                            onValueChange={onCompanySelect}
+                            disabled={isLoading || isCompanySelectDisabled}
+                        >
+                            <SelectTrigger className="h-11 text-xs">
+                                <SelectValue placeholder="Selecciona una empresa" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-48">
+                                {companiesLogin.map((company: CompanyLogin) => (
+                                    <SelectItem key={company.RAZON_SOCIAL} value={company.RAZON_SOCIAL}>
+                                        {company.RAZON_SOCIAL}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
 
                     {/* Username */}
                     <div className="space-y-2">
