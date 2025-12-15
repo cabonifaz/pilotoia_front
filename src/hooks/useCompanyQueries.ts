@@ -81,21 +81,49 @@ export const useUpdateCompanyStatus = () => {
 };
 
 export const useGetCompaniesLogin = () => {
+  const CACHE_DURATION = import.meta.env.VITE_COMPANIES_CACHE_DURATION
+    ? Number(import.meta.env.VITE_COMPANIES_CACHE_DURATION)
+    : 2 * 60 * 60 * 1000; // Default: 2 hours in milliseconds
+  const STORAGE_KEY = 'companies-login';
+
   return useQuery({
     queryKey: ['companies-login'],
     queryFn: async () => {
       const data = await getCompaniesLogin();
-      // Store in localStorage for persistence across page reloads
-      localStorage.setItem('companies-login', JSON.stringify(data));
+      // Store in localStorage with timestamp for expiration tracking
+      const cacheData = {
+        data,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cacheData));
       return data;
     },
     initialData: () => {
       // Load from localStorage on initial load
-      const stored = localStorage.getItem('companies-login');
-      return stored ? JSON.parse(stored) : undefined;
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) return undefined;
+
+      try {
+        const cacheData = JSON.parse(stored);
+
+        // Check if cache has expired (older than 2 hours)
+        const isExpired = Date.now() - cacheData.timestamp > CACHE_DURATION;
+
+        if (isExpired) {
+          // Clean up expired data
+          localStorage.removeItem(STORAGE_KEY);
+          return undefined;
+        }
+
+        return cacheData.data;
+      } catch {
+        // Invalid cache data, remove it
+        localStorage.removeItem(STORAGE_KEY);
+        return undefined;
+      }
     },
-    staleTime: 12 * 60 * 60 * 1000, // 12 hours
-    gcTime: 12 * 60 * 60 * 1000, // 12 hours
+    staleTime: CACHE_DURATION, // 2 hours
+    gcTime: CACHE_DURATION, // 2 hours
     retry: false,
   });
 };
