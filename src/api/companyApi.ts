@@ -34,3 +34,33 @@ export const getCompaniesLogin = async (): Promise<CompanyLogin[]> => {
   );
   return response.data;
 };
+
+export const generateLogoPresignedUrl = async (
+  id_empresa: number,
+  logo_filename: string
+): Promise<{ presigned_url: string; s3_key: string; logo_filename: string }> => {
+  const response = await apiClient.post(
+    '/v1/company/upload_logo',
+    {
+      id_empresa,
+      logo_filename
+    }
+  );
+  return response.data;
+};
+
+export const uploadLogoToS3 = async (
+  presignedUrl: string,
+  file: File
+): Promise<void> => {
+  // Use fetch for S3 presigned URL upload (not axios)
+  // Do not add Content-Type header - it triggers CORS preflight
+  const response = await fetch(presignedUrl, {
+    method: 'PUT',
+    body: file,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to upload logo to S3: ${response.statusText}`);
+  }
+};

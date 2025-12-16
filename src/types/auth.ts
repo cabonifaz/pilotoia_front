@@ -28,12 +28,14 @@ export interface DecodedUserData {
   company_areas: Array<{
     ID_EMPRESA: number;
     EMPRESA: string;
+    LOGO: string | null;
     ID_AREA: number;
     AREA: string;
   }>;
   actual_company_area?: {
     ID_EMPRESA: number;
     EMPRESA: string;
+    LOGO: string | null;
     ID_AREA: number;
     AREA: string;
     ID_IA_AREA: number;
