@@ -26,16 +26,16 @@ const Header = ({
         >
           <Menu className="h-4 w-4" />
         </Button>
-        {/*<img
+        <img
           src="/fractal-logo.svg"
           className="h-4 w-auto"
           alt="Logo Fractal"
-        />*/}
-        <img
+        />
+        {/*<img
           src="/norma-logo.jpg"
           className="h-8 w-auto"
           alt="Logo Norma"
-        />
+        />*/}
       </div>
 
       <div className="hidden md:flex items-center gap-4">
