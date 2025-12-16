@@ -2,15 +2,34 @@ import { useState } from 'react';
 import { Search, ChevronsUpDown, CirclePlus } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
-import { CompanyTable, CompanySidebar } from '@/components/company';
+import { CompanyTable, CompanySidebar, CompanyLogoSidebar } from '@/components/company';
+import { useGetCompanies } from '@/hooks/useCompanyQueries';
 
 const CompanyManagement = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isLogoSidebarOpen, setIsLogoSidebarOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<{ id: number; name: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'ruc' | 'razon_social' | null>(null);
 
+  const { data } = useGetCompanies();
+
   const closeSidebar = () => {
     setIsSidebarOpen(false);
+  };
+
+  const closeLogoSidebar = () => {
+    setIsLogoSidebarOpen(false);
+    setSelectedCompany(null);
+  };
+
+  const handleUpdateLogo = (companyId: number) => {
+    // Find company name from data
+    const company = data?.companies?.find(c => c.ID_EMPRESA === companyId);
+    if (company) {
+      setSelectedCompany({ id: companyId, name: company.RAZON_SOCIAL });
+      setIsLogoSidebarOpen(true);
+    }
   };
 
   return (
@@ -62,15 +81,29 @@ const CompanyManagement = () => {
           </div>
 
           {/* Table Section */}
-          <CompanyTable searchTerm={searchTerm} sortBy={sortBy} />
+          <CompanyTable
+            searchTerm={searchTerm}
+            sortBy={sortBy}
+            onUpdateLogo={handleUpdateLogo}
+          />
         </div>
       </div>
 
-      {/* Right Sidebar - Upload Panel */}
+      {/* Right Sidebar - Create Company */}
       <CompanySidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
       />
+
+      {/* Right Sidebar - Update Logo */}
+      {selectedCompany && (
+        <CompanyLogoSidebar
+          isOpen={isLogoSidebarOpen}
+          onClose={closeLogoSidebar}
+          idEmpresa={selectedCompany.id}
+          companyName={selectedCompany.name}
+        />
+      )}
     </div>
   );
 };

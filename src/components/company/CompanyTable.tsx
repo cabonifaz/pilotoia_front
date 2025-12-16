@@ -22,9 +22,10 @@ const formatDate = (isoDate: string): string => {
 interface CompanyTableProps {
   searchTerm: string;
   sortBy: 'ruc' | 'razon_social' | null;
+  onUpdateLogo: (companyId: number) => void;
 }
 
-export const CompanyTable = ({ searchTerm, sortBy }: CompanyTableProps) => {
+export const CompanyTable = ({ searchTerm, sortBy, onUpdateLogo }: CompanyTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -179,6 +180,7 @@ export const CompanyTable = ({ searchTerm, sortBy }: CompanyTableProps) => {
                           status={company.ID_ESTADO_REGISTRO}
                           onDelete={handleDeleteCompany}
                           onReactivate={handleReactivateCompany}
+                          onUpdateLogo={onUpdateLogo}
                           isPending={updateCompanyStatus.isPending}
                         />
                       </TableCell>
