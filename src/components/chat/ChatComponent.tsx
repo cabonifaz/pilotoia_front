@@ -213,18 +213,13 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
           <div className="flex-1 flex items-center justify-center">
             <div className="w-full flex flex-col gap-3">
               <div className="flex items-center justify-center mb-2">
-                <div className="w-[148px] flex items-center justify-start">
+                <div className="w-[148px] flex items-center justify-center">
                   <img
                     src={logoUrl}
                     alt={actualCompanyArea?.RAZON_SOCIAL || "Logo Fractal"}
                     className="w-auto h-auto min-h-6 max-h-12 max-w-full object-contain"
                   />
                 </div>
-                {/*<img
-                  src="/norma-logo.jpg"
-                  className="h-12 w-auto"
-                  alt="Logo Norma"
-                />*/}
               </div>
               <h3 className="text-3xl font-semibold text-center">
                 Bueno verte, {(currentUser as any)?.nombres || 'Usuario'}
