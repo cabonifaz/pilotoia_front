@@ -94,6 +94,10 @@ export const LoginPage = () => {
                 window.location.hash = `#/?ref=${refToUse}`;
                 // Clear the temporary ref from localStorage after using it for redirect
                 localStorage.removeItem(LAST_LOGIN_REF_KEY);
+            } else if (urlRef && localStorage.getItem(LAST_LOGIN_REF_KEY)) {
+                // If URL ref exists AND localStorage ref exists, clear localStorage
+                // This handles the case where logout redirected with ref but localStorage wasn't cleared
+                localStorage.removeItem(LAST_LOGIN_REF_KEY);
             }
         } else {
             // No valid ref in URL or storage - show select

@@ -206,12 +206,14 @@ export const useCompanyAreasQuery = () => {
         queryFn: async (): Promise<Array<{
             ID_EMPRESA: number;
             EMPRESA: string;
+            LOGO: string | null;
             ID_AREA: number;
             AREA: string;
         }>> => {
             const companyAreas = await (authApi as { getCompanyAreas: () => Promise<Array<{
                 ID_EMPRESA: number;
                 EMPRESA: string;
+                LOGO: string | null;
                 ID_AREA: number;
                 AREA: string;
             }>> }).getCompanyAreas();
