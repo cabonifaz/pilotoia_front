@@ -1,10 +1,11 @@
-import { Trash2, RotateCw, MoreVertical } from 'lucide-react';
+import { Trash2, RotateCw, MoreVertical, Image } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/shadcn/dropdown-menu';
 
 interface CompanyRowActionsProps {
@@ -12,6 +13,7 @@ interface CompanyRowActionsProps {
   status: number; // 1 = Activo, 0 = Inactivo
   onDelete: (companyId: number) => void;
   onReactivate: (companyId: number) => void;
+  onUpdateLogo: (companyId: number) => void;
   isPending?: boolean;
 }
 
@@ -20,6 +22,7 @@ export const CompanyRowActions = ({
   status,
   onDelete,
   onReactivate,
+  onUpdateLogo,
   isPending = false,
 }: CompanyRowActionsProps) => {
   const isActive = status === 1;
@@ -43,6 +46,19 @@ export const CompanyRowActions = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        {isActive && (
+          <>
+            <DropdownMenuItem
+              onClick={() => onUpdateLogo(companyId)}
+              disabled={isPending}
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              <Image className="h-4 w-4" />
+              <span>Actualizar logo</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         {isActive ? (
           <DropdownMenuItem
             onClick={() => onDelete(companyId)}

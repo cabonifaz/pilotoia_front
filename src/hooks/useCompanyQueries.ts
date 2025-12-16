@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createCompany, getCompanies, updateCompanyStatus, getCompaniesLogin } from '../api/companyApi';
+import { createCompany, getCompanies, updateCompanyStatus, getCompaniesLogin, generateLogoPresignedUrl, uploadLogoToS3 } from '../api/companyApi';
 import type { CreateCompanyRequest, UpdateCompanyStatusRequest } from '@/types/company';
 import { toast } from './use-toast';
 
@@ -125,5 +125,45 @@ export const useGetCompaniesLogin = () => {
     staleTime: CACHE_DURATION, // 2 hours
     gcTime: CACHE_DURATION, // 2 hours
     retry: false,
+  });
+};
+
+export const useUploadCompanyLogo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id_empresa, logoFile }: { id_empresa: number; logoFile: File }) => {
+      try {
+        // Step 1: Get presigned URL from backend (this also updates DB)
+        const presignedResponse = await generateLogoPresignedUrl(id_empresa, logoFile.name);
+
+        // Step 2: Upload file to S3 using presigned URL
+        await uploadLogoToS3(presignedResponse.presigned_url, logoFile);
+
+        return presignedResponse;
+      } catch (error) {
+        console.error('Logo upload error:', error);
+        throw error;
+      }
+    },
+    retry: false,
+    onSuccess: () => {
+      // Invalidate companies query to refetch with updated logo
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+
+      toast({
+        title: 'Éxito',
+        description: 'Logo subido correctamente',
+        variant: 'success',
+      });
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.result?.mensaje || error.message || 'Error al subir el logo';
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    },
   });
 };

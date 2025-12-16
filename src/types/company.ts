@@ -53,4 +53,5 @@ export interface UpdateCompanyStatusResponse {
 export interface CompanyLogin {
   RAZON_SOCIAL: string;
   SECRET_KEY: string;
+  LOGO: string | null;
 }
