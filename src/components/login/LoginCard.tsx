@@ -57,19 +57,23 @@ export const LoginCard = ({
         await onFormSubmit(trimmedData as LoginFormData);
     };
 
+    // Find the selected company and determine logo URL
+    const selectedCompanyData = companiesLogin.find(
+        (company: CompanyLogin) => company.RAZON_SOCIAL === selectedCompany
+    );
+
+    const logoUrl = selectedCompanyData?.LOGO
+        ? `${import.meta.env.VITE_LOGO_URL_BASE}${selectedCompanyData.LOGO}`
+        : '/fractal-logo.svg';
+
     return (
         <Card className="w-full max-w-md">
             <CardHeader className="text-center space-y-4">
-                <div className="flex justify-center">
-                    {/*<img
-                        src="/fractal-logo.svg"
-                        alt="Logo Fractal"
-                        className="h-16"
-                    />*/}
+                <div className="w-full">
                     <img
-                        src="/norma-logo.jpg"
-                        alt="Logo Norma"
-                        className="h-32"
+                        src={logoUrl}
+                        alt={selectedCompanyData?.RAZON_SOCIAL || "Logo Fractal"}
+                        className="block mx-auto w-full max-h-32 object-contain"
                     />
                 </div>
                 <h2 className="text-2xl font-semibold text-slate-900">

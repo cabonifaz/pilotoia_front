@@ -11,6 +11,7 @@ import { CommandProvider } from '../../contexts/CommandContext';
 import { TranscriptionProvider } from '../../contexts/TranscriptionContext';
 import { type AIConfig, type ChatContext } from '@/types/aiConfig';
 import { Loader } from '@/components/loader/Loader';
+import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 
 interface ChatComponentProps {
   aiConfig: AIConfig;
@@ -48,6 +49,13 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
   // Get streaming functions
   const { isLoading, streamingMessageId, searchVectorial, searchVectorialSQL, cancelMessage, currentChatId } = useChatStream();
   const { isAuthenticated, token } = useExternalLogin();
+
+// Get logo URL from actual company area
+  const { user } = useQueryAuthContext();
+  const actualCompanyArea = (user as any)?.actual_company_area;
+  const logoUrl = actualCompanyArea?.LOGO
+    ? `${import.meta.env.VITE_LOGO_URL_BASE}${actualCompanyArea.LOGO}`
+    : '/fractal-logo.svg';
 
   // Get transcription functions (streaming - AWS)
   const {
@@ -205,16 +213,18 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
           <div className="flex-1 flex items-center justify-center">
             <div className="w-full flex flex-col gap-3">
               <div className="flex items-center justify-center mb-2">
+                <div className="w-[148px] flex items-center justify-start">
+                  <img
+                    src={logoUrl}
+                    alt={actualCompanyArea?.RAZON_SOCIAL || "Logo Fractal"}
+                    className="w-auto h-auto min-h-6 max-h-12 max-w-full object-contain"
+                  />
+                </div>
                 {/*<img
-                  src="/fractal-logo.svg"
-                  className="h-6 w-auto"
-                  alt="Logo Fractal"
-                />*/}
-                <img
                   src="/norma-logo.jpg"
                   className="h-12 w-auto"
                   alt="Logo Norma"
-                />
+                />*/}
               </div>
               <h3 className="text-3xl font-semibold text-center">
                 Bueno verte, {(currentUser as any)?.nombres || 'Usuario'}
