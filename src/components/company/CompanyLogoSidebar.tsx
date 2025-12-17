@@ -11,6 +11,7 @@ interface CompanyLogoSidebarProps {
   onClose: () => void;
   idEmpresa: number;
   companyName: string;
+  logo: string | null;
 }
 
 export const CompanyLogoSidebar = ({
@@ -18,6 +19,7 @@ export const CompanyLogoSidebar = ({
   onClose,
   idEmpresa,
   companyName,
+  logo,
 }: CompanyLogoSidebarProps) => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -130,7 +132,7 @@ export const CompanyLogoSidebar = ({
           <div className="space-y-2">
             <Label className="text-xs">Logo de la empresa</Label>
 
-            {!logoPreview ? (
+            {!logoPreview && !logo ? (
               <div
                 className="border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-gray-400 transition-colors cursor-pointer"
                 onClick={() => logoInputRef.current?.click()}
@@ -147,21 +149,33 @@ export const CompanyLogoSidebar = ({
               <div className="relative border-2 border-gray-300 rounded-lg p-4">
                 <div className="flex flex-col items-center gap-3">
                   <img
-                    src={logoPreview}
+                    src={logoPreview || `${import.meta.env.VITE_LOGO_URL_BASE}${logo}`}
                     alt="Logo preview"
                     className="w-32 h-32 object-contain"
                   />
                   <div className="w-full text-center">
-                    <p className="text-xs font-medium truncate">{logoFile?.name}</p>
-                    <p className="text-xs text-gray-500">
-                      {logoFile ? (logoFile.size / 1024 / 1024).toFixed(2) : '0'} MB
-                    </p>
+                    {logoFile ? (
+                      <>
+                        <p className="text-xs font-medium truncate">{logoFile.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {(logoFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-xs font-medium text-gray-600">Logo actual</p>
+                    )}
                   </div>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={handleRemoveLogo}
+                    onClick={() => {
+                      if (logoFile) {
+                        handleRemoveLogo();
+                      } else {
+                        logoInputRef.current?.click();
+                      }
+                    }}
                     disabled={isPending}
                     className="w-full"
                   >

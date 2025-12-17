@@ -22,6 +22,7 @@ export interface Company {
   RAZON_SOCIAL: string;
   FCHCRE: string;
   ID_ESTADO_REGISTRO: number;
+  LOGO: string | null;
 }
 
 export interface GetCompaniesResponse {

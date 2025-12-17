@@ -227,6 +227,7 @@ export const useChatStream = (): UseChatStreamReturn => {
       const requestPayload = {
         message: messageContent,
         created_at: Date.now().toString(),
+        request_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         ...aiConfig,
         ...chatContext
       };
@@ -413,6 +414,7 @@ export const useChatStream = (): UseChatStreamReturn => {
       const requestPayload = {
         message: messageContent,
         created_at: Date.now().toString(),
+        request_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         external_token: token,
         ...aiConfig,
         ...chatContext
