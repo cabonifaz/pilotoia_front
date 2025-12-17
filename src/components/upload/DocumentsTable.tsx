@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, LoaderCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
 import { Badge } from '@/components/shadcn/badge';
@@ -128,6 +128,7 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
         fecha_segmentacion: upload.fecha_segmentacion,
         fecha_vectorizacion: upload.fecha_vectorizacion,
         fecha_finalizado: upload.fecha_finalizado,
+        en_ejecucion: upload.en_ejecucion,
         status: getStatusFromStage(upload.id_estado_proceso, upload.estado_proceso),
         rawData: upload,
       }))
@@ -264,7 +265,12 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
                         <TableCell>{doc.fecha_vectorizacion ? formatDate(doc.fecha_vectorizacion) : '-'}</TableCell>
                         <TableCell>{doc.fecha_finalizado ? formatDate(doc.fecha_finalizado) : '-'}</TableCell>
                         <TableCell>
-                          <Badge variant={doc.status.variant}>{doc.status.label}</Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={doc.status.variant}>{doc.status.label}</Badge>
+                            {doc.en_ejecucion === 1 && (
+                              <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <button className="text-muted-foreground hover:text-foreground">...</button>
