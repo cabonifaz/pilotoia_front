@@ -35,7 +35,7 @@ const Header = ({
         >
           <Menu className="h-4 w-4" />
         </Button>
-        <div className="w-[98px] flex items-center justify-center">
+        <div className="w-[98px] flex items-center justify-start">
           <img
             src={logoUrl}
             alt={actualCompanyArea?.RAZON_SOCIAL || "Logo Fractal"}
