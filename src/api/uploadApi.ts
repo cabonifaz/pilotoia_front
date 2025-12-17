@@ -86,3 +86,38 @@ export const batchUpdateKnowledgeState = async (
   );
   return response.data;
 };
+
+export interface BatchDeleteKnowledgeResponse {
+  message_result: {
+    ID_TIPO_MENSAJE: number;
+    MENSAJE: string;
+  };
+  deleted_count: number;
+  deleted_records: Array<{
+    id: number;
+    documento: string;
+  }>;
+  weaviate_result: {
+    success: boolean;
+    deleted_count: number;
+    errors?: string[];
+  };
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}
+
+export const batchDeleteKnowledge = async (
+  idCargas: number[]
+): Promise<BatchDeleteKnowledgeResponse> => {
+  const response = await apiClient.delete<BatchDeleteKnowledgeResponse>(
+    '/v1/knowledge',
+    {
+      data: {
+        id_cargas: idCargas,
+      }
+    }
+  );
+  return response.data;
+};

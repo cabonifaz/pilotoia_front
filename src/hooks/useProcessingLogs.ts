@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
-import { getCompanyUploads } from '@/api/uploadApi';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getCompanyUploads, batchDeleteKnowledge } from '@/api/uploadApi';
 import { useCurrentUser } from '@/hooks/useUserQueries';
 import type { KnowledgeLoadResponse } from '@/types/upload';
+import { toast } from '@/hooks/use-toast';
 
 interface UseProcessingLogsOptions {
   enabled?: boolean;
@@ -23,5 +24,31 @@ export const useProcessingLogs = ({
     enabled: enabled && !!companyId && !!areaId,
     refetchInterval,
     staleTime: 20 * 60 * 1000, // 20 minutes
+  });
+};
+
+export const useDeleteKnowledge = () => {
+  const queryClient = useQueryClient();
+  const { user } = useCurrentUser();
+  const companyId = user?.actual_company_area?.ID_EMPRESA;
+  const areaId = user?.actual_company_area?.ID_AREA;
+
+  return useMutation({
+    mutationFn: (idCargas: number[]) => batchDeleteKnowledge(idCargas),
+    onSuccess: (data) => {
+      // Invalidate and refetch knowledge query
+      queryClient.invalidateQueries({ queryKey: ['knowledge', companyId, areaId] });
+
+      // Show success toast
+      toast({
+        title: "Documentos eliminados",
+        description: `${data.deleted_count} documento(s) eliminado(s) exitosamente`,
+        variant: "default"
+      });
+    },
+    onError: (error: Error) => {
+      // Error toast is already shown by apiClient interceptor
+      console.error('Error deleting knowledge:', error);
+    }
   });
 };

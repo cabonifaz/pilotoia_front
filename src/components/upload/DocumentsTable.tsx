@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, LoaderCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
 import { Badge } from '@/components/shadcn/badge';
@@ -55,9 +55,11 @@ const formatDate = (isoDate: string): string => {
 interface DocumentsTableProps {
   searchTerm: string;
   sortBy: 'status' | null;
+  selectedRows?: string[];
+  onSelectionChange?: (selectedIds: string[]) => void;
 }
 
-export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
+export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelectionChange }: DocumentsTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -126,6 +128,7 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
         fecha_segmentacion: upload.fecha_segmentacion,
         fecha_vectorizacion: upload.fecha_vectorizacion,
         fecha_finalizado: upload.fecha_finalizado,
+        en_ejecucion: upload.en_ejecucion,
         status: getStatusFromStage(upload.id_estado_proceso, upload.estado_proceso),
         rawData: upload,
       }))
@@ -164,6 +167,26 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const displayedDocuments = sortedDocuments.slice(startIndex, startIndex + itemsPerPage);
 
+  // Checkbox handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = displayedDocuments.map(doc => doc.id);
+      onSelectionChange?.(allIds);
+    } else {
+      onSelectionChange?.([]);
+    }
+  };
+
+  const handleSelectRow = (docId: string, checked: boolean) => {
+    if (checked) {
+      onSelectionChange?.([...selectedRows, docId]);
+    } else {
+      onSelectionChange?.(selectedRows.filter(id => id !== docId));
+    }
+  };
+
+  const isAllSelected = displayedDocuments.length > 0 && displayedDocuments.every(doc => selectedRows.includes(doc.id));
+
   return (
     <Card className="flex-1 flex flex-col min-h-0">
       <CardHeader className="pb-3">
@@ -199,7 +222,13 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12"></TableHead>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={isAllSelected}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Seleccionar todos"
+                        />
+                      </TableHead>
                       <TableHead>Nombre</TableHead>
                       <TableHead>Usuario Carga</TableHead>
                       <TableHead>Modelo Embedding</TableHead>
@@ -216,7 +245,11 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
                     {displayedDocuments.map((doc) => (
                       <TableRow key={doc.id}>
                         <TableCell>
-                          <Checkbox />
+                          <Checkbox
+                            checked={selectedRows.includes(doc.id)}
+                            onCheckedChange={(checked) => handleSelectRow(doc.id, checked as boolean)}
+                            aria-label={`Seleccionar ${doc.name}`}
+                          />
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -232,7 +265,12 @@ export const DocumentsTable = ({ searchTerm, sortBy }: DocumentsTableProps) => {
                         <TableCell>{doc.fecha_vectorizacion ? formatDate(doc.fecha_vectorizacion) : '-'}</TableCell>
                         <TableCell>{doc.fecha_finalizado ? formatDate(doc.fecha_finalizado) : '-'}</TableCell>
                         <TableCell>
-                          <Badge variant={doc.status.variant}>{doc.status.label}</Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={doc.status.variant}>{doc.status.label}</Badge>
+                            {doc.en_ejecucion === 1 && (
+                              <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <button className="text-muted-foreground hover:text-foreground">...</button>
