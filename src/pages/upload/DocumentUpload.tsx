@@ -1,16 +1,53 @@
 import { useState } from 'react';
-import { Search, ChevronsUpDown, CirclePlus } from 'lucide-react';
+import { Search, ChevronsUpDown, CirclePlus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { DocumentsTable, UploadSidebar } from '@/components/upload';
+import { useDeleteKnowledge } from '@/hooks/useProcessingLogs';
+import { useCurrentUser } from '@/hooks/useUserQueries';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/shadcn/dialog';
 
 const DocumentUpload = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'status' | null>(null);
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  const { user } = useCurrentUser();
+  const areaName = user?.actual_company_area?.AREA || 'esta área';
+  const deleteMutation = useDeleteKnowledge();
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
+  };
+
+  const handleDeleteClick = () => {
+    if (selectedRows.length > 0) {
+      setIsDeleteDialogOpen(true);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    // Convert string IDs to numbers for the API
+    const numericIds = selectedRows.map(id => parseInt(id, 10));
+
+    await deleteMutation.mutateAsync(numericIds);
+
+    // Clear selection and close dialog
+    setSelectedRows([]);
+    setIsDeleteDialogOpen(false);
+  };
+
+  const handleCancelDelete = () => {
+    setIsDeleteDialogOpen(false);
   };
 
   return (
@@ -38,13 +75,29 @@ const DocumentUpload = () => {
                 Estado
               </Button>
 
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeleteClick}
+                disabled={selectedRows.length === 0}
+                className="gap-2 transition-all duration-300 ease-in-out"
+              >
+                <Trash2 className="h-4 w-4 flex-shrink-0 transition-transform duration-300 ease-in-out" />
+                <span className="hidden md:inline">Eliminar</span>
+              </Button>
+
               <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2">
                 <CirclePlus className="h-4 w-4 flex-shrink-0" />
                 Agregar documentos
               </Button>
             </div>
           </div>
-          <DocumentsTable searchTerm={searchTerm} sortBy={sortBy} />
+          <DocumentsTable
+            searchTerm={searchTerm}
+            sortBy={sortBy}
+            selectedRows={selectedRows}
+            onSelectionChange={setSelectedRows}
+          />
         </div>
       </div>
 
@@ -52,6 +105,33 @@ const DocumentUpload = () => {
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
       />
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar eliminación</DialogTitle>
+            <DialogDescription>
+              ¿Deseas eliminar {selectedRows.length} documento(s) del conocimiento del área {areaName}?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancelDelete}
+              disabled={deleteMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
