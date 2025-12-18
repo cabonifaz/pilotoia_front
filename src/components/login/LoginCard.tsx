@@ -63,7 +63,7 @@ export const LoginCard = ({
     );
 
     const logoUrl = selectedCompanyData?.LOGO
-        ? `${import.meta.env.VITE_LOGO_URL_BASE}${selectedCompanyData.LOGO}`
+        ? `${import.meta.env.VITE_LOGO_URL_BASE}${selectedCompanyData.LOGO}?v=${Date.now()}`
         : '/fractal-logo.svg';
 
     return (

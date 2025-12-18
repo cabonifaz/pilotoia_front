@@ -149,7 +149,7 @@ export const CompanyLogoSidebar = ({
               <div className="relative border-2 border-gray-300 rounded-lg p-4">
                 <div className="flex flex-col items-center gap-3">
                   <img
-                    src={logoPreview || `${import.meta.env.VITE_LOGO_URL_BASE}${logo}`}
+                    src={logoPreview || `${import.meta.env.VITE_LOGO_URL_BASE}${logo}?v=${Date.now()}`}
                     alt="Logo preview"
                     className="w-32 h-32 object-contain"
                   />
