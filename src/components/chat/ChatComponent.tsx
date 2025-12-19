@@ -54,7 +54,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
   const { user } = useQueryAuthContext();
   const actualCompanyArea = (user as any)?.actual_company_area;
   const logoUrl = actualCompanyArea?.LOGO
-    ? `${import.meta.env.VITE_LOGO_URL_BASE}${actualCompanyArea.LOGO}`
+    ? `${import.meta.env.VITE_LOGO_URL_BASE}${actualCompanyArea.LOGO}?v=${Date.now()}`
     : '/fractal-logo.svg';
 
   // Get transcription functions (streaming - AWS)

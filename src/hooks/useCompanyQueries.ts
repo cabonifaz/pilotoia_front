@@ -148,8 +148,24 @@ export const useUploadCompanyLogo = () => {
     },
     retry: false,
     onSuccess: () => {
-      // Invalidate companies query to refetch with updated logo
+      // Invalidate queries to refetch with updated logo
       queryClient.invalidateQueries({ queryKey: ['companies'] });
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
+      queryClient.invalidateQueries({ queryKey: ['companies-login'] });
+
+      // Mark companies-login cache as expired (3 hours ago) to force refetch
+      const stored = localStorage.getItem('companies-login');
+      if (stored) {
+        try {
+          const cacheData = JSON.parse(stored);
+          cacheData.timestamp = Date.now() - (3 * 60 * 60 * 1000); // 3 hours ago
+          localStorage.setItem('companies-login', JSON.stringify(cacheData));
+        } catch (error) {
+          // If parsing fails, just remove it
+          localStorage.removeItem('companies-login');
+        }
+      }
 
       toast({
         title: 'Éxito',

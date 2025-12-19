@@ -18,9 +18,9 @@ const Header = ({
   const { user } = useQueryAuthContext();
   const actualCompanyArea = (user as any)?.actual_company_area;
 
-  // Determine logo URL based on company logo
+  // Determine logo URL based on company logo with cache busting
   const logoUrl = actualCompanyArea?.LOGO
-    ? `${import.meta.env.VITE_LOGO_URL_BASE}${actualCompanyArea.LOGO}`
+    ? `${import.meta.env.VITE_LOGO_URL_BASE}${actualCompanyArea.LOGO}?v=${Date.now()}`
     : '/fractal-logo.svg';
 
   return (
