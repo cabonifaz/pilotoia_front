@@ -8,7 +8,7 @@ import { useGetCompanies } from '@/hooks/useCompanyQueries';
 const CompanyManagement = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLogoSidebarOpen, setIsLogoSidebarOpen] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState<{ id: number; name: string } | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<{ id: number; name: string; logo: string | null } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'ruc' | 'razon_social' | null>(null);
 
@@ -27,7 +27,7 @@ const CompanyManagement = () => {
     // Find company name from data
     const company = data?.companies?.find(c => c.ID_EMPRESA === companyId);
     if (company) {
-      setSelectedCompany({ id: companyId, name: company.RAZON_SOCIAL });
+      setSelectedCompany({ id: companyId, name: company.RAZON_SOCIAL, logo: company.LOGO || null });
       setIsLogoSidebarOpen(true);
     }
   };
@@ -102,6 +102,7 @@ const CompanyManagement = () => {
           onClose={closeLogoSidebar}
           idEmpresa={selectedCompany.id}
           companyName={selectedCompany.name}
+          logo={selectedCompany.logo}
         />
       )}
     </div>
