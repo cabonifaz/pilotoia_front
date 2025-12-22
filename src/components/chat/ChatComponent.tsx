@@ -9,19 +9,18 @@ import { MessageBubble } from './MessageBubble';
 import { QueryInputSection } from './QueryInputSection';
 import { CommandProvider } from '../../contexts/CommandContext';
 import { TranscriptionProvider } from '../../contexts/TranscriptionContext';
-import { type AIConfig, type ChatContext } from '@/types/aiConfig';
+import { type ChatContext } from '@/types/aiConfig';
 import { Loader } from '@/components/loader/Loader';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 
 interface ChatComponentProps {
-  aiConfig: AIConfig;
   chatContext: ChatContext;
   onChatIdChange?: (chatId: number) => void;
   onStreamingStateChange?: (isStreaming: boolean) => void;
   onOpenConfigSidebar?: () => void;
 }
 
-const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingStateChange, onOpenConfigSidebar }: ChatComponentProps) => {
+const ChatComponent = ({ chatContext, onChatIdChange, onStreamingStateChange, onOpenConfigSidebar }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const currentMainActionRef = useRef<() => void>(() => {});
@@ -157,7 +156,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
     const currentQuery = userQuery;
     setUserQuery('');
 
-    await searchVectorial(currentQuery, aiConfig, chatContext);
+    await searchVectorial(currentQuery, chatContext);
   };
 
   const cancelar = () => {
@@ -170,7 +169,7 @@ const ChatComponent = ({ aiConfig, chatContext, onChatIdChange, onStreamingState
     const currentQuery = userQuery;
     setUserQuery('');
 
-    await searchVectorialSQL(currentQuery, aiConfig, chatContext, token);
+    await searchVectorialSQL(currentQuery, chatContext, token);
   };
 
 

@@ -15,7 +15,6 @@ export interface ChatContext {
   company_id: number;
   area: string;
   area_id: number;
-  id_ia_area: number;
   chat_id?: number | null;
   titulo?: string;
 }
