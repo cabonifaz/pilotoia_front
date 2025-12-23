@@ -83,7 +83,7 @@ export const useUpdateCompanyStatus = () => {
 export const useGetCompaniesLogin = () => {
   const CACHE_DURATION = import.meta.env.VITE_COMPANIES_CACHE_DURATION
     ? Number(import.meta.env.VITE_COMPANIES_CACHE_DURATION)
-    : 2 * 60 * 60 * 1000; // Default: 2 hours in milliseconds
+    : 1 * 60 * 60 * 1000; // Default: 1 hour in milliseconds
   const STORAGE_KEY = 'companies-login';
 
   return useQuery({
@@ -106,15 +106,19 @@ export const useGetCompaniesLogin = () => {
       try {
         const cacheData = JSON.parse(stored);
 
-        // Check if cache has expired (older than 2 hours)
+        // Check if cache has expired (older than 1 hour)
         const isExpired = Date.now() - cacheData.timestamp > CACHE_DURATION;
 
         if (isExpired) {
-          // Clean up expired data
-          localStorage.removeItem(STORAGE_KEY);
-          return undefined;
+          // DON'T delete expired cache - keep as fallback until successful refetch
+          // This prevents empty state if refetch fails or is delayed due to:
+          // - Browser throttling of background tabs
+          // - Network issues after long idle periods
+          // - Backend connection delays
+          // Cache will be updated/replaced on successful refetch
         }
 
+        // Return cached data even if expired - better to show stale data than nothing
         return cacheData.data;
       } catch {
         // Invalid cache data, remove it
@@ -122,9 +126,10 @@ export const useGetCompaniesLogin = () => {
         return undefined;
       }
     },
-    staleTime: CACHE_DURATION, // 2 hours
-    gcTime: CACHE_DURATION, // 2 hours
-    retry: false,
+    staleTime: CACHE_DURATION, // 1 hour
+    gcTime: CACHE_DURATION, // 1 hour
+    // Removed retry: false - now uses global config (3 retries with exponential backoff)
+    // This prevents permanent empty state if refetch fails after cache expiration
   });
 };
 
@@ -154,12 +159,12 @@ export const useUploadCompanyLogo = () => {
       queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
       queryClient.invalidateQueries({ queryKey: ['companies-login'] });
 
-      // Mark companies-login cache as expired (3 hours ago) to force refetch
+      // Mark companies-login cache as expired (2 hours ago) to force refetch
       const stored = localStorage.getItem('companies-login');
       if (stored) {
         try {
           const cacheData = JSON.parse(stored);
-          cacheData.timestamp = Date.now() - (3 * 60 * 60 * 1000); // 3 hours ago
+          cacheData.timestamp = Date.now() - (2 * 60 * 60 * 1000); // 2 hours ago
           localStorage.setItem('companies-login', JSON.stringify(cacheData));
         } catch (error) {
           // If parsing fails, just remove it
