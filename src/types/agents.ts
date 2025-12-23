@@ -21,6 +21,7 @@ export interface GetAgentesResponse {
 
 export interface CreateAgentRequest {
   numero_telf: string;
+  codigo_pais: string;
   id_tipo_agente: number;
   id_empresa: number;
   acceso_general: number;

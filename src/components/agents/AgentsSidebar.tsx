@@ -15,7 +15,9 @@ import {
 } from '@/components/shadcn/select';
 import { useCreateAgente } from '@/hooks/useAgentsQueries';
 import { useGetAreas } from '@/hooks/useAreaQueries';
+import { useGetPhoneCodes } from '@/hooks/usePhoneCodesQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
+import type { PhoneCode } from '@/types/phoneCodes';
 
 interface AgentsSidebarProps {
   isOpen: boolean;
@@ -33,6 +35,7 @@ export const AgentsSidebar = ({
   const id_empresa = propsIdEmpresa || contextIdEmpresa;
 
   const [numeroTelf, setNumeroTelf] = useState('');
+  const [codigoPais, setCodigoPais] = useState('51-PE'); // Default to Peru (CODIGO_NUMERICO-CODIGO_ISO)
   const [idTipoAgente, setIdTipoAgente] = useState('1'); // 1 = WhatsApp
   const [accesoGeneral, setAccesoGeneral] = useState(0); // 0 = cerrado, 1 = abierto
   const [selectedAreas, setSelectedAreas] = useState<number[]>([]);
@@ -40,6 +43,7 @@ export const AgentsSidebar = ({
 
   const { mutate: createAgente, isPending } = useCreateAgente(id_empresa);
   const { data: areasData } = useGetAreas(id_empresa);
+  const { data: phoneCodesData } = useGetPhoneCodes();
 
   // Initialize areas when sidebar opens and areas data is available
   useEffect(() => {
@@ -52,6 +56,7 @@ export const AgentsSidebar = ({
   useEffect(() => {
     if (!isOpen) {
       setNumeroTelf('');
+      setCodigoPais('51-PE');
       setIdTipoAgente('1');
       setAccesoGeneral(0);
       setSelectedAreas([]);
@@ -64,11 +69,14 @@ export const AgentsSidebar = ({
       return;
     }
 
+    // Extract CODIGO_NUMERICO from composite value (e.g., '51' from '51-PE')
+    const codigoNumerico = codigoPais.split('-')[0];
     const areasString = selectedAreas.join(',');
 
     createAgente(
       {
-        numero_telf: numeroTelf.trim(),
+        numero_telf: codigoNumerico + numeroTelf.trim(),
+        codigo_pais: codigoPais,
         id_tipo_agente: parseInt(idTipoAgente),
         id_empresa,
         acceso_general: accesoGeneral,
@@ -77,6 +85,7 @@ export const AgentsSidebar = ({
       {
         onSuccess: () => {
           setNumeroTelf('');
+          setCodigoPais('51-PE');
           setIdTipoAgente('1');
           setAccesoGeneral(0);
           setSelectedAreas([]);
@@ -126,28 +135,70 @@ export const AgentsSidebar = ({
         {/* Contenido scrollable con altura definida */}
         <CardContent className="flex-1 overflow-y-auto py-4 space-y-4">
           {/* Telefono Input */}
-          <div className="space-y-2">
-            <Label htmlFor="telefono" className="text-xs">Teléfono</Label>
-            <Input
-              id="telefono"
-              type="tel"
-              placeholder="Ingrese el número de teléfono"
-              value={numeroTelf}
-              onChange={(e) => setNumeroTelf(e.target.value)}
-              disabled={isPending}
-              pattern="[0-9\-\+\(\)\s]*"
-              maxLength={20}
-            />
+          <div className="flex gap-2">
+            <div className="space-y-2">
+              <Label className="text-xs">Código</Label>
+              <Select value={codigoPais} onValueChange={setCodigoPais} disabled={isPending}>
+                <SelectTrigger className="w-28 h-9">
+                  {codigoPais && phoneCodesData?.phone_codes && (() => {
+                    const selectedCode = phoneCodesData.phone_codes.find(
+                      c => `${c.CODIGO_NUMERICO}-${c.CODIGO_ISO}` === codigoPais
+                    );
+                    return selectedCode ? (
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={`https://flagcdn.com/w20/${selectedCode.CODIGO_ISO.toLowerCase()}.png`}
+                          alt={selectedCode.NOMBRE_PAIS}
+                          className="w-5 h-3 object-cover"
+                        />
+                        <span>{selectedCode.PREFIJO_TELEFONICO}</span>
+                      </div>
+                    ) : <SelectValue />;
+                  })()}
+                </SelectTrigger>
+                <SelectContent className="text-sm">
+                  {phoneCodesData?.phone_codes?.map((code: PhoneCode) => (
+                    <SelectItem
+                      key={`${code.CODIGO_NUMERICO}-${code.CODIGO_ISO}`}
+                      value={`${code.CODIGO_NUMERICO}-${code.CODIGO_ISO}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={`https://flagcdn.com/w20/${code.CODIGO_ISO.toLowerCase()}.png`}
+                          alt={code.NOMBRE_PAIS}
+                          className="w-5 h-3 object-cover"
+                        />
+                        <span>{code.NOMBRE_PAIS}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="telefono" className="text-xs">Teléfono</Label>
+              <Input
+                id="telefono"
+                type="tel"
+                placeholder="Ingrese el número de teléfono"
+                value={numeroTelf}
+                onChange={(e) => setNumeroTelf(e.target.value)}
+                disabled={isPending}
+                pattern="[0-9\-\+\(\)\s]*"
+                maxLength={20}
+                className="h-9 text-sm"
+              />
+            </div>
           </div>
 
           {/* Tipo de Agente Select */}
           <div className="space-y-2">
             <Label className="text-xs">Tipo de Agente</Label>
             <Select value={idTipoAgente} onValueChange={setIdTipoAgente} disabled={isPending}>
-              <SelectTrigger>
+              <SelectTrigger className="h-9">
                 <SelectValue placeholder="Selecciona un tipo" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="text-sm">
                 <SelectItem value="1">WhatsApp</SelectItem>
               </SelectContent>
             </Select>
