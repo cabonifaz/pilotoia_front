@@ -76,7 +76,7 @@ const DocumentUpload = () => {
               </Button>
 
               <Button
-                variant="outline"
+                variant="destructive"
                 size="sm"
                 onClick={handleDeleteClick}
                 disabled={selectedRows.length === 0}
@@ -86,7 +86,7 @@ const DocumentUpload = () => {
                 <span className="hidden md:inline">Eliminar</span>
               </Button>
 
-              <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2">
+              <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2" size="sm">
                 <CirclePlus className="h-4 w-4 flex-shrink-0" />
                 Agregar documentos
               </Button>

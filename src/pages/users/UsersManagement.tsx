@@ -113,7 +113,7 @@ const UsersManagement = () => {
                 Rol
               </Button>
 
-              <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2">
+              <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2" size="sm">
                 <CirclePlus className="h-4 w-4 flex-shrink-0" />
                 Agregar usuario
               </Button>
