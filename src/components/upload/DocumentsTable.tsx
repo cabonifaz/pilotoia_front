@@ -1,79 +1,163 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, FileText, LoaderCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
-import { Button } from '@/components/shadcn/button';
-import { Badge } from '@/components/shadcn/badge';
-import { Checkbox } from '@/components/shadcn/checkbox';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/table';
-import { Loader } from '@/components/loader/Loader';
-import { useProcessingLogs } from '@/hooks/useProcessingLogs';
-import type { KnowledgeLoadResponse } from '@/types/upload';
+import { useState, useMemo, useRef, useEffect } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  LoaderCircle,
+} from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
+import { Button } from "@/components/shadcn/button";
+import { Badge } from "@/components/shadcn/badge";
+import { Checkbox } from "@/components/shadcn/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/shadcn/dropdown-menu";
+import { DocumentPreviewModal } from "./DocumentPreviewModal";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/shadcn/table";
+import { Loader } from "@/components/loader/Loader";
+import { useProcessingLogs } from "@/hooks/useProcessingLogs";
+import type { KnowledgeLoadResponse } from "@/types/upload";
 
-type BadgeVariant = "success" | "gray" | "destructive" | "info" | "purple" | "cyan" | "warning" | "orange" | "teal" | "default" | "outline" | "secondary" | "pink" | null | undefined;
+type BadgeVariant =
+  | "success"
+  | "gray"
+  | "destructive"
+  | "info"
+  | "purple"
+  | "cyan"
+  | "warning"
+  | "orange"
+  | "teal"
+  | "default"
+  | "outline"
+  | "secondary"
+  | "pink"
+  | null
+  | undefined;
 
 type StatusBadge = {
   label: string;
-  variant?: BadgeVariant
-}
+  variant?: BadgeVariant;
+};
 
 // Map process_stage to status display
 const getStatusFromStage = (idEstadoProceso: number, estadoProceso: string) => {
   const badgeColorMap: { [key: number]: BadgeVariant } = {
-    0: 'cyan',      // State 0 - Subiendo (Uploading)
-    1: 'warning',   // State 1 - En cola (In queue)
-    2: 'purple',    // State 2 - Procesando (Processing)
-    3: 'info',      // State 3 - Texto extraído (Text extracted)
-    4: 'orange',    // State 4 - Texto segmentado (Text segmented)
-    5: 'teal',      // State 5 - Segmentos vectorizados (Segments vectorized)
-    6: 'success',   // State 6 - Cargado (Loaded/Completed)
-    7: 'destructive', // State 7 - Error
-  }
+    0: "cyan", // State 0 - Subiendo (Uploading)
+    1: "warning", // State 1 - En cola (In queue)
+    2: "purple", // State 2 - Procesando (Processing)
+    3: "info", // State 3 - Texto extraído (Text extracted)
+    4: "orange", // State 4 - Texto segmentado (Text segmented)
+    5: "teal", // State 5 - Segmentos vectorizados (Segments vectorized)
+    6: "success", // State 6 - Cargado (Loaded/Completed)
+    7: "destructive", // State 7 - Error
+  };
 
-  let statusBadge: StatusBadge = { label: estadoProceso }
+  let statusBadge: StatusBadge = { label: estadoProceso };
 
   if (idEstadoProceso < 0) {
-    statusBadge.variant = 'destructive' as const;
+    statusBadge.variant = "destructive" as const;
   } else {
-    statusBadge.variant = badgeColorMap[idEstadoProceso] || 'secondary' as const;
+    statusBadge.variant =
+      badgeColorMap[idEstadoProceso] || ("secondary" as const);
   }
 
-  return statusBadge || { label: 'Desconocido', variant: 'secondary' as const };
+  return statusBadge || { label: "Desconocido", variant: "secondary" as const };
 };
 
 // Format date to readable format with time
 const formatDate = (isoDate: string): string => {
   const date = new Date(isoDate);
-  return date.toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
+  return date.toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
 
 interface DocumentsTableProps {
   searchTerm: string;
-  sortBy: 'status' | null;
+  sortBy: "status" | null;
   selectedRows?: string[];
   onSelectionChange?: (selectedIds: string[]) => void;
 }
 
-export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelectionChange }: DocumentsTableProps) => {
+export const DocumentsTable = ({
+  searchTerm,
+  sortBy,
+  selectedRows = [],
+  onSelectionChange,
+}: DocumentsTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewDocName, setPreviewDocName] = useState<string>("");
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
-  const pollingInterval = Number(import.meta.env.VITE_POLLING_INTERVAL) || 30000;
+  const pollingInterval =
+    Number(import.meta.env.VITE_POLLING_INTERVAL) || 30000;
+  const handleViewDocument = async (ruta_documento: string, name: string) => {
+    try {
+      setLoadingPreview(true);
+      setPreviewDocName(name);
 
-  const hasProcessingDocuments = (uploads: KnowledgeLoadResponse[] | undefined): boolean => {
-    if (!uploads || uploads.length === 0) return false;
-    return uploads.some((upload: KnowledgeLoadResponse) => upload.id_estado_proceso !== 6);
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_API_BASE_URL
+        }/api/v1/knowledge/document/url?ruta_documento=${encodeURIComponent(
+          ruta_documento
+        )}`
+      );
+      console.log("Response status:", response.status);
+      console.log("Response:", response);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.result?.mensaje || "Error al obtener documento");
+      }
+
+      setPreviewUrl(data.url);
+      setPreviewOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert("No se pudo cargar el documento");
+    } finally {
+      setLoadingPreview(false);
+    }
   };
 
-  const { data: uploads, isLoading, error } = useProcessingLogs({
+  const hasProcessingDocuments = (
+    uploads: KnowledgeLoadResponse[] | undefined
+  ): boolean => {
+    if (!uploads || uploads.length === 0) return false;
+    return uploads.some(
+      (upload: KnowledgeLoadResponse) => upload.id_estado_proceso !== 6
+    );
+  };
+
+  const {
+    data: uploads,
+    isLoading,
+    error,
+  } = useProcessingLogs({
     enabled: true,
-    refetchInterval: (query: { state: { data: KnowledgeLoadResponse[] | undefined } }): number | false => {
+    refetchInterval: (query: {
+      state: { data: KnowledgeLoadResponse[] | undefined };
+    }): number | false => {
       return hasProcessingDocuments(query.state.data) ? pollingInterval : false;
     },
   });
@@ -92,10 +176,10 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
     };
 
     const timer = setTimeout(calculateItemsPerPage, 100);
-    window.addEventListener('resize', calculateItemsPerPage);
+    window.addEventListener("resize", calculateItemsPerPage);
     return () => {
       clearTimeout(timer);
-      window.removeEventListener('resize', calculateItemsPerPage);
+      window.removeEventListener("resize", calculateItemsPerPage);
     };
   }, [uploads]);
 
@@ -109,19 +193,19 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
     if (!uploads) return [];
 
     return uploads
-      .map(upload => ({
+      .map((upload) => ({
         id: upload.id,
         id_usuario: upload.id_usuario,
-        usuario_carga: upload.usuario_carga || 'Sistema',
+        usuario_carga: upload.usuario_carga || "Sistema",
         id_empresa: upload.id_empresa,
-        empresa: upload.empresa || 'Sin empresa',
+        empresa: upload.empresa || "Sin empresa",
         id_area: upload.id_area,
-        area: upload.area || 'Sin área',
+        area: upload.area || "Sin área",
         id_estado_proceso: upload.id_estado_proceso,
         estado_proceso: upload.estado_proceso,
         embedding_model_provider: upload.embedding_model_provider,
         embedding_model: upload.embedding_model,
-        name: upload.documento || 'Sin nombre',
+        name: upload.documento || "Sin nombre",
         fecha_ultima_actualizacion: upload.fecha_ultima_actualizacion,
         createdDate: formatDate(upload.fecha_inicio),
         fecha_extraccion: upload.fecha_extraccion,
@@ -129,11 +213,16 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
         fecha_vectorizacion: upload.fecha_vectorizacion,
         fecha_finalizado: upload.fecha_finalizado,
         en_ejecucion: upload.en_ejecucion,
-        status: getStatusFromStage(upload.id_estado_proceso, upload.estado_proceso),
+        ruta_documento: upload.ruta_documento,
+        status: getStatusFromStage(
+          upload.id_estado_proceso,
+          upload.estado_proceso
+        ),
         rawData: upload,
       }))
-      .filter(doc =>
-        doc.name && doc.name.toLowerCase().includes(searchTerm.toLowerCase())
+      .filter(
+        (doc) =>
+          doc.name && doc.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
   }, [uploads, searchTerm]);
 
@@ -142,7 +231,7 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
     let sorted = [...processedDocuments];
 
     // Apply user-selected sorting first if any
-    if (sortBy === 'status') {
+    if (sortBy === "status") {
       sorted.sort((a, b) => a.status.label.localeCompare(b.status.label));
     } else {
       // Default sorting: by created_at (most recent first), then by process_stage (lower first)
@@ -165,12 +254,15 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
 
   const totalPages = Math.ceil(sortedDocuments.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const displayedDocuments = sortedDocuments.slice(startIndex, startIndex + itemsPerPage);
+  const displayedDocuments = sortedDocuments.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
 
   // Checkbox handlers
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allIds = displayedDocuments.map(doc => doc.id);
+      const allIds = displayedDocuments.map((doc) => doc.id);
       onSelectionChange?.(allIds);
     } else {
       onSelectionChange?.([]);
@@ -181,11 +273,13 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
     if (checked) {
       onSelectionChange?.([...selectedRows, docId]);
     } else {
-      onSelectionChange?.(selectedRows.filter(id => id !== docId));
+      onSelectionChange?.(selectedRows.filter((id) => id !== docId));
     }
   };
 
-  const isAllSelected = displayedDocuments.length > 0 && displayedDocuments.every(doc => selectedRows.includes(doc.id));
+  const isAllSelected =
+    displayedDocuments.length > 0 &&
+    displayedDocuments.every((doc) => selectedRows.includes(doc.id));
 
   return (
     <Card className="flex-1 flex flex-col min-h-0">
@@ -199,9 +293,7 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
-        {isLoading && (
-          <Loader text="Cargando documentos..." />
-        )}
+        {isLoading && <Loader text="Cargando documentos..." />}
 
         {error && (
           <div className="flex-1 flex items-center justify-center">
@@ -211,13 +303,18 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
 
         {!isLoading && !error && displayedDocuments.length === 0 && (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground">No se encontraron documentos</p>
+            <p className="text-muted-foreground">
+              No se encontraron documentos
+            </p>
           </div>
         )}
 
         {!isLoading && !error && displayedDocuments.length > 0 && (
           <>
-            <div ref={tableContainerRef} className="flex-1 min-h-0 border rounded-lg">
+            <div
+              ref={tableContainerRef}
+              className="flex-1 min-h-0 border rounded-lg"
+            >
               <div className="h-full overflow-y-auto">
                 <Table>
                   <TableHeader>
@@ -247,7 +344,9 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
                         <TableCell>
                           <Checkbox
                             checked={selectedRows.includes(doc.id)}
-                            onCheckedChange={(checked) => handleSelectRow(doc.id, checked as boolean)}
+                            onCheckedChange={(checked) =>
+                              handleSelectRow(doc.id, checked as boolean)
+                            }
                             aria-label={`Seleccionar ${doc.name}`}
                           />
                         </TableCell>
@@ -260,20 +359,57 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
                         <TableCell>{doc.usuario_carga}</TableCell>
                         <TableCell>{doc.embedding_model}</TableCell>
                         <TableCell>{doc.createdDate}</TableCell>
-                        <TableCell>{doc.fecha_extraccion ? formatDate(doc.fecha_extraccion) : '-'}</TableCell>
-                        <TableCell>{doc.fecha_segmentacion ? formatDate(doc.fecha_segmentacion) : '-'}</TableCell>
-                        <TableCell>{doc.fecha_vectorizacion ? formatDate(doc.fecha_vectorizacion) : '-'}</TableCell>
-                        <TableCell>{doc.fecha_finalizado ? formatDate(doc.fecha_finalizado) : '-'}</TableCell>
+                        <TableCell>
+                          {doc.fecha_extraccion
+                            ? formatDate(doc.fecha_extraccion)
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {doc.fecha_segmentacion
+                            ? formatDate(doc.fecha_segmentacion)
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {doc.fecha_vectorizacion
+                            ? formatDate(doc.fecha_vectorizacion)
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {doc.fecha_finalizado
+                            ? formatDate(doc.fecha_finalizado)
+                            : "-"}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Badge variant={doc.status.variant}>{doc.status.label}</Badge>
+                            <Badge variant={doc.status.variant}>
+                              {doc.status.label}
+                            </Badge>
                             {doc.en_ejecucion === 1 && (
                               <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <button className="text-muted-foreground hover:text-foreground">...</button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="text-muted-foreground hover:text-foreground px-2">
+                                ⋮
+                              </button>
+                            </DropdownMenuTrigger>
+
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleViewDocument(
+                                    doc.ruta_documento,
+                                    doc.name
+                                  )
+                                }
+                              >
+                                Ver documento
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -299,7 +435,10 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
                     const maxButtons = 5;
                     const halfRange = Math.floor(maxButtons / 2);
                     let startPage = Math.max(1, currentPage - halfRange);
-                    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+                    let endPage = Math.min(
+                      totalPages,
+                      startPage + maxButtons - 1
+                    );
 
                     if (endPage - startPage + 1 < maxButtons) {
                       startPage = Math.max(1, endPage - maxButtons + 1);
@@ -310,7 +449,7 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
                     if (startPage > 1) {
                       pages.push(1);
                       if (startPage > 2) {
-                        pages.push('...');
+                        pages.push("...");
                       }
                     }
 
@@ -320,7 +459,7 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
 
                     if (endPage < totalPages) {
                       if (endPage < totalPages - 1) {
-                        pages.push('...');
+                        pages.push("...");
                       }
                       pages.push(totalPages);
                     }
@@ -328,10 +467,12 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
                     return pages.map((page, idx) => (
                       <Button
                         key={`${page}-${idx}`}
-                        variant={currentPage === page ? 'default' : 'outline'}
+                        variant={currentPage === page ? "default" : "outline"}
                         size="sm"
-                        onClick={() => typeof page === 'number' && setCurrentPage(page)}
-                        disabled={page === '...'}
+                        onClick={() =>
+                          typeof page === "number" && setCurrentPage(page)
+                        }
+                        disabled={page === "..."}
                       >
                         {page}
                       </Button>
@@ -344,7 +485,10 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
                     const maxButtons = 4;
                     const halfRange = Math.floor(maxButtons / 2);
                     let startPage = Math.max(1, currentPage - halfRange);
-                    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+                    let endPage = Math.min(
+                      totalPages,
+                      startPage + maxButtons - 1
+                    );
 
                     if (endPage - startPage + 1 < maxButtons) {
                       startPage = Math.max(1, endPage - maxButtons + 1);
@@ -358,7 +502,7 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
                     return pages.map((page) => (
                       <Button
                         key={page}
-                        variant={currentPage === page ? 'default' : 'outline'}
+                        variant={currentPage === page ? "default" : "outline"}
                         size="sm"
                         onClick={() => setCurrentPage(page)}
                       >
@@ -371,7 +515,9 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  onClick={() =>
+                    setCurrentPage(Math.min(totalPages, currentPage + 1))
+                  }
                   disabled={currentPage === totalPages}
                 >
                   <span className="hidden md:inline">Siguiente</span>
@@ -379,12 +525,22 @@ export const DocumentsTable = ({ searchTerm, sortBy, selectedRows = [], onSelect
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Mostrando {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedDocuments.length)} de {sortedDocuments.length} documentos
+                Mostrando {startIndex + 1}-
+                {Math.min(startIndex + itemsPerPage, sortedDocuments.length)} de{" "}
+                {sortedDocuments.length} documentos
               </p>
             </div>
           </>
         )}
       </CardContent>
+      <DocumentPreviewModal
+  open={previewOpen}
+  onOpenChange={setPreviewOpen}
+  url={previewUrl}
+  documentName={previewDocName}
+  loading={loadingPreview}
+/>
+
     </Card>
   );
 };
