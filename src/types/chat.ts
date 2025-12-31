@@ -12,12 +12,6 @@ export interface ChatMessageRequest {
     user: string;
     company_id: number;
     area_id: number;
-    id_ia_area: number;
-    similarity_threshold: number;
-    alpha: number;
-    temperature: number;
-    max_tokens: number;
-    top_k: number;
 }
 
 export interface AgentMessageRequest {
@@ -26,12 +20,6 @@ export interface AgentMessageRequest {
     user: string;
     company_id: number;
     area_id: number;
-    id_ia_area: number;
-    similarity_threshold: number;
-    alpha: number;
-    temperature: number;
-    max_tokens: number;
-    top_k: number;
     external_token: string;
 }
 

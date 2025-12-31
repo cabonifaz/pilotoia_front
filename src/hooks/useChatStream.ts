@@ -4,7 +4,7 @@ import { queryKeys } from '../lib/queryClient';
 import { chatApi, type ChatMessageRequest, type AgentMessageRequest } from '../api/chatApi';
 import { showStreamingErrorToast } from '../utils/errorHandler';
 import { type Message } from '@/types/message';
-import { type AIConfig, type ChatContext } from '@/types/aiConfig';
+import { type ChatContext } from '@/types/aiConfig';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -41,8 +41,8 @@ export type StreamEvent = ChunkEvent | CompleteEvent | ErrorEvent | AssistantMet
 interface UseChatStreamReturn {
   isLoading: boolean;
   streamingMessageId: string | null;
-  searchVectorial: (message: string, config: AIConfig, chatContext: ChatContext) => Promise<void>;
-  searchVectorialSQL: (message: string, config: AIConfig, chatContext: ChatContext, token: string) => Promise<void>;
+  searchVectorial: (message: string, chatContext: ChatContext) => Promise<void>;
+  searchVectorialSQL: (message: string, chatContext: ChatContext, token: string) => Promise<void>;
   cancelMessage: () => void;
   currentChatId: number | null;
 }
@@ -197,7 +197,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     };
   }, []);
 
-  const searchVectorial = useCallback(async (messageContent: string, aiConfig: AIConfig, chatContext: ChatContext) => {
+  const searchVectorial = useCallback(async (messageContent: string, chatContext: ChatContext) => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
@@ -228,8 +228,11 @@ export const useChatStream = (): UseChatStreamReturn => {
         message: messageContent,
         created_at: Date.now().toString(),
         request_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        ...aiConfig,
-        ...chatContext
+        user_id: chatContext.user_id,
+        user: chatContext.user,
+        company_id: chatContext.company_id,
+        area_id: chatContext.area_id,
+        chat_id: chatContext.chat_id
       };
 
       // Remove titulo if chat_id is not null (existing chat)
@@ -384,7 +387,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     }
   }, [updateStreamingContent, addMessagesToCache, updateMessageInCache, streamingMessageId]);
 
-  const searchVectorialSQL = useCallback(async (messageContent: string, aiConfig: AIConfig, chatContext: ChatContext, token: string) => {
+  const searchVectorialSQL = useCallback(async (messageContent: string, chatContext: ChatContext, token: string) => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
@@ -416,8 +419,11 @@ export const useChatStream = (): UseChatStreamReturn => {
         created_at: Date.now().toString(),
         request_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         external_token: token,
-        ...aiConfig,
-        ...chatContext
+        user_id: chatContext.user_id,
+        user: chatContext.user,
+        company_id: chatContext.company_id,
+        area_id: chatContext.area_id,
+        chat_id: chatContext.chat_id
       };
 
       // Remove titulo if chat_id is not null (existing chat)

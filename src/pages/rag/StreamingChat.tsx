@@ -6,7 +6,7 @@ import ChatComponent from '../../components/chat/ChatComponent';
 import { AIConfigSidebar } from '../../components/aiConfigPanel/AIConfigSidebar';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 import { useChatState } from '../../contexts/ChatStateContext';
-import { type AIConfig, type ChatContext } from '@/types/aiConfig';
+import { type ChatContext } from '@/types/aiConfig';
 import { Loader } from '@/components/loader/Loader';
 
 const StreamingChat = () => {
@@ -15,19 +15,6 @@ const StreamingChat = () => {
   const { setSelectedChatId, setIsStreaming, setHandlers } = useChatState();
   const chatSelectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isConfigSidebarOpen, setIsConfigSidebarOpen] = useState(false);
-
-  const closeConfigSidebar = () => {
-    setIsConfigSidebarOpen(false);
-  };
-
-  const [aiConfig, setAiConfig] = useState<AIConfig>({
-    similarity_threshold: 0.65,
-    alpha: 0.75,
-    temperature: 0.3,
-    max_tokens: 4096,
-    top_k: 20,
-  });
-
   const [chatContext, setChatContext] = useState<ChatContext | null>(null);
   const previousCompanyAreaRef = useRef<string | null>(null);
 
@@ -61,7 +48,6 @@ const StreamingChat = () => {
           company: actualCompanyArea.EMPRESA,
           area_id: actualCompanyArea.ID_AREA,
           area: actualCompanyArea.AREA,
-          id_ia_area: actualCompanyArea.ID_IA_AREA,
           chat_id: savedChatId ? parseInt(savedChatId) : null,
         };
 
@@ -71,18 +57,6 @@ const StreamingChat = () => {
         if (savedChatId) {
           setSelectedChatId(parseInt(savedChatId));
         }
-      }
-
-      // Update AI config if actualCompanyArea has AI parameters
-      if (actualCompanyArea) {
-        setAiConfig(prevConfig => ({
-          ...prevConfig,
-          ...(actualCompanyArea.RAG_SIMILARITY_THRESHOLD !== undefined && { similarity_threshold: actualCompanyArea.RAG_SIMILARITY_THRESHOLD }),
-          ...(actualCompanyArea.RAG_ALPHA !== undefined && { alpha: actualCompanyArea.RAG_ALPHA }),
-          ...(actualCompanyArea.LLM_TEMPERATURE !== undefined && { temperature: actualCompanyArea.LLM_TEMPERATURE }),
-          ...(actualCompanyArea.LLM_MAX_TOKENS !== undefined && { max_tokens: actualCompanyArea.LLM_MAX_TOKENS }),
-          ...(actualCompanyArea.RAG_TOP_K_RESULTS !== undefined && { top_k: actualCompanyArea.RAG_TOP_K_RESULTS }),
-        }));
       }
     }
   }, [user]);
@@ -161,7 +135,6 @@ const StreamingChat = () => {
             <div className="flex-1 flex flex-col overflow-hidden min-h-0 h-full">
               <div className="flex-1 rounded-lg overflow-hidden min-h-0 h-full">
                 <ChatComponent
-                  aiConfig={aiConfig}
                   chatContext={chatContext}
                   onChatIdChange={handleChatIdChange}
                   onStreamingStateChange={handleStreamingStateChange}
@@ -186,14 +159,12 @@ const StreamingChat = () => {
           </div>
 
           {/* Right Sidebar - Config Panel */}
-          {user?.id_tipo_rol !== 3 && (
+          {user?.id_tipo_rol !== 3 && chatContext && isConfigSidebarOpen && (
             <AIConfigSidebar
               isOpen={isConfigSidebarOpen}
-              config={aiConfig}
-              chatContext={chatContext}
-              onClose={closeConfigSidebar}
-              onConfigChange={setAiConfig}
-              onChatContextChange={setChatContext}
+              onClose={() => setIsConfigSidebarOpen(false)}
+              id_empresa={chatContext.company_id}
+              id_area={chatContext.area_id}
             />
           )}
         </div>
