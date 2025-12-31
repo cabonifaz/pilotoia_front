@@ -6,7 +6,19 @@ import { cn } from '@/lib/utils';
 import { ChatListSidebar } from './ChatListSidebar';
 import UserDropdown from '../user/UserDropdown';
 import CompanyAreaDropdown from '../user/CompanyAreaDropdown';
-import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
+import { useMenuItems } from '../../hooks/useMenuItems';
+import type { LucideIcon } from 'lucide-react';
+
+// Icon mapping: convierte strings a componentes de Lucide React
+const iconMap: Record<string, LucideIcon> = {
+  MessageCircle,
+  Clipboard,
+  Building2,
+  Network,
+  User,
+  Bot,
+  BrainCircuit,
+};
 
 interface SidebarProps {
   isStreaming?: boolean;
@@ -21,7 +33,6 @@ const Sidebar = ({
 }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useQueryAuthContext();
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = sessionStorage.getItem('sidebar-collapsed');
     return saved ? JSON.parse(saved) : false;
@@ -36,20 +47,40 @@ const Sidebar = ({
     setIsMobileMenuOpen(false); // Close mobile menu on navigation
   };
 
-  const navigationItems = [
-    { path: '/rag', label: 'Chat', icon: MessageCircle, allowedRoles: [1, 2, 3] },
-    { path: '/upload', label: 'Documentos', icon: Clipboard, allowedRoles: [1, 2] },
-    { path: '/company', label: 'Empresas', icon: Building2, allowedRoles: [1] },
-    { path: '/area', label: 'Áreas', icon: Network, allowedRoles: [1, 2] },
-    { path: '/users', label: 'Usuarios', icon: User, allowedRoles: [1, 2] },
-    { path: '/agents', label: 'Agentes', icon: Bot, allowedRoles: [1, 2] },
-    { path: '/ai-models', label: 'Modelos IA', icon: BrainCircuit, allowedRoles: [1] },
-  ].filter(item => {
-    if (!item.allowedRoles) return true; // si no tiene restricción, se muestra
-    return item.allowedRoles.includes(user?.id_tipo_rol ?? -1); // compara rol
-  });
+  // Fetch menu items from backend
+  const { menuItems, isLoading } = useMenuItems();
+
+  // Transform backend data to navigation items format
+  // Transform backend data to navigation items format
+  // Filtrar items que tengan PATH y LABEL (ignorar info de usuario)
+  const navigationItems = menuItems
+    .filter(item => item.PATH && item.LABEL)
+    .map(item => ({
+      path: item.PATH,
+      label: item.LABEL,
+      icon: iconMap[item.ICON] || MessageCircle,
+      order: item.NUM2,
+    }));
 
   const isActive = (path: string) => location.pathname === path;
+
+  // Show loading state while fetching menu items
+  if (isLoading) {
+    return (
+      <aside
+        className={cn(
+          'bg-muted border-r border-border flex items-center justify-center',
+          'fixed md:static inset-y-0 left-0 z-40',
+          'w-60',
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
+          'md:translate-x-0',
+          isCollapsed ? 'md:w-14' : 'md:w-60'
+        )}
+      >
+        <div className="text-sm text-muted-foreground">Cargando menú...</div>
+      </aside>
+    );
+  }
 
   return (
     <aside
