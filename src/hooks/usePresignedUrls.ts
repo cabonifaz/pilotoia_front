@@ -22,7 +22,7 @@ export const usePresignedUrls = () => {
     mutationFn: async ({ files, areaId: selectedAreaId, embeddingModel: selectedEmbeddingModel }: UploadPdfsParams): Promise<BatchUploadKnowledgeResponse & { uploadCompanyId: number; uploadAreaId: number }> => {
       const companyId = user?.actual_company_area?.ID_EMPRESA;
       const areaId = selectedAreaId;
-      const embeddingModel = selectedEmbeddingModel || user?.actual_company_area?.ID_EMBEDDINGS?.toString() || '4';
+      const embeddingModel = selectedEmbeddingModel || '4';
 
       if (!companyId || !areaId) {
         throw new Error('Información de empresa/área incompleta');
