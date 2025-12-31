@@ -53,12 +53,23 @@ export const UsersSidebarAccess = ({
         const selectedAreaIds = areasData.areas
           .filter((area) => userAreas.includes(area.AREA))
           .map((area) => area.ID_AREA);
-        setSelectedAreas(selectedAreaIds);
+
+        // If no areas matched (or only General/Default which are hidden), default to General
+        if (selectedAreaIds.length === 0 && generalAreaId) {
+          setSelectedAreas([generalAreaId]);
+        } else {
+          setSelectedAreas(selectedAreaIds);
+        }
       } else {
-        setSelectedAreas([]);
+        // If no user areas, default to General
+        if (generalAreaId) {
+          setSelectedAreas([generalAreaId]);
+        } else {
+          setSelectedAreas([]);
+        }
       }
     }
-  }, [isOpen, selectedUser, areasData, userAreas]);
+  }, [isOpen, selectedUser, areasData, userAreas, generalAreaId]);
 
   // Reset state when sidebar closes
   useEffect(() => {
@@ -105,14 +116,27 @@ export const UsersSidebarAccess = ({
   };
 
   const handleAreaToggle = (areaId: number) => {
-    setSelectedAreas((prevAreas) =>
-      prevAreas.includes(areaId)
-        ? prevAreas.filter((id) => id !== areaId)
-        : [...prevAreas, areaId]
-    );
+    setSelectedAreas((prevAreas) => {
+      if (prevAreas.includes(areaId)) {
+        // Unchecking an area
+        const newAreas = prevAreas.filter((id) => id !== areaId);
+        // If no areas left for Usuario (role 3), revert to General
+        if (newAreas.length === 0 && idTipoRol === '3' && generalAreaId) {
+          return [generalAreaId];
+        }
+        return newAreas;
+      } else {
+        // Checking an area
+        // For Usuario (role 3), remove General if it's there and add the new area
+        if (idTipoRol === '3' && generalAreaId && prevAreas.includes(generalAreaId)) {
+          return [areaId];
+        }
+        return [...prevAreas, areaId];
+      }
+    });
   };
 
-  // Auto-select General area when role changes to Administrador (2)
+  // Auto-select General area when role changes to Administrador (2) or Usuario (3)
   useEffect(() => {
     if (idTipoRol === '2') {
       // Administrador: automatically select General area
@@ -125,8 +149,15 @@ export const UsersSidebarAccess = ({
         }
       }
     } else if (idTipoRol === '3') {
-      // Usuario: reset areas to empty
-      setSelectedAreas([]);
+      // Usuario: automatically select General area by default
+      if (generalAreaId) {
+        setSelectedAreas([generalAreaId]);
+      } else if (areasData?.areas) {
+        const generalArea = areasData.areas.find((area) => area.AREA === 'General');
+        if (generalArea) {
+          setSelectedAreas([generalArea.ID_AREA]);
+        }
+      }
     }
   }, [idTipoRol, generalAreaId, areasData]);
 
@@ -153,7 +184,13 @@ export const UsersSidebarAccess = ({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-xs">Actualizar acceso</CardTitle>
-              <CardDescription className="text-xs">Actualice el rol y áreas del usuario.</CardDescription>
+              <CardDescription className="text-xs">
+                {(user as any)?.actual_company_area?.EMPRESA && (
+                  <span className="font-semibold">{(user as any)?.actual_company_area?.EMPRESA}</span>
+                )}
+                {(user as any)?.actual_company_area?.EMPRESA && ' - '}
+                Actualice el rol y áreas del usuario.
+              </CardDescription>
             </div>
             <Button
               variant="ghost"
@@ -170,7 +207,7 @@ export const UsersSidebarAccess = ({
           {/* Usuario Display */}
           <div className="space-y-2">
             <Label className="text-xs">Usuario</Label>
-            <div className="text-sm font-medium p-2 bg-muted rounded-md">
+            <div className="text-xs font-medium p-2 bg-muted rounded-md">
               {selectedUser?.USUARIO || 'N/A'}
             </div>
           </div>
@@ -179,10 +216,10 @@ export const UsersSidebarAccess = ({
           <div className="space-y-2">
             <Label className="text-xs">Rol</Label>
             <Select value={idTipoRol} onValueChange={setIdTipoRol} disabled={isPending}>
-              <SelectTrigger>
+              <SelectTrigger className="h-9">
                 <SelectValue placeholder="Selecciona un rol" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="text-sm">
                 <SelectItem value="2">Administrador</SelectItem>
                 <SelectItem value="3">Usuario</SelectItem>
               </SelectContent>
@@ -211,7 +248,7 @@ export const UsersSidebarAccess = ({
                       htmlFor={`area-${area.ID_AREA}`}
                       className={`text-xs ${idTipoRol === '2' ? 'text-muted-foreground' : 'cursor-pointer'}`}
                     >
-                      {area.AREA}
+                      {idTipoRol === '2' && area.AREA === 'General' ? <strong>Todas</strong> : area.AREA}
                     </label>
                   </div>
                 ))

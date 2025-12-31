@@ -134,7 +134,13 @@ export const UploadSidebar = ({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-xs">Agregar documentos</CardTitle>
-              <CardDescription className="text-xs">Agregue documentos a la empresa.</CardDescription>
+              <CardDescription className="text-xs">
+                {(user as any)?.actual_company_area?.EMPRESA && (
+                  <span className="font-semibold">{(user as any)?.actual_company_area?.EMPRESA}</span>
+                )}
+                {(user as any)?.actual_company_area?.EMPRESA && ' - '}
+                Agregue documentos a la empresa.
+              </CardDescription>
             </div>
             <Button
               variant="ghost"

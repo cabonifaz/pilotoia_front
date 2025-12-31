@@ -187,11 +187,15 @@ export const UsersTable = ({ searchTerm, sortBy, onEditUser, onChangePassword, o
                       <TableCell>{usuarioGroup[0].APELLIDOS}</TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1">
-                          {usuarioGroup.map((usuario) => (
-                            <span key={usuario.ID_USUARIO_EMPR_AREA}>
-                              {['Default', 'General'].includes(usuario.AREA) ? <strong>Todas</strong> : usuario.AREA}
-                            </span>
-                          ))}
+                          {usuarioGroup[0].ID_TIPO_ROL === 2 ? (
+                            <strong>Todas</strong>
+                          ) : (
+                            usuarioGroup.map((usuario) => (
+                              <span key={usuario.ID_USUARIO_EMPR_AREA}>
+                                {usuario.AREA}
+                              </span>
+                            ))
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>

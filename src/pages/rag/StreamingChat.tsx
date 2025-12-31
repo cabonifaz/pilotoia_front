@@ -145,7 +145,7 @@ const StreamingChat = () => {
 
           {/* Settings Button */}
           <div className="fixed top-20 right-4 z-10">
-            {user?.id_tipo_rol !== 3 && !isConfigSidebarOpen && (
+            {user?.id_tipo_rol == 1 && !isConfigSidebarOpen && (
               <Button
                 onClick={() => setIsConfigSidebarOpen(true)}
                 variant="ghost"
@@ -159,7 +159,7 @@ const StreamingChat = () => {
           </div>
 
           {/* Right Sidebar - Config Panel */}
-          {user?.id_tipo_rol !== 3 && chatContext && isConfigSidebarOpen && (
+          {user?.id_tipo_rol == 1 && chatContext && isConfigSidebarOpen && (
             <AIConfigSidebar
               isOpen={isConfigSidebarOpen}
               onClose={() => setIsConfigSidebarOpen(false)}

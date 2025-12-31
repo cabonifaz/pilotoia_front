@@ -120,7 +120,13 @@ export const AgentsSidebar = ({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-xs">Agregar agente</CardTitle>
-              <CardDescription className="text-xs">Agregue un nuevo agente.</CardDescription>
+              <CardDescription className="text-xs">
+                {(user as any)?.actual_company_area?.EMPRESA && (
+                  <span className="font-semibold">{(user as any)?.actual_company_area?.EMPRESA}</span>
+                )}
+                {(user as any)?.actual_company_area?.EMPRESA && ' - '}
+                Agregue un nuevo agente.
+              </CardDescription>
             </div>
             <Button
               variant="ghost"

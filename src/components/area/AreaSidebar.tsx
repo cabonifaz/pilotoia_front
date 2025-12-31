@@ -5,6 +5,7 @@ import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
 import { useCreateArea } from '@/hooks/useAreaQueries';
+import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 
 interface AreaSidebarProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const AreaSidebar = ({
   onClose,
   id_empresa,
 }: AreaSidebarProps) => {
+  const { user } = useQueryAuthContext();
   const [area, setArea] = useState('');
   const { mutate: createArea, isPending } = useCreateArea(id_empresa);
 
@@ -58,7 +60,13 @@ export const AreaSidebar = ({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-xs">Agregar área</CardTitle>
-              <CardDescription className="text-xs">Agregue una nueva área.</CardDescription>
+              <CardDescription className="text-xs">
+                {(user as any)?.actual_company_area?.EMPRESA && (
+                  <span className="font-semibold">{(user as any)?.actual_company_area?.EMPRESA}</span>
+                )}
+                {(user as any)?.actual_company_area?.EMPRESA && ' - '}
+                Agregue una nueva área.
+              </CardDescription>
             </div>
             <Button
               variant="ghost"
