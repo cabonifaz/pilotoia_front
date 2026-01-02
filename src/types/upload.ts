@@ -76,4 +76,5 @@ export interface KnowledgeLoadResponse {
   fecha_vectorizacion: string;
   fecha_finalizado: string;
   en_ejecucion: number;
+  ruta_documento: string;
 }
