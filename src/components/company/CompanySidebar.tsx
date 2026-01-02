@@ -55,9 +55,9 @@ export const CompanySidebar = ({
     >
       <Card className="h-full rounded-none border-0 flex flex-col">
         {/* Header del Sidebar */}
-        <CardHeader className="pb-3 border-b flex-shrink-0">
+        <CardHeader className="pt-3 pb-3 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="space-y-0.5">
               <CardTitle className="text-xs">Agregar empresa</CardTitle>
               <CardDescription className="text-xs">Agregue una nueva empresa.</CardDescription>
             </div>
