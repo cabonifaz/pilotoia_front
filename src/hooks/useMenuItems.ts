@@ -20,8 +20,8 @@ export const useMenuItemsQuery = () => {
       return response.menu_items;
     },
     enabled: isAuthenticated && !!user, // Only fetch if user is logged in
-    staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
-    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    staleTime: 24 * 60 * 60 * 1000, // 24h
+    gcTime: 24 * 60 * 60 * 1000, // 24h
     refetchOnWindowFocus: false, // Don't refetch on window focus
     retry: 2, // Retry failed requests twice
   });
