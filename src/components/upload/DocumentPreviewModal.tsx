@@ -25,14 +25,14 @@ export const DocumentPreviewModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] flex flex-col bg-white rounded-xl shadow-xl">
         {/* Header */}
-        <DialogHeader className="border-b px-4 py-2">
+        <DialogHeader className="border-b px-3 py-1">
           <DialogTitle className="text-lg font-semibold text-center w-full">
             {documentName || "Documento"}
           </DialogTitle>
         </DialogHeader>
 
         {/* PDF Viewer */}
-        <div className="flex-1 p-3 overflow-hidden">
+        <div className="flex-1 p-0 overflow-hidden">
           {loading && (
             <div className="flex items-center justify-center h-full">
               <LoaderCircle className="h-10 w-10 animate-spin text-muted-foreground" />
