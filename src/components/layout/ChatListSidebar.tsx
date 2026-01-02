@@ -185,7 +185,6 @@ export const ChatListSidebar = ({ isStreaming = false, isCollapsed = false }: Ch
           <div className="flex-1 space-y-0.5 overflow-y-auto min-h-0 px-1.5 mt-1">
             {sortedChats.length === 0 ? (
               <div className="text-center py-8">
-                <MessageCircle size={32} className="mx-auto text-gray-300 mb-2" />
                 <p className="text-xs text-gray-500">
                   No hay conversaciones
                 </p>

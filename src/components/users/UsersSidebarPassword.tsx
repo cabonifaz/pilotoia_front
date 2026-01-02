@@ -71,9 +71,9 @@ export const UsersSidebarPassword = ({
     >
       <Card className="h-full rounded-none border-0 flex flex-col">
         {/* Header del Sidebar */}
-        <CardHeader className="pb-3 border-b flex-shrink-0">
+        <CardHeader className="pt-3 pb-3 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="space-y-0.5">
               <CardTitle className="text-xs">Cambiar contraseña</CardTitle>
               <CardDescription className="text-xs">Actualice la contraseña del usuario.</CardDescription>
             </div>
@@ -89,6 +89,14 @@ export const UsersSidebarPassword = ({
 
         {/* Contenido scrollable con altura definida */}
         <CardContent className="flex-1 overflow-y-auto py-4 space-y-4">
+          {/* Usuario Display */}
+          <div className="space-y-2">
+            <Label className="text-xs">Usuario</Label>
+            <div className="text-xs font-medium p-2 bg-muted rounded-md">
+              {selectedUser?.USUARIO || 'N/A'}
+            </div>
+          </div>
+
           {/* Nueva Contraseña Input */}
           <div className="space-y-2">
             <Label htmlFor="newPassword" className="text-xs">Nueva contraseña</Label>

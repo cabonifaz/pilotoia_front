@@ -8,6 +8,7 @@ import { Switch } from '@/components/shadcn/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/select';
 import { useGetIaAreaConfig, useUpdateIaAreaConfig } from '@/hooks/useIaConfigQueries';
 import { useGetModels } from '@/hooks/useIAModelsQueries';
+import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 
 interface AIConfigSidebarProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export const AIConfigSidebar = ({
   id_empresa,
   id_area,
 }: AIConfigSidebarProps) => {
+  const { user } = useQueryAuthContext();
   const { mutate: updateIaConfig, isPending } = useUpdateIaAreaConfig(id_empresa, id_area);
   const { data: fetchedConfig, isLoading, error } = useGetIaAreaConfig(id_empresa, id_area);
   const { data: modelsData } = useGetModels();
@@ -114,11 +116,20 @@ export const AIConfigSidebar = ({
         }`}
       >
         <Card className="h-full rounded-none border-0 flex flex-col">
-          <CardHeader className="pb-3 border-b flex-shrink-0">
+          <CardHeader className="pt-3 pb-3 border-b flex-shrink-0">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="space-y-0.5">
                 <CardTitle className="text-xs">Configuración de IA</CardTitle>
-                <CardDescription className="text-xs">Ajusta los parámetros del modelo.</CardDescription>
+                <CardDescription className="text-xs">
+                  {(user as any)?.actual_company_area?.EMPRESA && (
+                    <span className="font-semibold">{(user as any)?.actual_company_area?.EMPRESA}</span>
+                  )}
+                  {(user as any)?.actual_company_area?.AREA && (
+                    <span className="font-semibold"> - {(user as any)?.actual_company_area?.AREA}</span>
+                  )}
+                  {(user as any)?.actual_company_area?.EMPRESA && ' - '}
+                  Ajusta los parámetros del modelo.
+                </CardDescription>
               </div>
               <button
                 onClick={onClose}
@@ -157,11 +168,20 @@ export const AIConfigSidebar = ({
     >
       <Card className="h-full rounded-none border-0 flex flex-col">
         {/* Header del Sidebar */}
-        <CardHeader className="pb-3 border-b flex-shrink-0">
+        <CardHeader className="pt-3 pb-3 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="space-y-0.5">
               <CardTitle className="text-xs">Configuración de IA</CardTitle>
-              <CardDescription className="text-xs">Ajusta los parámetros del modelo.</CardDescription>
+              <CardDescription className="text-xs">
+                {(user as any)?.actual_company_area?.EMPRESA && (
+                  <span className="font-semibold">{(user as any)?.actual_company_area?.EMPRESA}</span>
+                )}
+                {(user as any)?.actual_company_area?.AREA && (
+                  <span className="font-semibold"> - {(user as any)?.actual_company_area?.AREA}</span>
+                )}
+                {(user as any)?.actual_company_area?.EMPRESA && ' - '}
+                Ajusta los parámetros del modelo.
+              </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2">
