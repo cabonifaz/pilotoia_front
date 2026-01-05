@@ -21,7 +21,7 @@ export const useMenuItemsQuery = () => {
     },
     enabled: isAuthenticated && !!user, // Only fetch if user is logged in
     staleTime: 24 * 60 * 60 * 1000, // 24h
-    gcTime: 24 * 60 * 60 * 1000, // 24h
+    gcTime: 2 * 24 * 60 * 60 * 1000, // 2 days
     refetchOnWindowFocus: false, // Don't refetch on window focus
     retry: 2, // Retry failed requests twice
   });
