@@ -9,7 +9,6 @@ export interface MessageListResponse {
 export interface ChatMessageRequest {
     message: string;
     user_id: number;
-    user: string;
     company_id: number;
     area_id: number;
 }
@@ -17,7 +16,6 @@ export interface ChatMessageRequest {
 export interface AgentMessageRequest {
     message: string;
     user_id: number;
-    user: string;
     company_id: number;
     area_id: number;
     external_token: string;
