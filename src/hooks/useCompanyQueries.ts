@@ -16,6 +16,7 @@ export const useCreateCompany = () => {
       queryClient.invalidateQueries({ queryKey: ['user'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
       queryClient.invalidateQueries({ queryKey: ['companies'] });
+      queryClient.invalidateQueries({ queryKey: ['companies-login'] });
 
       // Get message from results array (SP response) or from result wrapper
       const successMessage = data.results?.[0]?.MENSAJE || data.result?.mensaje || 'Empresa creada exitosamente';
@@ -59,6 +60,7 @@ export const useUpdateCompanyStatus = () => {
       // Invalidate companies and company-areas queries to refetch updated data
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
+      queryClient.invalidateQueries({ queryKey: ['companies-login'] });
 
       // Get message from results array (SP response) or from result wrapper
       const successMessage = data.results?.[0]?.MENSAJE || data.result?.mensaje || 'Estado de empresa actualizado exitosamente';
@@ -81,55 +83,11 @@ export const useUpdateCompanyStatus = () => {
 };
 
 export const useGetCompaniesLogin = () => {
-  const CACHE_DURATION = import.meta.env.VITE_COMPANIES_CACHE_DURATION
-    ? Number(import.meta.env.VITE_COMPANIES_CACHE_DURATION)
-    : 1 * 60 * 60 * 1000; // Default: 1 hour in milliseconds
-  const STORAGE_KEY = 'companies-login';
-
   return useQuery({
     queryKey: ['companies-login'],
-    queryFn: async () => {
-      const data = await getCompaniesLogin();
-      // Store in localStorage with timestamp for expiration tracking
-      const cacheData = {
-        data,
-        timestamp: Date.now(),
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cacheData));
-      return data;
-    },
-    initialData: () => {
-      // Load from localStorage on initial load
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) return undefined;
-
-      try {
-        const cacheData = JSON.parse(stored);
-
-        // Check if cache has expired (older than 1 hour)
-        const isExpired = Date.now() - cacheData.timestamp > CACHE_DURATION;
-
-        if (isExpired) {
-          // DON'T delete expired cache - keep as fallback until successful refetch
-          // This prevents empty state if refetch fails or is delayed due to:
-          // - Browser throttling of background tabs
-          // - Network issues after long idle periods
-          // - Backend connection delays
-          // Cache will be updated/replaced on successful refetch
-        }
-
-        // Return cached data even if expired - better to show stale data than nothing
-        return cacheData.data;
-      } catch {
-        // Invalid cache data, remove it
-        localStorage.removeItem(STORAGE_KEY);
-        return undefined;
-      }
-    },
-    staleTime: CACHE_DURATION, // 1 hour
-    gcTime: CACHE_DURATION, // 1 hour
-    // Removed retry: false - now uses global config (3 retries with exponential backoff)
-    // This prevents permanent empty state if refetch fails after cache expiration
+    queryFn: getCompaniesLogin,
+    staleTime: 60 * 60 * 1000, // 1 hour - backend caches for 1 day
+    gcTime: 2 * 60 * 60 * 1000, // 2 hours - keep in memory longer
   });
 };
 
@@ -158,19 +116,6 @@ export const useUploadCompanyLogo = () => {
       queryClient.invalidateQueries({ queryKey: ['user'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
       queryClient.invalidateQueries({ queryKey: ['companies-login'] });
-
-      // Mark companies-login cache as expired (2 hours ago) to force refetch
-      const stored = localStorage.getItem('companies-login');
-      if (stored) {
-        try {
-          const cacheData = JSON.parse(stored);
-          cacheData.timestamp = Date.now() - (2 * 60 * 60 * 1000); // 2 hours ago
-          localStorage.setItem('companies-login', JSON.stringify(cacheData));
-        } catch (error) {
-          // If parsing fails, just remove it
-          localStorage.removeItem('companies-login');
-        }
-      }
 
       toast({
         title: 'Éxito',
