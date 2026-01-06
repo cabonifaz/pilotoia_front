@@ -8,7 +8,7 @@ import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 const AreaManagement = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
-  const [selectedAreaForAi, setSelectedAreaForAi] = useState<{ id_area: number; id_empresa: number } | null>(null);
+  const [selectedAreaForAi, setSelectedAreaForAi] = useState<{ id_area: number; id_empresa: number; area_name: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'area' | 'fecha_creacion' | null>(null);
   const { user } = useQueryAuthContext();
@@ -22,8 +22,8 @@ const AreaManagement = () => {
     setSelectedAreaForAi(null);
   };
 
-  const handleConfigureAi = (id_area: number, id_empresa: number) => {
-    setSelectedAreaForAi({ id_area, id_empresa });
+  const handleConfigureAi = (id_area: number, id_empresa: number, area_name: string) => {
+    setSelectedAreaForAi({ id_area, id_empresa, area_name });
     setIsAiSidebarOpen(true);
   };
 
@@ -99,6 +99,7 @@ const AreaManagement = () => {
           onClose={closeAiSidebar}
           id_empresa={selectedAreaForAi.id_empresa}
           id_area={selectedAreaForAi.id_area}
+          area_name={selectedAreaForAi.area_name}
         />
       )}
     </div>
