@@ -15,6 +15,7 @@ interface AreaAiSidebarProps {
   onClose: () => void;
   id_empresa: number;
   id_area: number;
+  area_name: string;
 }
 
 export const AreaAiSidebar = ({
@@ -22,6 +23,7 @@ export const AreaAiSidebar = ({
   onClose,
   id_empresa,
   id_area,
+  area_name,
 }: AreaAiSidebarProps) => {
   const { user } = useQueryAuthContext();
   const { mutate: updateIaConfig, isPending } = useUpdateIaAreaConfig(id_empresa, id_area);
@@ -124,8 +126,8 @@ export const AreaAiSidebar = ({
                   {(user as any)?.actual_company_area?.EMPRESA && (
                     <span className="font-semibold">{(user as any)?.actual_company_area?.EMPRESA}</span>
                   )}
-                  {(user as any)?.actual_company_area?.AREA && (
-                    <span className="font-semibold"> - {(user as any)?.actual_company_area?.AREA}</span>
+                  {area_name && (
+                    <span className="font-semibold"> - {area_name}</span>
                   )}
                   {(user as any)?.actual_company_area?.EMPRESA && ' - '}
                   Ajusta los parámetros del modelo.
@@ -176,8 +178,8 @@ export const AreaAiSidebar = ({
                 {(user as any)?.actual_company_area?.EMPRESA && (
                   <span className="font-semibold">{(user as any)?.actual_company_area?.EMPRESA}</span>
                 )}
-                {(user as any)?.actual_company_area?.AREA && (
-                  <span className="font-semibold"> - {(user as any)?.actual_company_area?.AREA}</span>
+                {area_name && (
+                  <span className="font-semibold"> - {area_name}</span>
                 )}
                 {(user as any)?.actual_company_area?.EMPRESA && ' - '}
                 Ajusta los parámetros del modelo.

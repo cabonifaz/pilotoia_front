@@ -24,7 +24,7 @@ const formatDate = (isoDate: string): string => {
 interface AreaTableProps {
   searchTerm: string;
   sortBy: 'area' | 'fecha_creacion' | null;
-  onConfigureAi?: (areaId: number, idEmpresa: number) => void;
+  onConfigureAi?: (areaId: number, idEmpresa: number, areaName: string) => void;
 }
 
 export const AreaTable = ({ searchTerm, sortBy, onConfigureAi }: AreaTableProps) => {
@@ -295,7 +295,7 @@ export const AreaTable = ({ searchTerm, sortBy, onConfigureAi }: AreaTableProps)
                           onEdit={() => handleEditArea(area.ID_AREA, area.AREA)}
                           onDelete={handleDeleteArea}
                           onReactivate={handleReactivateArea}
-                          onConfigureAi={onConfigureAi ? () => onConfigureAi(area.ID_AREA, id_empresa) : undefined}
+                          onConfigureAi={onConfigureAi ? () => onConfigureAi(area.ID_AREA, id_empresa, area.AREA) : undefined}
                         />
                       </TableCell>
                     </TableRow>
