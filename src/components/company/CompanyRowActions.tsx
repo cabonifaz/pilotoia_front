@@ -1,4 +1,4 @@
-import { Trash2, RotateCw, MoreVertical, Image } from 'lucide-react';
+import { Trash2, RotateCw, MoreVertical, Image, Link } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import {
   DropdownMenu,
@@ -11,18 +11,22 @@ import {
 interface CompanyRowActionsProps {
   companyId: number;
   status: number; // 1 = Activo, 0 = Inactivo
+  secretKey: string;
   onDelete: (companyId: number) => void;
   onReactivate: (companyId: number) => void;
   onUpdateLogo: (companyId: number) => void;
+  onGenerateURL: (secretKey: string) => void;
   isPending?: boolean;
 }
 
 export const CompanyRowActions = ({
   companyId,
   status,
+  secretKey,
   onDelete,
   onReactivate,
   onUpdateLogo,
+  onGenerateURL,
   isPending = false,
 }: CompanyRowActionsProps) => {
   const isActive = status === 1;
@@ -60,6 +64,7 @@ export const CompanyRowActions = ({
           </>
         )}
         {isActive ? (
+          <>
           <DropdownMenuItem
             onClick={() => onDelete(companyId)}
             disabled={isPending}
@@ -68,6 +73,17 @@ export const CompanyRowActions = ({
             <Trash2 className="h-4 w-4" />
             <span>Desactivar</span>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+              onClick={() => onGenerateURL(secretKey)}
+              disabled={isPending}
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              <Link className="h-4 w-4" />
+              <span>Generar URL</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            </>
         ) : (
           <DropdownMenuItem
             onClick={() => onReactivate(companyId)}

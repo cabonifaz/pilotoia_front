@@ -23,6 +23,7 @@ export interface Company {
   FCHCRE: string;
   ID_ESTADO_REGISTRO: number;
   LOGO: string | null;
+  SECRET_KEY: string;
 }
 
 export interface GetCompaniesResponse {

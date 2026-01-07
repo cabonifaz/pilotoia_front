@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader } from '@/components/loader/Loader';
 import { useGetCompanies, useUpdateCompanyStatus } from '@/hooks/useCompanyQueries';
 import { CompanyRowActions } from '@/components/company';
+import { toast } from '@/hooks/use-toast';
 
 // Format date to readable format
 const formatDate = (isoDate: string): string => {
@@ -46,7 +47,26 @@ export const CompanyTable = ({ searchTerm, sortBy, onUpdateLogo }: CompanyTableP
       status: 1
     });
   };
+const handleGenerateURL = (secretKey: string) => {
+  const url = `${window.location.origin}/#/?ref=${secretKey}`;
 
+  navigator.clipboard.writeText(url)
+    .then(() => {
+      toast({
+        title: "URL copiada",
+        description: "La URL de la empresa fue copiada al portapapeles.",
+        variant: "success",
+      }); // Muestra mensaje de éxito
+    })
+    .catch((err) => {
+      toast({
+        title: "Error",
+        description: "Hubo un problema al copiar la URL.",
+        variant: "warning",
+      });  // Muestra mensaje de error si ocurre algo
+      console.error('Error al copiar la URL:', err);
+    });
+};
   // Calculate items per page based on available height
   useEffect(() => {
     const calculateItemsPerPage = () => {
@@ -75,6 +95,7 @@ export const CompanyTable = ({ searchTerm, sortBy, onUpdateLogo }: CompanyTableP
   }, [searchTerm, sortBy]);
 
   const processedCompanies = useMemo(() => {
+    console.log('companies data:', data?.companies);
     if (!data?.companies) return [];
 
     return data.companies
@@ -178,9 +199,11 @@ export const CompanyTable = ({ searchTerm, sortBy, onUpdateLogo }: CompanyTableP
                         <CompanyRowActions
                           companyId={company.ID_EMPRESA}
                           status={company.ID_ESTADO_REGISTRO}
+                          secretKey={company.SECRET_KEY}
                           onDelete={handleDeleteCompany}
                           onReactivate={handleReactivateCompany}
                           onUpdateLogo={onUpdateLogo}
+                          onGenerateURL={handleGenerateURL}
                           isPending={updateCompanyStatus.isPending}
                         />
                       </TableCell>
