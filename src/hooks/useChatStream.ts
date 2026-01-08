@@ -18,6 +18,10 @@ export type ErrorEvent = {
     mensaje: string;
   };
 };
+export type ProgressEvent = {
+  type: "progress";
+  message: string;
+};
 export type AssistantMetadataEvent = {
   type: "assistant_metadata";
   sender: number;
@@ -36,11 +40,12 @@ export type ChatCreatedEvent = {
 };
 export type UnknownEvent = { type: string } & JsonRecord;
 
-export type StreamEvent = ChunkEvent | CompleteEvent | ErrorEvent | AssistantMetadataEvent | ChatCreatedEvent | UnknownEvent;
+export type StreamEvent = ChunkEvent | CompleteEvent | ErrorEvent | ProgressEvent | AssistantMetadataEvent | ChatCreatedEvent | UnknownEvent;
 
 interface UseChatStreamReturn {
   isLoading: boolean;
   streamingMessageId: string | null;
+  progressMessage: string | null;
   searchVectorial: (message: string, chatContext: ChatContext) => Promise<void>;
   searchVectorialSQL: (message: string, chatContext: ChatContext, token: string) => Promise<void>;
   cancelMessage: () => void;
@@ -74,6 +79,11 @@ function asStreamEvent(u: unknown): StreamEvent | undefined {
     return { type: "error", message, result };
   }
 
+  if (t === "progress") {
+    const message = isString(u["message"]) ? u["message"] : "Procesando...";
+    return { type: "progress", message };
+  }
+
   if (t === "assistant_metadata") {
     const sender = typeof u["sender"] === "number" ? u["sender"] : 1; // default to AI
     const created_at = isString(u["created_at"]) ? u["created_at"] : Date.now().toString();
@@ -88,6 +98,7 @@ export const useChatStream = (): UseChatStreamReturn => {
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [progressMessage, setProgressMessage] = useState<string | null>(null);
   const [currentChatId, setCurrentChatId] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const streamingContentRef = useRef<string>('');
@@ -201,6 +212,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
+    setProgressMessage(null); // Reset progress message
 
     // Reset streaming content ref
     streamingContentRef.current = '';
@@ -248,6 +260,11 @@ export const useChatStream = (): UseChatStreamReturn => {
           if (!evt) return;
 
           switch (evt.type) {
+            case "progress":
+              // Update progress message
+              const progressEvt = evt as ProgressEvent;
+              setProgressMessage(progressEvt.message);
+              break;
             case "metadata":
               // Extract chat_id from metadata if present
               if (isRecord(evt) && typeof evt.chat_id === 'number') {
@@ -310,6 +327,7 @@ export const useChatStream = (): UseChatStreamReturn => {
               }
               break;
             case "complete":
+              setProgressMessage(null); // Clear progress message on completion
               controller.abort();
               break;
             case "error":
@@ -326,6 +344,7 @@ export const useChatStream = (): UseChatStreamReturn => {
                 updateMessageInCache(activeChatIdRef.current, streamingMessageIdRef.current, { message: `Error: ${errorMessage}` });
               }
 
+              setProgressMessage(null); // Clear progress message on error
               controller.abort();
               break;
             default:
@@ -391,6 +410,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     if (!messageContent.trim()) return;
 
     setIsLoading(true);
+    setProgressMessage(null); // Reset progress message
 
     // Reset streaming content ref
     streamingContentRef.current = '';
@@ -439,6 +459,11 @@ export const useChatStream = (): UseChatStreamReturn => {
           if (!evt) return;
 
           switch (evt.type) {
+            case "progress":
+              // Update progress message
+              const progressEvt = evt as ProgressEvent;
+              setProgressMessage(progressEvt.message);
+              break;
             case "metadata":
               // Extract chat_id from metadata if present
               if (isRecord(evt) && typeof evt.chat_id === 'number') {
@@ -501,6 +526,7 @@ export const useChatStream = (): UseChatStreamReturn => {
               }
               break;
             case "complete":
+              setProgressMessage(null); // Clear progress message on completion
               controller.abort();
               break;
             case "error":
@@ -517,6 +543,7 @@ export const useChatStream = (): UseChatStreamReturn => {
                 updateMessageInCache(activeChatIdRef.current, streamingMessageIdRef.current, { message: `Error: ${errorMessage}` });
               }
 
+              setProgressMessage(null); // Clear progress message on error
               controller.abort();
               break;
             default:
@@ -580,6 +607,7 @@ export const useChatStream = (): UseChatStreamReturn => {
   return {
     isLoading,
     streamingMessageId,
+    progressMessage,
     searchVectorial,
     searchVectorialSQL,
     cancelMessage,
