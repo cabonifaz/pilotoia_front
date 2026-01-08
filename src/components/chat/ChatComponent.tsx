@@ -12,6 +12,9 @@ import { TranscriptionProvider } from '../../contexts/TranscriptionContext';
 import { type ChatContext } from '@/types/aiConfig';
 import { Loader } from '@/components/loader/Loader';
 import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
+import { Card, CardHeaderCompact, CardContentCompact } from '@/components/shadcn/card';
+import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
+import { Bot, Loader2 } from 'lucide-react';
 
 interface ChatComponentProps {
   chatContext: ChatContext;
@@ -46,7 +49,7 @@ const ChatComponent = ({ chatContext, onChatIdChange, onStreamingStateChange, on
   );
 
   // Get streaming functions
-  const { isLoading, streamingMessageId, searchVectorial, searchVectorialSQL, cancelMessage, currentChatId } = useChatStream();
+  const { isLoading, streamingMessageId, progressMessage, searchVectorial, searchVectorialSQL, cancelMessage, currentChatId } = useChatStream();
   const { isAuthenticated, token } = useExternalLogin();
 
 // Get logo URL from actual company area
@@ -235,9 +238,33 @@ const ChatComponent = ({ chatContext, onChatIdChange, onStreamingStateChange, on
                     key={message.id}
                     message={message}
                     streamingMessageId={streamingMessageId}
+                    progressMessage={progressMessage}
                     user={chatContext.user}
                   />
                 ))}
+                {/* Show progress indicator before message bubble is created */}
+                {isLoading && progressMessage && !streamingMessageId && (
+                  <div className="mb-6 flex justify-start">
+                    <Card className="max-w-[80%] border-0 shadow-none bg-background">
+                      <CardHeaderCompact className="pb-2">
+                        <div className="flex items-center gap-2 text-xs">
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback className="text-xs">
+                              <Bot className="h-4 w-4" />
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium">AI</span>
+                        </div>
+                      </CardHeaderCompact>
+                      <CardContentCompact>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{progressMessage}</span>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        </div>
+                      </CardContentCompact>
+                    </Card>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex-shrink-0 flex">

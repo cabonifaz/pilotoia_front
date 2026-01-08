@@ -1,6 +1,6 @@
-import { memo, useState, useEffect } from 'react';
+import { memo } from 'react';
 import 'katex/dist/katex.min.css';
-import { User, Bot } from 'lucide-react';
+import { User, Bot, Loader2 } from 'lucide-react';
 import { Card, CardHeaderCompact, CardContentCompact } from '@/components/shadcn/card';
 import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
 import { Badge } from '@/components/shadcn/badge';
@@ -10,6 +10,7 @@ import { MessageContent, fixTableMarkdown, addDisplayStyle } from './MessageCont
 interface MessageBubbleProps {
   message: Message;
   streamingMessageId?: string | null;
+  progressMessage?: string | null;
   user: string;
 }
 
@@ -24,26 +25,7 @@ const hasTableOrList = (text: string): boolean => {
   return patterns.some(pattern => pattern.test(text));
 };
 
-// Animated spinner component for streaming indicator
-const SpinnerCursor = () => {
-  const frames = ['◐', '◓', '◑', '◒'];
-  const [frame, setFrame] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setFrame(prev => (prev + 1) % frames.length);
-    }, 150); // Change frame every 150ms
-
-    return () => clearInterval(interval);
-  }, []);
-
-  return <span className="inline-block ml-0.5">{frames[frame]}</span>;
-};
-
-
-export const MessageBubble = memo(({ message, streamingMessageId, user }: MessageBubbleProps) => {
-  console.log('Raw message:', message.message);
-
+export const MessageBubble = memo(({ message, streamingMessageId, progressMessage, user }: MessageBubbleProps) => {
   const messageType = getMessageType(message.sender);
   const timestamp = parseMessageTimestamp(message.created_at);
   const isTableOrList = hasTableOrList(message.message);
@@ -52,6 +34,16 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
   const cleanContent = message.message.replace(/<br\s*\/?>/gi, '');
   const withDisplayStyle = addDisplayStyle(cleanContent);
   const processedContent = isTableOrList ? fixTableMarkdown(withDisplayStyle) : withDisplayStyle;
+
+  // Determine what to show when message is empty (streaming placeholder)
+  const getPlaceholderText = () => {
+    if (messageType === 'user') return '';
+    // Show progress message if available and this is the streaming message
+    if (streamingMessageId === message.id && progressMessage) {
+      return progressMessage;
+    }
+    return 'Pensando...';
+  };
 
   // Get display name based on sender
   const getDisplayName = () => {
@@ -92,10 +84,10 @@ export const MessageBubble = memo(({ message, streamingMessageId, user }: Messag
       <CardContentCompact>
         <div className="overflow-hidden">
           <MessageContent
-            content={processedContent || (messageType !== 'user' ? 'Pensando...' : '')}
+            content={processedContent || getPlaceholderText()}
             isTableOrList={isTableOrList}
           />
-          {streamingMessageId === message.id && <SpinnerCursor />}
+          {streamingMessageId === message.id && <Loader2 className="inline-block ml-0.5 h-3 w-3 animate-spin" />}
         </div>
       </CardContentCompact>
     </Card>
