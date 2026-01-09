@@ -92,7 +92,7 @@ export const AiSidebar = ({
 
   return (
     <div
-      className={`fixed top-16 bottom-0 right-0 w-96 bg-background border-l shadow-lg transform transition-all duration-300 flex flex-col ${
+      className={`fixed top-16 bottom-0 right-0 w-96 bg-background border-l shadow-lg transform transition-all duration-300 flex flex-col z-50 ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}
     >
