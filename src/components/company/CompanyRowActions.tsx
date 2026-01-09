@@ -1,36 +1,36 @@
-import { Trash2, RotateCw, MoreVertical, Image } from 'lucide-react';
-import { Button } from '@/components/shadcn/button';
+import { Trash2, RotateCw, MoreVertical, Image, Link } from "lucide-react";
+import { Button } from "@/components/shadcn/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from '@/components/shadcn/dropdown-menu';
+} from "@/components/shadcn/dropdown-menu";
 
 interface CompanyRowActionsProps {
   companyId: number;
   status: number; // 1 = Activo, 0 = Inactivo
+  secretKey: string;
   onDelete: (companyId: number) => void;
   onReactivate: (companyId: number) => void;
   onUpdateLogo: (companyId: number) => void;
+  onGenerateURL: (secretKey: string) => void;
   isPending?: boolean;
 }
 
 export const CompanyRowActions = ({
   companyId,
   status,
+  secretKey,
   onDelete,
   onReactivate,
   onUpdateLogo,
+  onGenerateURL,
   isPending = false,
 }: CompanyRowActionsProps) => {
   const isActive = status === 1;
   const isDefaultCompany = companyId === 1;
-
-  if (isDefaultCompany) {
-    return null;
-  }
 
   return (
     <DropdownMenu>
@@ -46,37 +46,62 @@ export const CompanyRowActions = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {isActive && (
-          <>
-            <DropdownMenuItem
-              onClick={() => onUpdateLogo(companyId)}
-              disabled={isPending}
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <Image className="h-4 w-4" />
-              <span>Actualizar logo</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </>
-        )}
-        {isActive ? (
+        {isDefaultCompany ? (
           <DropdownMenuItem
-            onClick={() => onDelete(companyId)}
+            onClick={() => onGenerateURL(secretKey)}
             disabled={isPending}
-            className="flex items-center gap-2 cursor-pointer text-red-600"
+            className="flex items-center gap-2 cursor-pointer"
           >
-            <Trash2 className="h-4 w-4" />
-            <span>Desactivar</span>
+            <Link className="h-4 w-4" />
+            <span>Generar URL</span>
           </DropdownMenuItem>
         ) : (
-          <DropdownMenuItem
-            onClick={() => onReactivate(companyId)}
-            disabled={isPending}
-            className="flex items-center gap-2 cursor-pointer text-green-600"
-          >
-            <RotateCw className="h-4 w-4" />
-            <span>Reactivar</span>
-          </DropdownMenuItem>
+          <>
+            {isActive && (
+              <>
+                <DropdownMenuItem
+                  onClick={() => onUpdateLogo(companyId)}
+                  disabled={isPending}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <Image className="h-4 w-4" />
+                  <span>Actualizar logo</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {isActive ? (
+              <>
+                <DropdownMenuItem
+                  onClick={() => onDelete(companyId)}
+                  disabled={isPending}
+                  className="flex items-center gap-2 cursor-pointer text-red-600"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Desactivar</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => onGenerateURL(secretKey)}
+                  disabled={isPending}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <Link className="h-4 w-4" />
+                  <span>Generar URL</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            ) : (
+              <DropdownMenuItem
+                onClick={() => onReactivate(companyId)}
+                disabled={isPending}
+                className="flex items-center gap-2 cursor-pointer text-green-600"
+              >
+                <RotateCw className="h-4 w-4" />
+                <span>Reactivar</span>
+              </DropdownMenuItem>
+            )}
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
