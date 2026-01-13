@@ -45,12 +45,21 @@ export const AgentsSidebar = ({
   const { data: areasData } = useGetAreas(id_empresa);
   const { data: phoneCodesData } = useGetPhoneCodes();
 
+  // Get General area ID for auto-default
+  const generalAreaId = areasData?.areas?.find((area) => area.AREA === 'General')?.ID_AREA;
+
   // Initialize areas when sidebar opens and areas data is available
   useEffect(() => {
     if (isOpen && areasData && !isInitialized) {
+      // Default to General area on initialization
+      if (generalAreaId) {
+        setSelectedAreas([generalAreaId]);
+      } else {
+        setSelectedAreas([]);
+      }
       setIsInitialized(true);
     }
-  }, [isOpen, areasData, isInitialized]);
+  }, [isOpen, areasData, isInitialized, generalAreaId]);
 
   // Reset state when sidebar closes
   useEffect(() => {
@@ -96,11 +105,24 @@ export const AgentsSidebar = ({
   };
 
   const handleAreaToggle = (areaId: number) => {
-    setSelectedAreas((prevAreas) =>
-      prevAreas.includes(areaId)
-        ? prevAreas.filter((id) => id !== areaId)
-        : [...prevAreas, areaId]
-    );
+    setSelectedAreas((prevAreas) => {
+      if (prevAreas.includes(areaId)) {
+        // Unchecking an area
+        const newAreas = prevAreas.filter((id) => id !== areaId);
+        // If no areas left, revert to General
+        if (newAreas.length === 0 && generalAreaId) {
+          return [generalAreaId];
+        }
+        return newAreas;
+      } else {
+        // Checking an area
+        // Remove General if it's there and add the new area
+        if (generalAreaId && prevAreas.includes(generalAreaId)) {
+          return [areaId];
+        }
+        return [...prevAreas, areaId];
+      }
+    });
   };
 
   // Filter areas: show all areas except Default and General
@@ -236,6 +258,9 @@ export const AgentsSidebar = ({
           {/* Áreas Checkboxes */}
           <div className="space-y-2">
             <Label className="text-xs">Áreas con Acceso</Label>
+            <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
+              La información del área General está disponible para todos los agentes
+            </p>
             <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
               {displayedAreas && displayedAreas.length > 0 ? (
                 displayedAreas.map((area) => (
