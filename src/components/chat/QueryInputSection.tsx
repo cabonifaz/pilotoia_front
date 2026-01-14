@@ -2,11 +2,10 @@ import { useRef, useEffect } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
 import { Square } from 'lucide-react';
-//import { VoiceRecordButton } from './VoiceRecordButton';
-//import { FileTranscribeButton } from './FileTranscribeButton';
+import { OpenAIVoiceRecordButton } from './OpenAIVoiceRecordButton';
 import { CommandMenu } from './CommandMenu';
 import { useCommand } from '../../contexts/CommandContext';
-//import { useTranscription } from '../../contexts/TranscriptionContext';
+import { useOpenAITranscribe } from '../../hooks/useOpenAITranscribe';
 
 interface QueryInputSectionProps {
   company: string;
@@ -20,6 +19,16 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
 
   // Get command state from context
   const { userQuery, onQueryChange, isLoading, onCancel, onSearchVectorial, selectedAction, onSearchVectorialSQL } = useCommand();
+
+  // Get OpenAI transcription hook
+  const {
+    isRecording,
+    isConnecting,
+    transcript,
+    startRecording,
+    stopRecording,
+    clearTranscript
+  } = useOpenAITranscribe();
 
   // Resize textarea to fit content
   const resizeTextarea = () => {
@@ -36,32 +45,34 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     resizeTextarea();
   };
 
-  /*const focusTextarea = () => {
+  const focusTextarea = () => {
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
-  };*/
+  };
 
   // Resize textarea whenever userQuery changes (e.g., from transcription)
   useEffect(() => {
     resizeTextarea();
   }, [userQuery]);
 
-  // Get transcription state from context
-  /*const {
-    transcribeProvider,
-    isRecording,
-    isConnecting,
-    onMicrophoneClick,
-    startMicrophoneRecording,
-    stopMicrophoneRecording,
-    isFileRecording,
-    isFileTranscribing,
-    onPrepareRecording,
-    onCancelPrepareRecording,
-    onStartRecording,
-    onStopRecording,
-  } = useTranscription();*/
+  // Update query when transcript is available from OpenAI
+  useEffect(() => {
+    if (transcript) {
+      onQueryChange(transcript);
+      clearTranscript(); // Clear after using it
+    }
+  }, [transcript, onQueryChange, clearTranscript]);
+
+  // Handle microphone click (for click mode on desktop)
+  const handleMicrophoneClick = () => {
+    if (isRecording) {
+      stopRecording();
+      focusTextarea();
+    } else {
+      startRecording();
+    }
+  };
 
   // Update ref based on selected action
   useEffect(() => {
@@ -110,43 +121,23 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
               <Square className="w-4 h-4" />
             </Button>
           )}
-          {/*!isLoading && (
+          {!isLoading && (
             <div className="absolute right-3 bottom-1 flex gap-1">
-              {transcribeProvider === 'aws' ? (
-                <div className="hidden md:block">
-                  <VoiceRecordButton
-                    isRecording={isRecording}
-                    isConnecting={isConnecting}
-                    isDisabled={isLoading}
-                    onClick={() => {
-                      onMicrophoneClick();
-                      focusTextarea();
-                    }}
-                    onStart={startMicrophoneRecording}
-                    onStop={() => {
-                      stopMicrophoneRecording();
-                      focusTextarea();
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className="hidden md:block">
-                  <FileTranscribeButton
-                    isRecording={isFileRecording}
-                    isTranscribing={isFileTranscribing}
-                    isDisabled={isLoading}
-                    onPrepareRecording={onPrepareRecording}
-                    onCancelPrepareRecording={onCancelPrepareRecording}
-                    onStartRecording={onStartRecording}
-                    onStopRecording={() => {
-                      onStopRecording();
-                      focusTextarea();
-                    }}
-                  />
-                </div>
-              )}
+              <div className="hidden md:block">
+                <OpenAIVoiceRecordButton
+                  isRecording={isRecording}
+                  isConnecting={isConnecting}
+                  isDisabled={isLoading}
+                  onClick={handleMicrophoneClick}
+                  onStart={startRecording}
+                  onStop={() => {
+                    stopRecording();
+                    focusTextarea();
+                  }}
+                />
+              </div>
             </div>
-          )*/}
+          )}
         </div>
       </div>
     </div>
