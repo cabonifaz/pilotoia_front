@@ -144,43 +144,55 @@ export function usePaginatedChatMessages(
         pageSize
       );
 
-      let latestMessages = res.messages || [];
+      const latestMessages = (res.messages || []).filter(
+        (_, index) => index !== 13
+      );
+      console.log("loadLatest fetched messages:", latestMessages);
 
-      // aplicar ventana
-      if (latestMessages.length > MAX) {
-        const excess = latestMessages.length - MAX;
-        olderBufferRef.current = latestMessages.slice(0, excess);
-        latestMessages = latestMessages.slice(excess);
-      }
+      // 1️⃣ MERGE con mensajes ya cargados en estado
+      setMessages((prev) => {
+        console.log("Merging latest messages with existing state:", prev);
+        const merged = [...prev, ...latestMessages];
 
-      setMessages(latestMessages);
-      queryClient.setQueryData(queryKeys.chat.messages(chatId), latestMessages);
+        // Evita duplicados
+        return Array.from(new Map(merged.map((m) => [m.id, m])).values());
+      });
 
+      // 2️⃣ MERGE con cache de React Query
+      queryClient.setQueryData(
+        queryKeys.chat.messages(chatId),
+        (old: Message[] = []) => {
+          const merged = [...old, ...latestMessages];
+
+          return Array.from(new Map(merged.map((m) => [m.id, m])).values());
+        }
+      );
+
+      // 3️⃣ Actualiza claves de paginación
       setLastKey(res.last_evaluated_key ?? null);
 
-      const totalReturned = (res.messages || []).length;
+      const totalReturned = latestMessages.length;
       const totalCount = (res as any).total_count ?? null;
+
       const hasMore =
         Boolean(res.last_evaluated_key) ||
         (totalCount !== null && totalCount > totalReturned);
 
       setHasMoreOlder(Boolean(hasMore));
 
-      // scroll al fondo
+      // 4️⃣ Scroll hacia abajo
       requestAnimationFrame(() => {
-        try {
-          if (containerRef.current) {
-            containerRef.current.scrollTop = containerRef.current.scrollHeight;
-          }
-        } catch {}
+        if (containerRef.current) {
+          containerRef.current.scrollTop = containerRef.current.scrollHeight;
+        }
       });
 
-      return latestMessages; // 🔥 ESTO FALTABA
+      return latestMessages;
     } catch (err: any) {
       setError(err instanceof Error ? err : new Error(String(err)));
       return [];
     }
-  }, [chatId, company_id, area_id, pageSize, MAX]);
+  }, [chatId, company_id, area_id, pageSize]);
 
   // Subscribe to streaming/cache updates (TanStack Query) and merge live messages
   useEffect(() => {

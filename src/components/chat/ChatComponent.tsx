@@ -361,8 +361,15 @@ const ChatComponent = ({
 
     await searchVectorial(currentQuery, chatContext);
     const latest = await loadLatest();
+
     if (latest?.length) {
-      applyWindow(latest, "newer");
+      const existingIds = new Set(messages.map((m) => m.id));
+
+      const deduped = latest.filter((m) => !existingIds.has(m.id));
+
+      if (deduped.length > 0) {
+        applyWindow(deduped, "newer");
+      }
     }
   };
 
@@ -404,18 +411,22 @@ const ChatComponent = ({
         direction === "older" ? [...incoming, ...prev] : [...prev, ...incoming];
 
       const map = new Map<string, Message>();
-      for (const m of combined) map.set(m.created_at, m);
+
+      for (const m of combined) {
+        // Si el id empieza con "temp-" → es temporal, usamos id como clave
+        const key = m.id.startsWith("temp-")
+          ? m.id
+          : `${m.sender}-${m.message}-${m.created_at}`;
+
+        map.set(key, m);
+      }
 
       const deduped = Array.from(map.values()).sort((a, b) =>
         a.created_at > b.created_at ? 1 : -1
       );
 
-      // ⛔ NO recortar mientras el usuario sube
-      if (direction === "older") {
-        return deduped;
-      }
+      if (direction === "older") return deduped;
 
-      // ✅ SOLO recortar cuando llegan mensajes nuevos
       return deduped.slice(-MAX_WINDOW);
     });
   }

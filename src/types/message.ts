@@ -12,9 +12,9 @@ export function parseMessageTimestamp(created_at: string): Date {
 }
 
 // Helper function to get message type from sender
-export function getMessageType(sender: number): 'user' | 'ai' | 'agent' {
-  if (sender === 0) return 'user';
-  if (sender === 1) return 'ai';
-  if (sender === 2) return 'agent';
-  return 'ai'; // default to ai for unknown senders
+export function getMessageType(sender: number): "user" | "ai" | "agent" {
+  if (sender === 0) return "user";
+  if (sender === 1) return "ai";
+  if (sender === 2) return "agent";
+  return "ai"; // default to ai for unknown senders
 }

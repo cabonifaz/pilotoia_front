@@ -496,10 +496,10 @@ export const useChatStream = (): UseChatStreamReturn => {
       }
     },
     [
-      updateStreamingContent,
       addMessagesToCache,
+      queryClient,
+      updateStreamingContent,
       updateMessageInCache,
-      streamingMessageId,
     ]
   );
 
@@ -595,8 +595,8 @@ export const useChatStream = (): UseChatStreamReturn => {
                   }
                 }
                 break;
-              case "chat_created":
-                // Add the new chat to the chats list cache
+              case "chat_created": // Add the new chat to the chats list cache
+              {
                 const chatCreatedEvt = evt as ChatCreatedEvent;
                 queryClient.setQueryData<any[]>(
                   ["user", "chats"],
@@ -605,8 +605,9 @@ export const useChatStream = (): UseChatStreamReturn => {
                   }
                 );
                 break;
-              case "assistant_metadata":
-                // Create AI/Agent message placeholder when backend sends metadata
+              }
+              case "assistant_metadata": // Create AI/Agent message placeholder when backend sends metadata
+              {
                 const assistantMetadataEvt = evt as AssistantMetadataEvent;
                 const assistantMessage: Message = {
                   id: assistantMetadataEvt.created_at, // Use backend timestamp as ID
@@ -618,6 +619,7 @@ export const useChatStream = (): UseChatStreamReturn => {
                 setStreamingMessageId(assistantMessage.id);
                 streamingMessageIdRef.current = assistantMessage.id; // Also update ref for callback access
                 break;
+              }
               case "chunk":
                 // Only update if we have a streaming message ID
                 if (streamingMessageIdRef.current) {
@@ -636,7 +638,7 @@ export const useChatStream = (): UseChatStreamReturn => {
                 setProgressMessage(null); // Clear progress message on completion
                 controller.abort();
                 break;
-              case "error":
+              case "error": {
                 const errorEvt = evt as ErrorEvent;
 
                 // Show centralized error toast
@@ -660,6 +662,7 @@ export const useChatStream = (): UseChatStreamReturn => {
                 setProgressMessage(null); // Clear progress message on error
                 controller.abort();
                 break;
+              }
               default:
                 break;
             }
