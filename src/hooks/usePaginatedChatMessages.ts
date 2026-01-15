@@ -162,7 +162,7 @@ export function usePaginatedChatMessages(
       queryClient.setQueryData(
         queryKeys.chat.messages(chatId),
         (old: Message[] = []) => {
-          const merged = [...old, ...latestMessages];
+          const merged = [...messages, ...latestMessages];
 
           return Array.from(new Map(merged.map((m) => [m.id, m])).values());
         }
