@@ -1,18 +1,16 @@
 import { useState } from 'react';
-import { Search, ChevronsUpDown, CirclePlus } from 'lucide-react';
+import { Search, CirclePlus } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { CompanyTable, CompanySidebar, CompanyLogoSidebar } from '@/components/company';
-import { useGetCompanies } from '@/hooks/useCompanyQueries';
+
 
 const CompanyManagement = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLogoSidebarOpen, setIsLogoSidebarOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<{ id: number; name: string; logo: string | null } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'ruc' | 'razon_social' | null>(null);
-
-  const { data } = useGetCompanies();
+  const [sortBy] = useState<'ruc' | 'razon_social' | null>(null);
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
@@ -23,13 +21,9 @@ const CompanyManagement = () => {
     setSelectedCompany(null);
   };
 
-  const handleUpdateLogo = (companyId: number) => {
-    // Find company name from data
-    const company = data?.companies?.find(c => c.ID_EMPRESA === companyId);
-    if (company) {
-      setSelectedCompany({ id: companyId, name: company.RAZON_SOCIAL, logo: company.LOGO || null });
-      setIsLogoSidebarOpen(true);
-    }
+  const handleUpdateLogo = (companyId: number, companyName: string, companyLogo: string | null) => {
+    setSelectedCompany({ id: companyId, name: companyName, logo: companyLogo });
+    setIsLogoSidebarOpen(true);
   };
 
   return (

@@ -24,7 +24,7 @@ const formatDate = (isoDate: string): string => {
 interface CompanyTableProps {
   searchTerm: string;
   sortBy: 'ruc' | 'razon_social' | null;
-  onUpdateLogo: (companyId: number) => void;
+  onUpdateLogo: (companyId: number, companyName: string, companyLogo: string | null) => void;
 }
 
 export const CompanyTable = ({ searchTerm, onUpdateLogo }: CompanyTableProps) => {
@@ -238,6 +238,8 @@ export const CompanyTable = ({ searchTerm, onUpdateLogo }: CompanyTableProps) =>
                         <TableCell>
                           <CompanyRowActions
                             companyId={company.ID_EMPRESA}
+                            companyName={company.RAZON_SOCIAL}
+                            companyLogo={company.LOGO}
                             status={company.ID_ESTADO_REGISTRO}
                             secretKey={company.SECRET_KEY}
                             onDelete={handleDeleteCompany}
