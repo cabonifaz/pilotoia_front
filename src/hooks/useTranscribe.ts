@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { transcribeApi } from '../api/transcribeApi';
 import type { TranscribeConfig, TranscriptResult } from '../types/transcribe';
 import { toast } from './use-toast';
@@ -37,13 +37,8 @@ export const useTranscribe = (): UseTranscribeReturn => {
     );
 
 
-    // Detect device type and select record mode (once, doesn't change during session)
-    // Mobile (hold mode): width <= 768px
-    // Web (click mode): width > 768px
-    const recordMode = useMemo(() => {
-        if (typeof window === 'undefined') return 'click' as const;
-        return (window.innerWidth <= 768 ? 'hold' : 'click') as 'click' | 'hold';
-    }, []);
+    // Always use click mode: press once to start, press again to stop (or auto-stop on silence)
+    const recordMode = 'click' as const;
 
     const audioContextRef = useRef<AudioContext | null>(null);
     const workletNodeRef = useRef<AudioWorkletNode | null>(null);
@@ -290,16 +285,8 @@ export const useTranscribe = (): UseTranscribeReturn => {
                         }
                     },
                     onClose: () => {
-                        // In hold mode, only cleanup if we were waiting for close
-                        // Otherwise, let stopRecording handle the cleanup timing
-                        if (recordMode === 'hold') {
-                            if (isWaitingForCloseRef.current) {
-                                cleanupAudioResources();
-                            }
-                        } else {
-                            // In click mode, always cleanup on close
-                            cleanupAudioResources();
-                        }
+                        // In click mode, always cleanup on close
+                        cleanupAudioResources();
                     }
                 }
             );
@@ -334,68 +321,9 @@ export const useTranscribe = (): UseTranscribeReturn => {
     const stopRecording = useCallback(() => {
         // Prevent multiple simultaneous stops
         if (isStoppingRef.current) return;
-
-        // For hold mode, we need to check if recording has actually started
-        if (recordMode === 'hold' && !recordingStartTimeRef.current) {
-            // User released button before connection was established.
-            // We can simply clean up without sending signals.
-            cleanupAudioResources();
-            return;
-        }
-
         isStoppingRef.current = true;
-
-        if (recordMode === 'hold') {
-            const duration = Date.now() - recordingStartTimeRef.current;
-            const SHORT_RECORDING_THRESHOLD = 1500; // 1.5 seconds
-
-            if (duration < SHORT_RECORDING_THRESHOLD) {
-                // Hard stop for short recordings
-                cleanupAudioResources();
-            } else {
-                // Graceful stop for longer recordings: send stop and wait for onClose
-                if (transcribeClientRef.current && transcribeClientRef.current.isConnected()) {
-                    // Mark that we're waiting for server to close the connection
-                    isWaitingForCloseRef.current = true;
-
-                    // Force worklet to send any remaining buffered audio
-                    if (workletNodeRef.current) {
-                        workletNodeRef.current.port.postMessage({ type: 'flush' });
-                    }
-
-                    // Wait for buffered audio to be sent before sending stop signal
-                    setTimeout(() => {
-                        // Send stop signal to server
-                        if (transcribeClientRef.current && transcribeClientRef.current.isConnected()) {
-                            transcribeClientRef.current.sendStop();
-                        }
-
-                        // Disconnect audio sources after stop is sent
-                        if (sourceRef.current) {
-                            sourceRef.current.disconnect();
-                        }
-                        if (workletNodeRef.current) {
-                            workletNodeRef.current.disconnect();
-                        }
-                    }, 100);
-
-                    // Safety timeout: if server doesn't close within 10 seconds, force cleanup
-                    setTimeout(() => {
-                        if (isWaitingForCloseRef.current) {
-                            console.warn('⚠️ Server did not close connection within timeout, forcing cleanup');
-                            cleanupAudioResources();
-                        }
-                    }, 10000);
-                } else {
-                    // If client is already disconnected, just clean up
-                    cleanupAudioResources();
-                }
-            }
-        } else {
-            // In 'click' mode, cleanup is handled by silence detection or the onClose event
-            // This call is a fallback.
-            cleanupAudioResources();
-        }
+        // In 'click' mode, cleanup is handled by silence detection or the onClose event
+        cleanupAudioResources();
     }, [recordMode, cleanupAudioResources]);
 
     /**

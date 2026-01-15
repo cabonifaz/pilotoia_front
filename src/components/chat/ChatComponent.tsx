@@ -15,6 +15,7 @@ import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 import { Card, CardHeaderCompact, CardContentCompact } from '@/components/shadcn/card';
 import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
 import { Bot, Loader2 } from 'lucide-react';
+import { DEFAULT_LANGUAGE } from '../../constants/languages';
 
 interface ChatComponentProps {
   chatContext: ChatContext;
@@ -26,6 +27,7 @@ interface ChatComponentProps {
 const ChatComponent = ({ chatContext, onChatIdChange, onStreamingStateChange, onOpenConfigSidebar }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(DEFAULT_LANGUAGE);
   const currentMainActionRef = useRef<() => void>(() => {});
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -75,8 +77,6 @@ const ChatComponent = ({ chatContext, onChatIdChange, onStreamingStateChange, on
     isRecording: isFileRecording,
     isTranscribing: isFileTranscribing,
     transcriptionResult: fileTranscriptionResult,
-    prepareRecording: prepareFileRecording,
-    cancelPrepareRecording: cancelPrepareFileRecording,
     startRecording: startFileRecording,
     stopRecording: stopFileRecording
   } = useFileTranscribe();
@@ -192,16 +192,14 @@ const ChatComponent = ({ chatContext, onChatIdChange, onStreamingStateChange, on
   >
     <TranscriptionProvider
       transcribeProvider={transcribeProvider}
+      selectedLanguage={selectedLanguage}
+      setSelectedLanguage={setSelectedLanguage}
       isRecording={isRecording}
       isConnecting={isConnecting}
       onMicrophoneClick={handleMicrophoneClick}
-      startMicrophoneRecording={async () => { clearTranscript(); await startRecording({ language_code: 'es-ES' }); }}
-      stopMicrophoneRecording={stopRecording}
       isFileRecording={isFileRecording}
       isFileTranscribing={isFileTranscribing}
-      onPrepareRecording={prepareFileRecording}
-      onCancelPrepareRecording={cancelPrepareFileRecording}
-      onStartRecording={startFileRecording}
+      onStartRecording={() => startFileRecording(selectedLanguage)}
       onStopRecording={stopFileRecording}
     >
       <div className="h-full flex flex-col">
