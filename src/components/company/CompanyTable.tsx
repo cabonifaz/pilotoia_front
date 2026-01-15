@@ -34,6 +34,7 @@ export const CompanyTable = ({ searchTerm, onUpdateLogo }: CompanyTableProps) =>
   const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('ASC');
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
+
   // Usar hook de paginación del servidor
   const { data, isLoading, error } = useGetCompaniesPaginated(
     currentPage,

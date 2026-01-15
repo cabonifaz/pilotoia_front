@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDebounce } from 'use-debounce';
 import { Search, CirclePlus } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
@@ -11,6 +12,8 @@ const CompanyManagement = () => {
   const [selectedCompany, setSelectedCompany] = useState<{ id: number; name: string; logo: string | null } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy] = useState<'ruc' | 'razon_social' | null>(null);
+
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
@@ -48,25 +51,6 @@ const CompanyManagement = () => {
 
             {/* Sort/Filter Buttons */}
             <div className="flex flex-wrap gap-2">
-              {/* <Button
-                variant={sortBy === 'ruc' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSortBy(sortBy === 'ruc' ? null : 'ruc')}
-                className="gap-2"
-              >
-                <ChevronsUpDown className="h-4 w-4 flex-shrink-0" />
-                RUC
-              </Button>
-              <Button
-                variant={sortBy === 'razon_social' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSortBy(sortBy === 'razon_social' ? null : 'razon_social')}
-                className="gap-2"
-              >
-                <ChevronsUpDown className="h-4 w-4 flex-shrink-0" />
-                Razón Social
-              </Button> */}
-
               <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2" size="sm">
                 <CirclePlus className="h-4 w-4 flex-shrink-0" />
                 Agregar empresa
@@ -76,7 +60,7 @@ const CompanyManagement = () => {
 
           {/* Table Section */}
           <CompanyTable
-            searchTerm={searchTerm}
+            searchTerm={debouncedSearchTerm}
             sortBy={sortBy}
             onUpdateLogo={handleUpdateLogo}
           />
