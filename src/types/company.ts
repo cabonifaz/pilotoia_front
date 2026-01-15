@@ -57,3 +57,19 @@ export interface CompanyLogin {
   SECRET_KEY: string;
   LOGO: string | null;
 }
+
+export interface PaginationInfo {
+  total_records: number;
+  current_page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface GetCompaniesPaginatedResponse {
+  data: Company[];
+  pagination: PaginationInfo;
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}

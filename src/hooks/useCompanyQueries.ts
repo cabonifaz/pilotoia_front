@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createCompany, getCompanies, updateCompanyStatus, getCompaniesLogin, generateLogoPresignedUrl, uploadLogoToS3 } from '../api/companyApi';
+import { createCompany, getCompanies, updateCompanyStatus, getCompaniesLogin, generateLogoPresignedUrl, uploadLogoToS3, getCompaniesPaginated } from '../api/companyApi';
 import type { CreateCompanyRequest, UpdateCompanyStatusRequest } from '@/types/company';
 import { toast } from './use-toast';
 
@@ -131,5 +131,24 @@ export const useUploadCompanyLogo = () => {
         variant: 'destructive',
       });
     },
+  });
+};
+
+export const useGetCompaniesPaginated = (
+  page: number,
+  pageSize: number,
+  search: string,
+  orderField: 'ID_EMPRESA' | 'RUC' | 'RAZON_SOCIAL' | 'FCHCRE' | 'FCHMOD' | 'ID_ESTADO_REGISTRO' = 'RAZON_SOCIAL',
+  orderDirection: 'ASC' | 'DESC' = 'ASC'
+) => {
+  return useQuery({
+    queryKey: ['companies-paginated', page, pageSize, search, orderField, orderDirection],
+    queryFn: async () => {
+      return await getCompaniesPaginated(page, pageSize, search, orderField, orderDirection);
+    },
+    retry: false,
+    placeholderData: (previousData) => previousData,
+    staleTime: 0,
+    gcTime: 60000,  //1 minuto
   });
 };
