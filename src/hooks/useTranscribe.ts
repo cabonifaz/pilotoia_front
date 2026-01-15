@@ -3,27 +3,14 @@ import { transcribeApi } from '../api/transcribeApi';
 import type { TranscribeConfig, TranscriptResult } from '../types/transcribe';
 import { toast } from './use-toast';
 
-// Supported languages for transcription
-export const SUPPORTED_LANGUAGES = {
-    'es-ES': 'Spanish (Spain)',
-    'es-US': 'Spanish (United States)',
-    'en-US': 'English (United States)',
-    'de-DE': 'German (Germany)',
-    'de-CH': 'German (Switzerland)',
-} as const;
-
-export type LanguageCode = keyof typeof SUPPORTED_LANGUAGES;
-
 interface UseTranscribeReturn {
     isRecording: boolean;
     isConnecting: boolean;
     transcript: string;
     partialTranscript: string;
-    selectedLanguages: LanguageCode[];
     startRecording: (config?: Partial<TranscribeConfig>) => Promise<void>;
     stopRecording: () => void;
     clearTranscript: () => void;
-    supportedLanguages: typeof SUPPORTED_LANGUAGES;
 }
 
 export const useTranscribe = (): UseTranscribeReturn => {
@@ -31,11 +18,6 @@ export const useTranscribe = (): UseTranscribeReturn => {
     const [isConnecting, setIsConnecting] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [partialTranscript, setPartialTranscript] = useState('');
-    // Always use all supported languages for detection
-    const [selectedLanguages] = useState<LanguageCode[]>(
-        Object.keys(SUPPORTED_LANGUAGES) as LanguageCode[]
-    );
-
 
     // Always use click mode: press once to start, press again to stop (or auto-stop on silence)
     const recordMode = 'click' as const;
@@ -147,8 +129,8 @@ export const useTranscribe = (): UseTranscribeReturn => {
             const defaultShowSpeakerLabel = import.meta.env.VITE_TRANSCRIBE_SHOW_SPEAKER_LABEL === 'true';
 
             const transcribeConfig: TranscribeConfig = {
-                language_code: config.language_code || selectedLanguages[0],
-                language_codes: config.language_codes || selectedLanguages,
+                language_code: config.language_code || 'es-ES',
+                language_codes: config.language_codes || [config.language_code || 'es-ES'],
                 sample_rate: config.sample_rate || audioSampleRate,
                 media_encoding: config.media_encoding || audioEncoding,
                 enable_partial_results: config.enable_partial_results ?? defaultEnablePartialResults,
@@ -313,7 +295,7 @@ export const useTranscribe = (): UseTranscribeReturn => {
             setIsRecording(false);
             setIsConnecting(false);
         }
-    }, [cleanupAudioResources, selectedLanguages, recordMode]);
+    }, [cleanupAudioResources, recordMode]);
 
     /**
      * Stop recording and transcription
@@ -347,10 +329,8 @@ export const useTranscribe = (): UseTranscribeReturn => {
         isConnecting,
         transcript,
         partialTranscript,
-        selectedLanguages,
         startRecording,
         stopRecording,
-        clearTranscript,
-        supportedLanguages: SUPPORTED_LANGUAGES
+        clearTranscript
     };
 };

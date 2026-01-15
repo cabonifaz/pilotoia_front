@@ -50,7 +50,7 @@ export const SUPPORTED_LANGUAGES: Language[] = [
   { name: "Русский", codeOpenAI: "ru", codeAws: ["ru-RU"] },
   { name: "Slovenčina", codeOpenAI: "sk", codeAws: ["sk-SK"] },
   { name: "Slovenščina", codeOpenAI: "sl", codeAws: ["sl-SI"] },
-  { name: "Español", codeOpenAI: "es", codeAws: ["es-ES", "es-US", "es-MX"] },
+  { name: "Español", codeOpenAI: "es", codeAws: ["es-ES", "es-US"] },
   { name: "Kiswahili", codeOpenAI: "sw", codeAws: ["sw-KE"] },
   { name: "Svenska", codeOpenAI: "sv", codeAws: ["sv-SE"] },
   { name: "Filipino", codeOpenAI: "tl", codeAws: ["tl-PH"] },
@@ -65,6 +65,13 @@ export const SUPPORTED_LANGUAGES: Language[] = [
 
 // Default language (Spanish)
 export const DEFAULT_LANGUAGE = "es";
+
+/**
+ * Get the default language code based on the provider
+ */
+export const getDefaultLanguage = (provider: 'aws' | 'openai'): string => {
+  return provider === 'aws' ? 'es-ES' : 'es';
+};
 
 /**
  * Get the appropriate code for a language based on the provider

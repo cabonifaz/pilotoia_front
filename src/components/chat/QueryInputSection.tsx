@@ -69,15 +69,6 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     return getAvailableLanguages(provider);
   }, [transcribeProvider]);
 
-  // Get the display value for selected language
-  const selectedLanguageDisplay = useMemo(() => {
-    const lang = availableLanguages.find(l => {
-      const provider = transcribeProvider === 'aws' ? 'aws' : 'openai';
-      return getLanguageCode(l, provider) === selectedLanguage;
-    });
-    return lang?.name || selectedLanguage;
-  }, [selectedLanguage, availableLanguages, transcribeProvider]);
-
   // Update ref based on selected action
   useEffect(() => {
     if (selectedAction === 'vectorial') {
@@ -132,13 +123,12 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                 <Select
                   value={selectedLanguage}
                   onValueChange={(value) => {
-                    console.log('Language changed to:', value);
                     setSelectedLanguage(value);
                   }}
                 >
                   <SelectTrigger className="h-8 w-[100px] text-xs border-muted-foreground/30">
                     <Languages className="h-3 w-3 mr-1" />
-                    <SelectValue placeholder={selectedLanguageDisplay} />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
                     {availableLanguages.map((lang) => {

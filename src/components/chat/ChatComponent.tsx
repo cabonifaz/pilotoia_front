@@ -15,7 +15,7 @@ import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
 import { Card, CardHeaderCompact, CardContentCompact } from '@/components/shadcn/card';
 import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
 import { Bot, Loader2 } from 'lucide-react';
-import { DEFAULT_LANGUAGE } from '../../constants/languages';
+import { getDefaultLanguage } from '../../constants/languages';
 
 interface ChatComponentProps {
   chatContext: ChatContext;
@@ -27,7 +27,15 @@ interface ChatComponentProps {
 const ChatComponent = ({ chatContext, onChatIdChange, onStreamingStateChange, onOpenConfigSidebar }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState('');
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>(DEFAULT_LANGUAGE);
+
+  // Get transcription provider from environment
+  const transcribeProvider = import.meta.env.VITE_TRANSCRIBE_PROVIDER;
+
+  // Initialize with provider-aware default language
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(
+    getDefaultLanguage(transcribeProvider === 'aws' ? 'aws' : 'openai')
+  );
+
   const currentMainActionRef = useRef<() => void>(() => {});
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -39,9 +47,6 @@ const ChatComponent = ({ chatContext, onChatIdChange, onStreamingStateChange, on
     },
     enabled: false
   });
-
-  // Get transcription provider from environment
-  const transcribeProvider = import.meta.env.VITE_TRANSCRIBE_PROVIDER;
 
   // Get messages from TanStack Query cache
   const { data: messages, isLoading: isLoadingMessages, error: errorMessages } = useChatMessages(
@@ -144,18 +149,17 @@ const ChatComponent = ({ chatContext, onChatIdChange, onStreamingStateChange, on
     }
   }, [fileTranscriptionResult]);
 
-  const handleMicrophoneClick = async () => {
+  const handleMicrophoneClick = useCallback(async () => {
     if (isRecording) {
       stopRecording();
     } else {
       clearTranscript();
-      await startRecording({ language_code: 'es-ES' });
+      await startRecording({ language_code: selectedLanguage as any });
     }
-  };
+  }, [isRecording, stopRecording, clearTranscript, startRecording, selectedLanguage]);
 
   // Wrapper for file transcription that uses selected language
   const handleStartFileRecording = useCallback(async () => {
-    console.log('Starting file recording with language:', selectedLanguage);
     await startFileRecording(selectedLanguage);
   }, [startFileRecording, selectedLanguage]);
 
