@@ -1,13 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Button } from '@/components/shadcn/button';
-import { Settings } from 'lucide-react';
-import { useOutletContext } from 'react-router-dom';
-import ChatComponent from '../../components/chat/ChatComponent';
-import { AIConfigSidebar } from '../../components/aiConfigPanel/AIConfigSidebar';
-import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
-import { useChatState } from '../../contexts/ChatStateContext';
-import { type ChatContext } from '@/types/aiConfig';
-import { Loader } from '@/components/loader/Loader';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Button } from "@/components/shadcn/button";
+import { Settings } from "lucide-react";
+import { useOutletContext } from "react-router-dom";
+import ChatComponent from "../../components/chat/ChatComponent";
+import { AIConfigSidebar } from "../../components/aiConfigPanel/AIConfigSidebar";
+import { useQueryAuthContext } from "../../contexts/QueryAuthContext";
+import { useChatState } from "../../contexts/ChatStateContext";
+import { type ChatContext } from "@/types/aiConfig";
+import { Loader } from "@/components/loader/Loader";
 
 const StreamingChat = () => {
   const { user } = useQueryAuthContext();
@@ -29,9 +29,12 @@ const StreamingChat = () => {
         const currentCompanyAreaKey = `${actualCompanyArea.ID_EMPRESA}-${actualCompanyArea.ID_AREA}`;
 
         // Check if company/area has changed
-        if (previousCompanyAreaRef.current && previousCompanyAreaRef.current !== currentCompanyAreaKey) {
+        if (
+          previousCompanyAreaRef.current &&
+          previousCompanyAreaRef.current !== currentCompanyAreaKey
+        ) {
           // Clear chat_id from sessionStorage when company/area changes
-          sessionStorage.removeItem('current_chat_id');
+          sessionStorage.removeItem("current_chat_id");
           setSelectedChatId(undefined);
         }
 
@@ -39,7 +42,7 @@ const StreamingChat = () => {
         previousCompanyAreaRef.current = currentCompanyAreaKey;
 
         // Check if there's a saved chat_id in sessionStorage (only if company/area hasn't changed)
-        const savedChatId = sessionStorage.getItem('current_chat_id');
+        const savedChatId = sessionStorage.getItem("current_chat_id");
 
         const newChatContext = {
           user_id: user.user_id,
@@ -61,44 +64,47 @@ const StreamingChat = () => {
     }
   }, [user]);
 
-  const handleChatSelect = useCallback((chatId: number) => {
-    // Immediately update selected chat ID for UI feedback (visual selection)
-    setSelectedChatId(chatId);
+  const handleChatSelect = useCallback(
+    (chatId: number) => {
+      // UI inmediata
+      setSelectedChatId(chatId);
 
-    // Clear any pending chat change timeout
-    if (chatSelectTimeoutRef.current) {
-      clearTimeout(chatSelectTimeoutRef.current);
-    }
+      // cancelar timeout anterior
+      if (chatSelectTimeoutRef.current) {
+        clearTimeout(chatSelectTimeoutRef.current);
+      }
 
-    // Wait 500ms before actually changing the chat (loading messages, etc.)
-    // This prevents rapid backend calls if user is quickly clicking through chats
-    chatSelectTimeoutRef.current = setTimeout(() => {
-      sessionStorage.setItem('current_chat_id', chatId.toString());
-      setChatContext(prev => prev ? { ...prev, chat_id: chatId } : null);
-    }, 500);
-  }, [setSelectedChatId]);
+      // actualizar chat_id INMEDIATO
+      sessionStorage.setItem("current_chat_id", chatId.toString());
+      setChatContext((prev) => (prev ? { ...prev, chat_id: chatId } : null));
+    },
+    [setSelectedChatId]
+  );
 
   const handleNewChat = useCallback(() => {
     setSelectedChatId(undefined);
     // Clear chat_id from sessionStorage when starting a new chat
-    sessionStorage.removeItem('current_chat_id');
+    sessionStorage.removeItem("current_chat_id");
     // Update chatContext to have null chat_id
-    setChatContext(prev => prev ? { ...prev, chat_id: null } : null);
+    setChatContext((prev) => (prev ? { ...prev, chat_id: null } : null));
   }, [setSelectedChatId]);
 
   const handleChatIdChange = useCallback((chatId: number) => {
     // Update chatContext with the new chat_id
-    setChatContext(prev => prev ? { ...prev, chat_id: chatId } : null);
+    setChatContext((prev) => (prev ? { ...prev, chat_id: chatId } : null));
     // Save chat_id to sessionStorage
-    sessionStorage.setItem('current_chat_id', chatId.toString());
+    sessionStorage.setItem("current_chat_id", chatId.toString());
     // Update selected chat to show the newly created chat as selected
     setSelectedChatId(chatId);
   }, []);
 
-  const handleStreamingStateChange = useCallback((streaming: boolean) => {
-    setIsStreaming(streaming);
-    onStreamingStateChange(streaming);
-  }, [onStreamingStateChange, setIsStreaming]);
+  const handleStreamingStateChange = useCallback(
+    (streaming: boolean) => {
+      setIsStreaming(streaming);
+      onStreamingStateChange(streaming);
+    },
+    [onStreamingStateChange, setIsStreaming]
+  );
 
   // Register handlers with context
   useEffect(() => {
@@ -129,8 +135,6 @@ const StreamingChat = () => {
           <div
             className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 min-h-0`}
           >
-
-
             {/* Chat Section */}
             <div className="flex-1 flex flex-col overflow-hidden min-h-0 h-full">
               <div className="flex-1 rounded-lg overflow-hidden min-h-0 h-full">
@@ -172,6 +176,5 @@ const StreamingChat = () => {
     </div>
   );
 };
-
 
 export default StreamingChat;

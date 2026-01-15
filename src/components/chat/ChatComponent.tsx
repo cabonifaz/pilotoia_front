@@ -78,6 +78,7 @@ const ChatComponent = ({
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const wasAtBottomRef = useRef(true);
   const isLoadingOlderRef = useRef(false);
+
   useEffect(() => {
     if (messagesContainerRef.current) {
       // @ts-ignore
@@ -368,7 +369,7 @@ const ChatComponent = ({
       const deduped = latest.filter((m) => !existingIds.has(m.id));
 
       if (deduped.length > 0) {
-        applyWindow(deduped, "newer");
+        setMessages((prev) => prev.filter((m) => !(m as any).__optimistic));
       }
     }
   };

@@ -208,7 +208,10 @@ export function usePaginatedChatMessages(
       ? messages[messages.length - 1].created_at
       : null;
 
-    if (cacheNewestId && cacheNewestId !== localNewestId) {
+    if (
+      cached.length &&
+      (!messages.length || cacheNewestId !== localNewestId)
+    ) {
       setMessages((prev) => {
         const combined = [...prev, ...cached];
         const map = new Map<string, Message>();
