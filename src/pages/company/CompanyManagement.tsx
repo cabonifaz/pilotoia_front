@@ -54,7 +54,7 @@ const CompanyManagement = () => {
 
             {/* Sort/Filter Buttons */}
             <div className="flex flex-wrap gap-2">
-              <Button
+              {/* <Button
                 variant={sortBy === 'ruc' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setSortBy(sortBy === 'ruc' ? null : 'ruc')}
@@ -71,7 +71,7 @@ const CompanyManagement = () => {
               >
                 <ChevronsUpDown className="h-4 w-4 flex-shrink-0" />
                 Razón Social
-              </Button>
+              </Button> */}
 
               <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2" size="sm">
                 <CirclePlus className="h-4 w-4 flex-shrink-0" />
