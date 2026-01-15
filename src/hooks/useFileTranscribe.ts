@@ -3,13 +3,6 @@ import { toast } from './use-toast';
 import { fileTranscribeApi } from '../api/fileTranscribeApi';
 import type { FileTranscriptionResult } from '../api/fileTranscribeApi';
 
-// Re-export supported languages from API
-export const SUPPORTED_LANGUAGES = fileTranscribeApi.getSupportedLanguages();
-export type LanguageCode = keyof typeof SUPPORTED_LANGUAGES;
-
-// Re-export supported formats from API
-export const SUPPORTED_FORMATS = fileTranscribeApi.getSupportedFormats();
-
 // Re-export transcription result type
 export type TranscriptionResult = FileTranscriptionResult;
 
@@ -19,12 +12,10 @@ interface UseFileTranscribeReturn {
     transcriptionResult: TranscriptionResult | null;
     prepareRecording: () => void;
     cancelPrepareRecording: () => Promise<void>;
-    startRecording: () => Promise<void>;
+    startRecording: (language: string) => Promise<void>;
     stopRecording: () => void;
-    transcribeFile: (file: File) => Promise<void>;
+    transcribeFile: (file: File, language: string) => Promise<void>;
     clearResult: () => void;
-    supportedLanguages: typeof SUPPORTED_LANGUAGES;
-    supportedFormats: typeof SUPPORTED_FORMATS;
 }
 
 export const useFileTranscribe = (): UseFileTranscribeReturn => {
@@ -82,7 +73,7 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
         } finally {
             setIsTranscribing(false);
         }
-    }, [currentLanguage]);
+    }, []);
 
     /**
      * Prepare recording by requesting microphone access early.
@@ -472,15 +463,11 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
         isRecording,
         isTranscribing,
         transcriptionResult,
-        currentLanguage,
-        setLanguage: setCurrentLanguage,
         prepareRecording,
         cancelPrepareRecording,
         startRecording,
         stopRecording,
         transcribeFile,
-        clearResult,
-        supportedLanguages: SUPPORTED_LANGUAGES,
-        supportedFormats: SUPPORTED_FORMATS
+        clearResult
     };
 };

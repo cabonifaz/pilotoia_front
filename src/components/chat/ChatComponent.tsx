@@ -153,6 +153,12 @@ const ChatComponent = ({ chatContext, onChatIdChange, onStreamingStateChange, on
     }
   };
 
+  // Wrapper for file transcription that uses selected language
+  const handleStartFileRecording = useCallback(async () => {
+    console.log('Starting file recording with language:', selectedLanguage);
+    await startFileRecording(selectedLanguage);
+  }, [startFileRecording, selectedLanguage]);
+
   const chatQuery = async () => {
     if (!userQuery.trim()) return;
 
@@ -199,7 +205,7 @@ const ChatComponent = ({ chatContext, onChatIdChange, onStreamingStateChange, on
       onMicrophoneClick={handleMicrophoneClick}
       isFileRecording={isFileRecording}
       isFileTranscribing={isFileTranscribing}
-      onStartRecording={() => startFileRecording(selectedLanguage)}
+      onStartRecording={handleStartFileRecording}
       onStopRecording={stopFileRecording}
     >
       <div className="h-full flex flex-col">

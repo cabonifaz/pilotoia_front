@@ -128,8 +128,14 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
           {!isLoading && (
             <>
               {/* Language selector - positioned to the left of transcription button */}
-              <div className="absolute right-14 bottom-1 z-10">
-                <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+              <div className="absolute right-14 bottom-1">
+                <Select
+                  value={selectedLanguage}
+                  onValueChange={(value) => {
+                    console.log('Language changed to:', value);
+                    setSelectedLanguage(value);
+                  }}
+                >
                   <SelectTrigger className="h-8 w-[100px] text-xs border-muted-foreground/30">
                     <Languages className="h-3 w-3 mr-1" />
                     <SelectValue placeholder={selectedLanguageDisplay} />
