@@ -1,11 +1,19 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
-import { Square } from 'lucide-react';
+import { Square, Languages } from 'lucide-react';
 import { OpenAIVoiceRecordButton } from './OpenAIVoiceRecordButton';
 import { CommandMenu } from './CommandMenu';
 import { useCommand } from '../../contexts/CommandContext';
 import { useOpenAITranscribe } from '../../hooks/useOpenAITranscribe';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/shadcn/select';
+import { SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE } from '@/constants/languages';
 
 interface QueryInputSectionProps {
   company: string;
@@ -16,6 +24,9 @@ interface QueryInputSectionProps {
 export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => {
   const currentMainActionRef = useRef<() => void>(() => {});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Language selection state for voice transcription
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(DEFAULT_LANGUAGE);
 
   // Get command state from context
   const { userQuery, onQueryChange, isLoading, onCancel, onSearchVectorial, selectedAction, onSearchVectorialSQL } = useCommand();
@@ -70,7 +81,8 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
       stopRecording();
       focusTextarea();
     } else {
-      startRecording();
+      // Start recording with selected language
+      startRecording({ language: selectedLanguage });
     }
   };
 
@@ -122,14 +134,34 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
             </Button>
           )}
           {!isLoading && (
-            <div className="absolute right-3 bottom-1 flex gap-1">
+            <div className="absolute right-3 bottom-1 flex gap-1 items-center">
+              {/* Language selector - hidden when recording */}
+              {!isRecording && (
+                <div className="hidden md:block">
+                  <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                    <SelectTrigger className="h-8 w-[140px] text-xs border-muted-foreground/30">
+                      <Languages className="w-3 h-3 mr-1" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {SUPPORTED_LANGUAGES.map((lang) => (
+                        <SelectItem key={lang.code} value={lang.code} className="text-xs">
+                          {lang.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Voice record button */}
               <div className="hidden md:block">
                 <OpenAIVoiceRecordButton
                   isRecording={isRecording}
                   isConnecting={isConnecting}
                   isDisabled={isLoading}
                   onClick={handleMicrophoneClick}
-                  onStart={startRecording}
+                  onStart={() => startRecording({ language: selectedLanguage })}
                   onStop={() => {
                     stopRecording();
                     focusTextarea();

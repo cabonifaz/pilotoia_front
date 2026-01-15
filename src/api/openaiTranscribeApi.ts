@@ -164,12 +164,13 @@ class OpenAITranscribeWebSocketClient {
         const configMessage = {
             type: 'config',
             data: {
+                language: config.language, // REQUIRED: Language code
                 sample_rate: config.sample_rate || 16000,
-                transcription_model: config.transcription_model || 'gpt-4o-mini-transcribe',
-                commit_interval_seconds: config.commit_interval_seconds || 1.5
+                silence_duration_ms: config.silence_duration_ms || 500
             }
         };
 
+        console.log('📤 Sending config to server:', configMessage);
         this.websocket!.send(JSON.stringify(configMessage));
     }
 

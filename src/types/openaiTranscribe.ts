@@ -4,9 +4,9 @@
  */
 
 export interface OpenAITranscribeConfig {
+    language: string; // REQUIRED: Language code (e.g., 'en', 'es', 'fr')
     sample_rate?: number; // Default: 16000 (PCM16 mono)
-    transcription_model?: string; // 'gpt-4o-mini-transcribe' | 'gpt-4o-transcribe'
-    commit_interval_seconds?: number; // Default: 1.5 seconds (client-side commits)
+    silence_duration_ms?: number; // Default: 500ms (server-side VAD silence detection)
 }
 
 export interface TranscriptResult {

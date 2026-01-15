@@ -19,19 +19,38 @@ export const useOpenAITranscribe = (): UseOpenAITranscribeReturn => {
     const [transcript, setTranscript] = useState('');
     const [partialTranscript, setPartialTranscript] = useState('');
 
+    /**
+     * RECORDING MODE DETECTION AND BEHAVIOR:
+     *
+     * The hook supports two modes based on window width at initialization:
+     * - Click mode (width > 768px): Click to start, click to stop
+     * - Hold mode (width <= 768px): Press and hold to record
+     *
+     * DIAGNOSTIC LOGGING ENABLED:
+     * Console logs are included to help diagnose premature connection closes.
+     * Look for these emoji markers in console:
+     * 📱 = Mode detection
+     * 🛑 = Stop initiated
+     * ⏱️ = Duration check
+     * 🖱️/📤 = Click/Hold mode specific actions
+     * ✋ = Stop signal sent
+     * 🔌 = WebSocket close
+     * 🧹 = Cleanup
+     */
+
     // Detect device type and select record mode (once, doesn't change during session)
     // Mobile (hold mode): width <= 768px
     // Web (click mode): width > 768px
     const recordMode = useMemo(() => {
         if (typeof window === 'undefined') return 'click' as const;
-        return (window.innerWidth <= 768 ? 'hold' : 'click') as 'click' | 'hold';
+        const mode = (window.innerWidth <= 768 ? 'hold' : 'click') as 'click' | 'hold';
+        console.log(`📱 Recording mode: ${mode} (window width: ${window.innerWidth}px)`);
+        return mode;
     }, []);
 
     const audioContextRef = useRef<AudioContext | null>(null);
     const workletNodeRef = useRef<AudioWorkletNode | null>(null);
     const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-    const analyserRef = useRef<AnalyserNode | null>(null);
-    const detectionFrameIdRef = useRef<number | null>(null);
     const transcribeClientRef = useRef<ReturnType<typeof openaiTranscribeApi.startTranscription> | null>(null);
     const transcriptBufferRef = useRef<string[]>([]);
     const isStoppingRef = useRef<boolean>(false);
@@ -43,11 +62,6 @@ export const useOpenAITranscribe = (): UseOpenAITranscribeReturn => {
      */
     const cleanupAudioResources = useCallback(() => {
         // Clean up Web Audio API resources
-        if (detectionFrameIdRef.current !== null) {
-            cancelAnimationFrame(detectionFrameIdRef.current);
-            detectionFrameIdRef.current = null;
-        }
-
         if (workletNodeRef.current) {
             workletNodeRef.current.disconnect();
             workletNodeRef.current = null;
@@ -56,11 +70,6 @@ export const useOpenAITranscribe = (): UseOpenAITranscribeReturn => {
         if (sourceRef.current) {
             sourceRef.current.disconnect();
             sourceRef.current = null;
-        }
-
-        if (analyserRef.current) {
-            analyserRef.current.disconnect();
-            analyserRef.current = null;
         }
 
         if (audioContextRef.current) {
@@ -92,33 +101,43 @@ export const useOpenAITranscribe = (): UseOpenAITranscribeReturn => {
      */
     const stopRecording = useCallback(() => {
         // Prevent multiple simultaneous stops
-        if (isStoppingRef.current) return;
+        if (isStoppingRef.current) {
+            console.log('⚠️ Stop already in progress, ignoring duplicate call');
+            return;
+        }
 
         // For hold mode, we need to check if recording has actually started
         if (recordMode === 'hold' && !recordingStartTimeRef.current) {
             // User released button before connection was established.
             // We can simply clean up without sending signals.
+            console.log('🛑 Hold mode: Connection not established yet, cleaning up');
             cleanupAudioResources();
             return;
         }
 
+        console.log(`🛑 Stopping recording in ${recordMode} mode`);
         isStoppingRef.current = true;
 
         if (recordMode === 'hold') {
             const duration = Date.now() - recordingStartTimeRef.current;
             const SHORT_RECORDING_THRESHOLD = 1500; // 1.5 seconds
 
+            console.log(`⏱️ Hold mode: Recording duration ${duration}ms (threshold: ${SHORT_RECORDING_THRESHOLD}ms)`);
+
             if (duration < SHORT_RECORDING_THRESHOLD) {
                 // Hard stop for short recordings
+                console.log('⚡ Short recording detected, hard stop (cleanup immediately)');
                 cleanupAudioResources();
             } else {
                 // Graceful stop for longer recordings: send stop and wait for onClose
+                console.log('📤 Longer recording, initiating graceful stop');
                 if (transcribeClientRef.current && transcribeClientRef.current.isConnected()) {
                     // Mark that we're waiting for server to close the connection
                     isWaitingForCloseRef.current = true;
 
                     // Force worklet to send any remaining buffered audio
                     if (workletNodeRef.current) {
+                        console.log('🔄 Flushing remaining audio buffer');
                         workletNodeRef.current.port.postMessage({ type: 'flush' });
                     }
 
@@ -126,6 +145,7 @@ export const useOpenAITranscribe = (): UseOpenAITranscribeReturn => {
                     setTimeout(() => {
                         // Send stop signal to server
                         if (transcribeClientRef.current && transcribeClientRef.current.isConnected()) {
+                            console.log('✋ Sending stop signal to server');
                             transcribeClientRef.current.sendStop();
                         }
 
@@ -151,8 +171,15 @@ export const useOpenAITranscribe = (): UseOpenAITranscribeReturn => {
                 }
             }
         } else {
-            // In 'click' mode, cleanup is handled by silence detection or the onClose event
-            // This call is a fallback.
+            // In 'click' mode, manually stopped by user
+            // Send stop signal and cleanup
+            console.log('🖱️ Click mode: User manually stopped, sending stop signal');
+            if (transcribeClientRef.current && transcribeClientRef.current.isConnected()) {
+                console.log('✋ Sending stop signal to server');
+                transcribeClientRef.current.sendStop();
+            }
+            // Cleanup immediately since user manually stopped
+            console.log('🧹 Cleaning up resources immediately');
             cleanupAudioResources();
         }
     }, [recordMode, cleanupAudioResources]);
@@ -163,6 +190,17 @@ export const useOpenAITranscribe = (): UseOpenAITranscribeReturn => {
     const startRecording = useCallback(async (config: Partial<OpenAITranscribeConfig> = {}) => {
         try {
             setIsConnecting(true);
+
+            // Validate language is provided (REQUIRED)
+            if (!config.language) {
+                toast({
+                    title: "Error de configuración",
+                    description: "Se requiere especificar el idioma de transcripción",
+                    variant: "destructive"
+                });
+                setIsConnecting(false);
+                return;
+            }
 
             // Get JWT token from sessionStorage
             const token = sessionStorage.getItem('jwt_token');
@@ -188,11 +226,12 @@ export const useOpenAITranscribe = (): UseOpenAITranscribeReturn => {
 
             // Default configuration for OpenAI
             const transcribeConfig: OpenAITranscribeConfig = {
-                sample_rate: 16000, // PCM16 standard
-                transcription_model: config.transcription_model || 'gpt-4o-mini-transcribe',
-                commit_interval_seconds: config.commit_interval_seconds || 1.5,
-                ...config
+                language: config.language, // REQUIRED
+                sample_rate: config.sample_rate || 16000, // PCM16 standard
+                silence_duration_ms: config.silence_duration_ms || 500
             };
+
+            console.log(`🎤 Starting OpenAI transcription with language: ${transcribeConfig.language}, silence: ${transcribeConfig.silence_duration_ms}ms`);
 
             // Start WebSocket connection
             const client = openaiTranscribeApi.startTranscription(
@@ -225,20 +264,6 @@ export const useOpenAITranscribe = (): UseOpenAITranscribeReturn => {
                             source.connect(workletNode);
                             workletNode.connect(audioContext.destination);
 
-                            // Variables for silence tracking (only used in 'click' mode)
-                            let silenceTimeoutId: NodeJS.Timeout | null = null;
-                            let stopSignalSent = false;
-                            const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '5000', 10);
-                            const SILENCE_LEVEL = parseInt(import.meta.env.VITE_SILENCE_LEVEL || '15', 10);
-
-                            // Create analyser for silence detection (only used in 'click' mode)
-                            const analyser = audioContext.createAnalyser();
-                            analyser.fftSize = 2048;
-                            source.connect(analyser);
-                            analyserRef.current = analyser;
-
-                            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
                             // Listen to messages from AudioWorklet (PCM audio data)
                             workletNode.port.onmessage = (event) => {
                                 if (!client.isConnected()) return;
@@ -250,45 +275,9 @@ export const useOpenAITranscribe = (): UseOpenAITranscribeReturn => {
                                 }
                             };
 
-                            // Only enable silence detection in 'click' mode
-                            if (recordMode === 'click') {
-                                const detectSilence = () => {
-                                    analyser.getByteFrequencyData(dataArray);
-                                    const sum = dataArray.reduce((a, b) => a + b, 0);
-                                    const average = sum / dataArray.length;
-
-                                    // If average volume is very low, consider it silence
-                                    if (average < SILENCE_LEVEL) {
-                                        if (!silenceTimeoutId) {
-                                            silenceTimeoutId = setTimeout(() => {
-                                                if (!stopSignalSent) {
-                                                    stopSignalSent = true;
-                                                    // Send stop signal but keep worklet running briefly
-                                                    // to ensure server receives it
-                                                    client.sendStop();
-
-                                                    // Cleanup after a brief delay to ensure stop signal is sent
-                                                    setTimeout(() => {
-                                                        workletNode.disconnect();
-                                                        source.disconnect();
-                                                    }, 500);
-                                                }
-                                            }, SILENCE_THRESHOLD);
-                                        }
-                                    } else {
-                                        // Clear timeout if sound detected
-                                        if (silenceTimeoutId && !stopSignalSent) {
-                                            clearTimeout(silenceTimeoutId);
-                                            silenceTimeoutId = null;
-                                        }
-                                    }
-
-                                    detectionFrameIdRef.current = requestAnimationFrame(detectSilence);
-                                };
-
-                                // Start silence detection
-                                detectionFrameIdRef.current = requestAnimationFrame(detectSilence);
-                            }
+                            // Note: Silence detection is DISABLED for OpenAI
+                            // OpenAI Realtime API has server-side VAD that handles silence detection
+                            // Users must manually click the button to stop recording
                         } catch (error) {
                             console.error('❌ Error initializing audio context:', error);
                             toast({
@@ -300,7 +289,8 @@ export const useOpenAITranscribe = (): UseOpenAITranscribeReturn => {
                         }
                     },
                     onPartialResult: (result: TranscriptResult) => {
-                        setPartialTranscript(result.transcript);
+                        // OpenAI delta events are incremental - append to build full partial transcript
+                        setPartialTranscript(prev => prev + result.transcript);
                     },
                     onFinalResult: (result: TranscriptResult) => {
                         // Add to transcript buffer
@@ -324,15 +314,18 @@ export const useOpenAITranscribe = (): UseOpenAITranscribeReturn => {
                         }
                     },
                     onClose: () => {
+                        console.log(`🔌 WebSocket onClose triggered - mode: ${recordMode}, waiting: ${isWaitingForCloseRef.current}`);
                         // In hold mode, only cleanup if we were waiting for close
                         // Otherwise, let stopRecording handle the cleanup timing
-                        if (recordMode === 'hold') {
-                            if (isWaitingForCloseRef.current) {
-                                cleanupAudioResources();
-                            }
-                        } else {
-                            // In click mode, always cleanup on close
+                        if (recordMode === 'hold' && isWaitingForCloseRef.current) {
+                            console.log('🧹 Hold mode: Cleaning up after waiting for close');
                             cleanupAudioResources();
+                        } else if (recordMode === 'click') {
+                            // In click mode, cleanup on close from server
+                            console.log('🧹 Click mode: Server closed connection, cleaning up');
+                            cleanupAudioResources();
+                        } else {
+                            console.log('⏭️ Not cleaning up yet (hold mode, not waiting for close)');
                         }
                     }
                 }
