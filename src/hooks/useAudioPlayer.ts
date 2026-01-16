@@ -13,6 +13,8 @@ const SAMPLE_RATE = 24000;
 
 interface UseAudioPlayerReturn {
   isPlaying: boolean;
+  isInitialized: boolean;
+  initialize: () => void;
   addAudioChunk: (base64Chunk: string) => void;
   stop: () => void;
   reset: () => void;
@@ -20,6 +22,7 @@ interface UseAudioPlayerReturn {
 
 export const useAudioPlayer = (): UseAudioPlayerReturn => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioQueueRef = useRef<AudioBuffer[]>([]);
   const isProcessingRef = useRef(false);
@@ -32,6 +35,7 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
   const getAudioContext = useCallback((): AudioContext => {
     if (!audioContextRef.current || audioContextRef.current.state === "closed") {
       audioContextRef.current = new AudioContext({ sampleRate: SAMPLE_RATE });
+      setIsInitialized(true);
     }
 
     // Resume if suspended (browser autoplay policy)
@@ -41,6 +45,13 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
 
     return audioContextRef.current;
   }, []);
+
+  /**
+   * Initialize AudioContext proactively (call on user interaction)
+   */
+  const initialize = useCallback(() => {
+    getAudioContext();
+  }, [getAudioContext]);
 
   /**
    * Decode base64 PCM to Float32Array
@@ -173,10 +184,13 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
+    setIsInitialized(false);
   }, [stop]);
 
   return {
     isPlaying,
+    isInitialized,
+    initialize,
     addAudioChunk,
     stop,
     reset,

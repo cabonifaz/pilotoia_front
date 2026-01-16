@@ -61,6 +61,8 @@ interface UseChatStreamReturn {
   streamingMessageId: string | null;
   progressMessage: string | null;
   isPlayingAudio: boolean;
+  isAudioInitialized: boolean;
+  initializeAudio: () => void;
   searchVectorial: (message: string, chatContext: ChatContext, tts: boolean) => Promise<void>;
   searchVectorialSQL: (
     message: string,
@@ -69,6 +71,7 @@ interface UseChatStreamReturn {
   ) => Promise<void>;
   cancelMessage: () => void;
   stopAudio: () => void;
+  resetAudio: () => void;
   currentChatId: number | null;
 }
 
@@ -139,7 +142,14 @@ export const useChatStream = (): UseChatStreamReturn => {
   const streamingMessageIdRef = useRef<string | null>(null); // Track the streaming message ID for cache operations
 
   // Audio player for TTS
-  const { isPlaying: isPlayingAudio, addAudioChunk, stop: stopAudio, reset: resetAudio } = useAudioPlayer();
+  const {
+    isPlaying: isPlayingAudio,
+    isInitialized: isAudioInitialized,
+    initialize: initializeAudio,
+    addAudioChunk,
+    stop: stopAudio,
+    reset: resetAudio
+  } = useAudioPlayer();
 
   // Track recently accessed chats (max 10)
   const recentChatsRef = useRef<(number | null)[]>([]);
@@ -788,10 +798,13 @@ export const useChatStream = (): UseChatStreamReturn => {
     streamingMessageId,
     progressMessage,
     isPlayingAudio,
+    isAudioInitialized,
+    initializeAudio,
     searchVectorial,
     searchVectorialSQL,
     cancelMessage,
     stopAudio,
+    resetAudio,
     currentChatId,
   };
 };

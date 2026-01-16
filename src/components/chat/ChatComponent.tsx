@@ -78,6 +78,8 @@ const ChatComponent = ({
     searchVectorialSQL,
     cancelMessage,
     currentChatId,
+    initializeAudio,
+    resetAudio,
   } = useChatStream();
   const { isAuthenticated, token } = useExternalLogin();
   // 2. Referencia para detectar el tope del scroll (hacia arriba) 🕵️
@@ -235,6 +237,17 @@ const ChatComponent = ({
       await startRecording({ language_code: "es-ES" });
     }
   };
+
+  // TTS toggle handler - initializes audio on enable, resets on disable
+  const handleTtsToggle = (enabled: boolean) => {
+    if (enabled) {
+      initializeAudio();
+    } else {
+      resetAudio();
+    }
+    setTtsEnabled(enabled);
+  };
+
   const chatQuery = async () => {
     if (!userQuery.trim()) return;
 
@@ -290,7 +303,7 @@ const ChatComponent = ({
         currentMainActionRef.current = action;
       }}
       ttsEnabled={ttsEnabled}
-      onTtsEnabledChange={setTtsEnabled}
+      onTtsEnabledChange={handleTtsToggle}
     >
       <TranscriptionProvider
         transcribeProvider={transcribeProvider}
