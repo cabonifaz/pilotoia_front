@@ -19,13 +19,11 @@ const CompanyAreaDropdown = ({
   const { user } = useQueryAuthContext();
   const changeCompanyArea = useChangeCompanyArea();
 
-  // 1. Estados locales para la UI
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(
     null
   );
   const [selectedAreaId, setSelectedAreaId] = useState<number | null>(null);
 
-  // 2. EFECTO CRUCIAL: Sincronizar con los datos del usuario al cargar o cambiar
   useEffect(() => {
     const actual = (user as any)?.actual_company_area;
     if (actual) {
@@ -36,7 +34,6 @@ const CompanyAreaDropdown = ({
 
   if (!user || !user.company_areas) return null;
 
-  // 3. Obtener empresas únicas para el primer dropdown
   const uniqueCompanies = useMemo(() => {
     const companiesMap = new Map();
     user.company_areas.forEach((item: any) => {
@@ -47,37 +44,43 @@ const CompanyAreaDropdown = ({
     return Array.from(companiesMap.entries());
   }, [user.company_areas]);
 
-  // 4. Filtrar áreas de la empresa seleccionada
   const availableAreas = useMemo(() => {
     return user.company_areas.filter(
       (item: any) => item.ID_EMPRESA === selectedCompanyId
     );
   }, [selectedCompanyId, user.company_areas]);
 
-  // 5. Determinar nombres a mostrar
   const currentCompanyName =
     uniqueCompanies.find(([id]) => id === selectedCompanyId)?.[1] ||
     "Seleccionar Empresa";
-
-  // Solo mostramos el nombre del área si coincide con la empresa seleccionada
   const currentArea = availableAreas.find(
     (a: any) => a.ID_AREA === selectedAreaId
   );
   const currentAreaName = currentArea ? currentArea.AREA : "Seleccionar Área";
 
-  const handleCompanyChange = (id: number) => {
-    setSelectedCompanyId(id);
-    setSelectedAreaId(null); // Reseteamos el área visualmente para obligar a elegir una nueva
+  // --- LÓGICA PARA SELECCIONAR ÁREA GENERAL AUTOMÁTICAMENTE ---
+  const handleCompanyChange = (companyId: number) => {
+    setSelectedCompanyId(companyId);
+
+    // Buscar el área "GENERAL" para esta empresa
+    const areasOfCompany = user.company_areas.filter(
+      (a: any) => a.ID_EMPRESA === companyId
+    );
+    const generalArea =
+      areasOfCompany.find((a: any) => a.AREA.toUpperCase() === "GENERAL") ||
+      areasOfCompany[0]; // Si no hay "General", toma la primera
+
+    if (generalArea) {
+      handleAreaChange(generalArea);
+    }
   };
 
   const handleAreaChange = (companyArea: any) => {
     try {
       changeCompanyArea(companyArea);
-      // No necesitamos setear el ID aquí manualmente porque el useEffect
-      // lo hará cuando el "user" se actualice globalmente tras el cambio
       toast({
-        title: "Éxito",
-        description: `Cambiado a ${companyArea.EMPRESA} - ${companyArea.AREA}`,
+        title: "Actualizado",
+        description: `${companyArea.EMPRESA} - ${companyArea.AREA}`,
         variant: "success",
       });
     } catch (error) {
@@ -99,7 +102,11 @@ const CompanyAreaDropdown = ({
             <ChevronsUpDown className="h-3 w-3 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56 text-xs">
+        {/* max-h-48 limita la altura a unos 5-6 elementos y activa el scroll */}
+        <DropdownMenuContent
+          align="start"
+          className="w-44 text-xs max-h-64 overflow-y-auto"
+        >
           {uniqueCompanies.map(([id, name]) => (
             <DropdownMenuItem key={id} onClick={() => handleCompanyChange(id)}>
               {name}
@@ -122,7 +129,7 @@ const CompanyAreaDropdown = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
-          className="w-56 text-xs max-h-64 overflow-y-auto"
+          className="w-40 text-xs max-h-64 overflow-y-auto"
         >
           {availableAreas.map((item: any) => (
             <DropdownMenuItem
