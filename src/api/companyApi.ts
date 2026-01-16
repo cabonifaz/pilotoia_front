@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import type { CreateCompanyRequest, CreateCompanyResponse, GetCompaniesResponse, UpdateCompanyStatusRequest, UpdateCompanyStatusResponse, CompanyLogin } from '@/types/company';
+import type { CreateCompanyRequest, CreateCompanyResponse, UpdateCompanyStatusRequest, UpdateCompanyStatusResponse, CompanyLogin, GetCompaniesPaginatedResponse } from '@/types/company';
 
 export const createCompany = async (
   request: CreateCompanyRequest
@@ -11,12 +11,6 @@ export const createCompany = async (
   return response.data;
 };
 
-export const getCompanies = async (): Promise<GetCompaniesResponse> => {
-  const response = await apiClient.get<GetCompaniesResponse>(
-    '/v1/company/get_companies'
-  );
-  return response.data;
-};
 
 export const updateCompanyStatus = async (
   request: UpdateCompanyStatusRequest
@@ -63,4 +57,34 @@ export const uploadLogoToS3 = async (
   if (!response.ok) {
     throw new Error(`Failed to upload logo to S3: ${response.statusText}`);
   }
+};
+
+
+export const getCompaniesPaginated = async (
+  page: number,
+  page_size: number,
+  search?: string,
+  order_field: 'ID_EMPRESA' | 'RUC' | 'RAZON_SOCIAL' | 'FCHCRE' | 'ID_ESTADO_REGISTRO' = 'RAZON_SOCIAL',
+  order_direction: 'ASC' | 'DESC' = 'ASC',
+  status_filter: number | null = null  
+): Promise<GetCompaniesPaginatedResponse> => {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    page_size: page_size.toString(),
+    order_field: order_field,
+    order_direction: order_direction
+  });
+
+  if (search) {
+    params.append('search', search);
+  }
+
+  if (status_filter !== null) {  // ✅ Solo agregar si no es null
+    params.append('status_filter', status_filter.toString());
+  }
+
+  const response = await apiClient.get<GetCompaniesPaginatedResponse>(
+    `/v1/company/get_companies_paginated?${params.toString()}`
+  );
+  return response.data;
 };
