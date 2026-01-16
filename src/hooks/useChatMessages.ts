@@ -1,10 +1,5 @@
-import {
-  useInfiniteQuery,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { chatApi } from "../api/chatApi";
-import type { Message } from "../types/message";
 import { queryKeys } from "../lib/queryClient";
 import { useEffect, useRef } from "react";
 

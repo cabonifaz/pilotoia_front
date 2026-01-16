@@ -80,7 +80,7 @@ const ChatComponent = ({
   } = useChatStream();
   const { isAuthenticated, token } = useExternalLogin();
   // 2. Referencia para detectar el tope del scroll (hacia arriba) 🕵️
-  const { ref: topSentinelRef, inView: isAtTop } = useInView({ threshold: 0 });
+  const { ref: topSentinelRef } = useInView({ threshold: 0 });
   // Get logo URL from actual company area
   const { user } = useQueryAuthContext();
   const actualCompanyArea = (user as any)?.actual_company_area;

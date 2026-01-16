@@ -192,29 +192,32 @@ export const useChatStream = (): UseChatStreamReturn => {
     (chatId: number | null, messages: Message[]) => {
       trackRecentChat(chatId);
 
-      queryClient.setQueryData<any>(queryKeys.chat.messages(chatId), (old) => {
-        // ✨ CASO 1: Si el chat es nuevo y no hay caché previa
-        if (!old) {
+      queryClient.setQueryData<any>(
+        queryKeys.chat.messages(chatId),
+        (old: { pages: any }) => {
+          // ✨ CASO 1: Si el chat es nuevo y no hay caché previa
+          if (!old) {
+            return {
+              pages: [{ messages: messages, last_evaluated_key: null }],
+              pageParams: [null],
+            };
+          }
+
+          // ✨ CASO 2: Si ya existen mensajes, los añadimos a la última página
+          const newPages = [...old.pages];
+          const targetPageIndex = 0;
+
+          newPages[targetPageIndex] = {
+            ...newPages[targetPageIndex],
+            messages: [...newPages[targetPageIndex].messages, ...messages],
+          };
+
           return {
-            pages: [{ messages: messages, last_evaluated_key: null }],
-            pageParams: [null],
+            ...old,
+            pages: newPages,
           };
         }
-
-        // ✨ CASO 2: Si ya existen mensajes, los añadimos a la última página
-        const newPages = [...old.pages];
-        const targetPageIndex = 0;
-
-        newPages[targetPageIndex] = {
-          ...newPages[targetPageIndex],
-          messages: [...newPages[targetPageIndex].messages, ...messages],
-        };
-
-        return {
-          ...old,
-          pages: newPages,
-        };
-      });
+      );
 
       updateChatLastMessageDate(chatId);
     },
@@ -223,20 +226,23 @@ export const useChatStream = (): UseChatStreamReturn => {
   // Helper to update a message in cache
   const updateMessageInCache = useCallback(
     (chatId: number | null, messageId: string, updates: Partial<Message>) => {
-      queryClient.setQueryData<any>(queryKeys.chat.messages(chatId), (old) => {
-        // 🕵️ Verificamos que 'old' sea el objeto de InfiniteQuery y tenga páginas
-        if (!old || !old.pages) return old;
+      queryClient.setQueryData<any>(
+        queryKeys.chat.messages(chatId),
+        (old: { pages: any[] }) => {
+          // 🕵️ Verificamos que 'old' sea el objeto de InfiniteQuery y tenga páginas
+          if (!old || !old.pages) return old;
 
-        return {
-          ...old,
-          pages: old.pages.map((page: any) => ({
-            ...page,
-            messages: page.messages.map((msg: Message) =>
-              msg.id === messageId ? { ...msg, ...updates } : msg
-            ),
-          })),
-        };
-      });
+          return {
+            ...old,
+            pages: old.pages.map((page: any) => ({
+              ...page,
+              messages: page.messages.map((msg: Message) =>
+                msg.id === messageId ? { ...msg, ...updates } : msg
+              ),
+            })),
+          };
+        }
+      );
     },
     [queryClient]
   );

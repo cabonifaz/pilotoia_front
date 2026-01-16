@@ -1,6 +1,5 @@
 import apiClient from "./apiClient";
 import { createSSEConnection } from "./sseClient";
-import type { Message } from "./../types/message";
 import type {
   ChatMessageRequest,
   AgentMessageRequest,
