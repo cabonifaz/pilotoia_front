@@ -12,7 +12,8 @@ import { type ChatContext } from "@/types/aiConfig";
 
 type JsonRecord = Record<string, unknown>;
 
-export type ChunkEvent = { type: "chunk"; content: string };
+export type TextChunkEvent = { type: "text_chunk"; content: string };
+export type AudioChunkEvent = { type: "audio_chunk"; content: string };
 export type CompleteEvent = { type: "complete" } & JsonRecord;
 export type ErrorEvent = {
   type: "error";
@@ -45,7 +46,8 @@ export type ChatCreatedEvent = {
 export type UnknownEvent = { type: string } & JsonRecord;
 
 export type StreamEvent =
-  | ChunkEvent
+  | TextChunkEvent
+  | AudioChunkEvent
   | CompleteEvent
   | ErrorEvent
   | ProgressEvent
@@ -57,7 +59,7 @@ interface UseChatStreamReturn {
   isLoading: boolean;
   streamingMessageId: string | null;
   progressMessage: string | null;
-  searchVectorial: (message: string, chatContext: ChatContext) => Promise<void>;
+  searchVectorial: (message: string, chatContext: ChatContext, tts: boolean) => Promise<void>;
   searchVectorialSQL: (
     message: string,
     chatContext: ChatContext,
@@ -282,7 +284,7 @@ export const useChatStream = (): UseChatStreamReturn => {
   }, []);
 
   const searchVectorial = useCallback(
-    async (messageContent: string, chatContext: ChatContext) => {
+    async (messageContent: string, chatContext: ChatContext, tts: boolean) => {
       if (!messageContent.trim()) return;
 
       setIsLoading(true);
@@ -319,6 +321,7 @@ export const useChatStream = (): UseChatStreamReturn => {
           company_id: chatContext.company_id,
           area_id: chatContext.area_id,
           chat_id: chatContext.chat_id,
+          tts,
         };
 
         // Remove titulo if chat_id is not null (existing chat)

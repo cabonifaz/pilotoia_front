@@ -35,6 +35,7 @@ const ChatComponent = ({
 }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState("");
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const currentMainActionRef = useRef<() => void>(() => {});
   const isUserSendingRef = useRef(false);
@@ -251,7 +252,7 @@ const ChatComponent = ({
         scrollContainerRef.current.scrollHeight;
     }
 
-    await searchVectorial(currentQuery, chatContext);
+    await searchVectorial(currentQuery, chatContext, ttsEnabled);
   };
 
   const cancelar = () => {
@@ -288,6 +289,8 @@ const ChatComponent = ({
       onMainActionChange={(action) => {
         currentMainActionRef.current = action;
       }}
+      ttsEnabled={ttsEnabled}
+      onTtsEnabledChange={setTtsEnabled}
     >
       <TranscriptionProvider
         transcribeProvider={transcribeProvider}

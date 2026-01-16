@@ -11,6 +11,7 @@ export interface ChatMessageRequest {
     user_id: number;
     company_id: number;
     area_id: number;
+    tts: boolean;
 }
 
 export interface AgentMessageRequest {
