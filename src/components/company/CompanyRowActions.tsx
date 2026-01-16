@@ -10,17 +10,21 @@ import {
 
 interface CompanyRowActionsProps {
   companyId: number;
+  companyName: string;
+  companyLogo: string | null;
   status: number; // 1 = Activo, 0 = Inactivo
   secretKey: string;
   onDelete: (companyId: number) => void;
   onReactivate: (companyId: number) => void;
-  onUpdateLogo: (companyId: number) => void;
+  onUpdateLogo: (companyId: number, companyName: string, companyLogo: string | null) => void;  // 👈 CAMBIAR AQUÍ
   onGenerateURL: (secretKey: string) => void;
   isPending?: boolean;
 }
 
 export const CompanyRowActions = ({
   companyId,
+  companyName,
+  companyLogo,
   status,
   secretKey,
   onDelete,
@@ -60,7 +64,7 @@ export const CompanyRowActions = ({
             {isActive && (
               <>
                 <DropdownMenuItem
-                  onClick={() => onUpdateLogo(companyId)}
+                  onClick={() => onUpdateLogo(companyId, companyName, companyLogo)}
                   disabled={isPending}
                   className="flex items-center gap-2 cursor-pointer"
                 >

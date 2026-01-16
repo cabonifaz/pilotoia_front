@@ -1,12 +1,19 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Building2, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
 import { Badge } from '@/components/shadcn/badge';
 import { Checkbox } from '@/components/shadcn/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/shadcn/dropdown-menu';
 import { Loader } from '@/components/loader/Loader';
-import { useGetCompanies, useUpdateCompanyStatus } from '@/hooks/useCompanyQueries';
+import { useGetCompaniesPaginated, useUpdateCompanyStatus } from '@/hooks/useCompanyQueries';
 import { CompanyRowActions } from '@/components/company';
 import { toast } from '@/hooks/use-toast';
 
@@ -23,15 +30,27 @@ const formatDate = (isoDate: string): string => {
 interface CompanyTableProps {
   searchTerm: string;
   sortBy: 'ruc' | 'razon_social' | null;
-  onUpdateLogo: (companyId: number) => void;
+  onUpdateLogo: (companyId: number, companyName: string, companyLogo: string | null) => void;
 }
 
-export const CompanyTable = ({ searchTerm, sortBy, onUpdateLogo }: CompanyTableProps) => {
+export const CompanyTable = ({ searchTerm, onUpdateLogo }: CompanyTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(8);
+  const [pageSize, setPageSize] = useState(10);
+  const [orderField, setOrderField] = useState<'ID_EMPRESA' | 'RUC' | 'RAZON_SOCIAL' | 'FCHCRE' | 'ID_ESTADO_REGISTRO'>('RAZON_SOCIAL');
+  const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('ASC');
+  const [statusFilter, setStatusFilter] = useState<number | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  const { data, isLoading, error } = useGetCompanies();
+  // Usar hook de paginación del servidor
+  const { data, isLoading, error } = useGetCompaniesPaginated(
+    currentPage,
+    pageSize,
+    searchTerm,
+    orderField,
+    orderDirection,
+    statusFilter
+  );
+
   const updateCompanyStatus = useUpdateCompanyStatus();
 
   const handleDeleteCompany = (companyId: number) => {
@@ -47,96 +66,95 @@ export const CompanyTable = ({ searchTerm, sortBy, onUpdateLogo }: CompanyTableP
       status: 1
     });
   };
-const handleGenerateURL = (secretKey: string) => {
-  const url = `${window.location.origin}/#/?ref=${secretKey}`;
 
-  navigator.clipboard.writeText(url)
-    .then(() => {
-      toast({
-        title: "URL copiada",
-        description: "La URL de la empresa fue copiada al portapapeles.",
-        variant: "success",
-      }); // Muestra mensaje de éxito
-    })
-    .catch((err) => {
-      toast({
-        title: "Error",
-        description: "Hubo un problema al copiar la URL.",
-        variant: "warning",
-      });  // Muestra mensaje de error si ocurre algo
-      console.error('Error al copiar la URL:', err);
-    });
-};
-  // Calculate items per page based on available height
-  useEffect(() => {
-    const calculateItemsPerPage = () => {
-      if (tableContainerRef.current) {
-        const containerHeight = tableContainerRef.current.clientHeight;
-        const rowHeight = 45; // Approximate height of a table row in pixels
-        const headerHeight = 45; // Approximate height of table header
-        const availableHeight = containerHeight - headerHeight;
-        const calculatedItems = Math.floor(availableHeight / rowHeight);
-        setItemsPerPage(Math.max(5, calculatedItems)); // Minimum 5 items
-      }
-    };
+  const handleGenerateURL = (secretKey: string) => {
+    const url = `${window.location.origin}/#/?ref=${secretKey}`;
 
-    const timer = setTimeout(calculateItemsPerPage);
-    window.addEventListener('resize', calculateItemsPerPage);
+    navigator.clipboard.writeText(url)
+      .then(() => {
+        toast({
+          title: "URL copiada",
+          description: "La URL de la empresa fue copiada al portapapeles.",
+          variant: "success",
+        });
+      })
+      .catch((err) => {
+        toast({
+          title: "Error",
+          description: "Hubo un problema al copiar la URL.",
+          variant: "warning",
+        });
+        console.error('Error al copiar la URL:', err);
+      });
+  };
 
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', calculateItemsPerPage);
-    };
-  }, [data]);
-
-  // Reset to first page when search term or sort changes
+  // Reset to first page when search term changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sortBy]);
+  }, [searchTerm]);
 
-  const processedCompanies = useMemo(() => {
-    console.log('companies data:', data?.companies);
-    if (!data?.companies) return [];
+  // Reset to first page when page size changes
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(Number(value));
+    setCurrentPage(1);
+  };
 
-    return data.companies
-      .filter(company =>
-        company.RUC.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        company.RAZON_SOCIAL.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-  }, [data?.companies, searchTerm]);
-
-  // Sort companies
-  const sortedCompanies = useMemo(() => {
-    let sorted = [...processedCompanies];
-
-    if (sortBy === 'ruc') {
-      sorted.sort((a, b) => a.RUC.localeCompare(b.RUC));
-    } else if (sortBy === 'razon_social') {
-      sorted.sort((a, b) => a.RAZON_SOCIAL.localeCompare(b.RAZON_SOCIAL));
+  // Handle column sort
+  const handleSort = (field: 'ID_EMPRESA' | 'RUC' | 'RAZON_SOCIAL' | 'FCHCRE' | 'ID_ESTADO_REGISTRO') => {
+    if (orderField === field) {
+      // Toggle direction if same field
+      setOrderDirection(orderDirection === 'ASC' ? 'DESC' : 'ASC');
     } else {
-      // Default sorting: by created date (most recent first)
-      sorted.sort((a, b) => {
-        const dateA = new Date(a.FCHCRE).getTime();
-        const dateB = new Date(b.FCHCRE).getTime();
-        return dateB - dateA;
-      });
+      // New field, set to ASC
+      setOrderField(field);
+      setOrderDirection('ASC');
     }
+    setCurrentPage(1);
+  };
 
-    return sorted;
-  }, [processedCompanies, sortBy]);
+  const companies = data?.data || [];
+  const pagination = data?.pagination || {
+    total_records: 0,
+    current_page: 1,
+    page_size: 10,
+    total_pages: 0
+  };
 
-  const totalPages = Math.ceil(sortedCompanies.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const displayedCompanies = sortedCompanies.slice(startIndex, startIndex + itemsPerPage);
+  const totalPages = pagination.total_pages;
+  const startIndex = (pagination.current_page - 1) * pagination.page_size + 1;
+  const endIndex = Math.min(
+    pagination.current_page * pagination.page_size,
+    pagination.total_records
+  );
 
   return (
     <Card className="flex-1 flex flex-col min-h-0">
       <CardHeader className="pb-3">
-        <div className="flex flex-col items-start gap-1">
-          <h1 className="text-2xl font-bold text-foreground">Empresas</h1>
-          <p className="text-xs text-muted-foreground">
-            Gestiona las empresas disponibles.
-          </p>
+        <div className="flex items-center justify-between">
+          {/* Título a la izquierda */}
+          <div className="flex flex-col items-start gap-1">
+            <h1 className="text-2xl font-bold text-foreground">Empresas</h1>
+            <p className="text-xs text-muted-foreground">
+              Gestiona las empresas disponibles.
+            </p>
+          </div>
+
+          {/* Selector */}
+          {!isLoading && !error && companies.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Filas por página:</span>
+              <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+                <SelectTrigger className="w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="15">15</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </CardHeader>
 
@@ -153,168 +171,263 @@ const handleGenerateURL = (secretKey: string) => {
           </div>
         )}
 
-        {/* Empty State */}
-        {!isLoading && !error && displayedCompanies.length === 0 && (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground">No se encontraron empresas</p>
-          </div>
-        )}
-
-        {/* Table */}
-        {!isLoading && !error && displayedCompanies.length > 0 && (
+        {/* Table - Always show when not loading/error */}
+        {!isLoading && !error && (
           <>
             <div ref={tableContainerRef} className="flex-1 min-h-0 border rounded-lg">
               <div className="h-full overflow-y-auto">
                 <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12"></TableHead>
-                    <TableHead>RUC</TableHead>
-                    <TableHead>Razón Social</TableHead>
-                    <TableHead>Fecha de Creación</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {displayedCompanies.map((company) => (
-                    <TableRow key={company.ID_EMPRESA}>
-                      <TableCell>
-                        <Checkbox />
-                      </TableCell>
-                      <TableCell>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12"></TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('RUC')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          RUC
+                          {orderField === 'RUC' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('RAZON_SOCIAL')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Razón Social
+                          {orderField === 'RAZON_SOCIAL' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('FCHCRE')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Fecha de Creación
+                          {orderField === 'FCHCRE' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+
+                      <TableHead>
                         <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-blue-500" />
-                          <span>{company.RUC}</span>
+                          
+                          <button
+                            onClick={() => handleSort('ID_ESTADO_REGISTRO')} 
+                            className="flex items-center gap-1 hover:text-foreground"
+                          >
+                            Estado
+                            {orderField === 'ID_ESTADO_REGISTRO' && ( 
+                              <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                            )}
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`h-6 w-6 p-0 ${statusFilter !== null ? 'text-blue-600' : ''}`}
+                              >
+                                <Filter className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(null);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === null ? 'bg-accent' : ''}
+                              >
+                                Todos
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(1);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 1 ? 'bg-accent' : ''}
+                              >
+                                Activo
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(0);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 0 ? 'bg-accent' : ''}
+                              >
+                                Inactivo
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
-                      </TableCell>
-                      <TableCell>{company.RAZON_SOCIAL}</TableCell>
-                      <TableCell>{formatDate(company.FCHCRE)}</TableCell>
-                      <TableCell>
-                        <Badge variant={company.ID_ESTADO_REGISTRO === 1 ? 'success' : 'destructive'}>
-                          {company.ID_ESTADO_REGISTRO === 1 ? 'Activo' : 'Inactivo'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <CompanyRowActions
-                          companyId={company.ID_EMPRESA}
-                          status={company.ID_ESTADO_REGISTRO}
-                          secretKey={company.SECRET_KEY}
-                          onDelete={handleDeleteCompany}
-                          onReactivate={handleReactivateCompany}
-                          onUpdateLogo={onUpdateLogo}
-                          onGenerateURL={handleGenerateURL}
-                          isPending={updateCompanyStatus.isPending}
-                        />
-                      </TableCell>
+                      </TableHead>
+                      <TableHead className="w-12"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {companies.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                          <p className="text-muted-foreground">
+                            {statusFilter === 1
+                              ? 'No se encontraron empresas activas'
+                              : statusFilter === 0
+                                ? 'No se encontraron empresas inactivas'
+                                : 'No se encontraron empresas'}
+                          </p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      companies.map((company) => (
+                        <TableRow key={company.ID_EMPRESA}>
+                          <TableCell>
+                            <Checkbox />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-blue-500" />
+                              <span>{company.RUC}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{company.RAZON_SOCIAL}</TableCell>
+                          <TableCell>{formatDate(company.FCHCRE)}</TableCell>
+                          <TableCell>
+                            <Badge variant={company.ID_ESTADO_REGISTRO === 1 ? 'success' : 'destructive'}>
+                              {company.ID_ESTADO_REGISTRO === 1 ? 'Activo' : 'Inactivo'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <CompanyRowActions
+                              companyId={company.ID_EMPRESA}
+                              companyName={company.RAZON_SOCIAL}
+                              companyLogo={company.LOGO}
+                              status={company.ID_ESTADO_REGISTRO}
+                              secretKey={company.SECRET_KEY}
+                              onDelete={handleDeleteCompany}
+                              onReactivate={handleReactivateCompany}
+                              onUpdateLogo={onUpdateLogo}
+                              onGenerateURL={handleGenerateURL}
+                              isPending={updateCompanyStatus.isPending}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </div>
 
-            {/* Pagination */}
-            <div className="flex flex-col items-center gap-2 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="hidden md:inline">Anterior</span>
-                </Button>
+            {/* Pagination - Solo mostrar si hay datos */}
+            {companies.length > 0 && (
+              <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden md:inline">Anterior</span>
+                  </Button>
 
-                <div className="hidden md:flex gap-1">
-                  {(() => {
-                    const maxButtons = 5;
-                    const halfRange = Math.floor(maxButtons / 2);
-                    let startPage = Math.max(1, currentPage - halfRange);
-                    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+                  <div className="hidden md:flex gap-1">
+                    {(() => {
+                      const maxButtons = 5;
+                      const halfRange = Math.floor(maxButtons / 2);
+                      let startPage = Math.max(1, currentPage - halfRange);
+                      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
 
-                    if (endPage - startPage + 1 < maxButtons) {
-                      startPage = Math.max(1, endPage - maxButtons + 1);
-                    }
-
-                    const pages = [];
-
-                    if (startPage > 1) {
-                      pages.push(1);
-                      if (startPage > 2) {
-                        pages.push('...');
+                      if (endPage - startPage + 1 < maxButtons) {
+                        startPage = Math.max(1, endPage - maxButtons + 1);
                       }
-                    }
 
-                    for (let i = startPage; i <= endPage; i++) {
-                      pages.push(i);
-                    }
+                      const pages = [];
 
-                    if (endPage < totalPages) {
-                      if (endPage < totalPages - 1) {
-                        pages.push('...');
+                      if (startPage > 1) {
+                        pages.push(1);
+                        if (startPage > 2) {
+                          pages.push('...');
+                        }
                       }
-                      pages.push(totalPages);
-                    }
 
-                    return pages.map((page, idx) => (
-                      <Button
-                        key={`${page}-${idx}`}
-                        variant={currentPage === page ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => typeof page === 'number' && setCurrentPage(page)}
-                        disabled={page === '...'}
-                      >
-                        {page}
-                      </Button>
-                    ));
-                  })()}
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(i);
+                      }
+
+                      if (endPage < totalPages) {
+                        if (endPage < totalPages - 1) {
+                          pages.push('...');
+                        }
+                        pages.push(totalPages);
+                      }
+
+                      return pages.map((page, idx) => (
+                        <Button
+                          key={`${page}-${idx}`}
+                          variant={currentPage === page ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => typeof page === 'number' && setCurrentPage(page)}
+                          disabled={page === '...'}
+                        >
+                          {page}
+                        </Button>
+                      ));
+                    })()}
+                  </div>
+
+                  <div className="flex md:hidden gap-1">
+                    {(() => {
+                      const maxButtons = 4;
+                      const halfRange = Math.floor(maxButtons / 2);
+                      let startPage = Math.max(1, currentPage - halfRange);
+                      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+                      if (endPage - startPage + 1 < maxButtons) {
+                        startPage = Math.max(1, endPage - maxButtons + 1);
+                      }
+
+                      const pages = [];
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(i);
+                      }
+
+                      return pages.map((page) => (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ));
+                    })()}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <span className="hidden md:inline">Siguiente</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
-
-                <div className="flex md:hidden gap-1">
-                  {(() => {
-                    const maxButtons = 4;
-                    const halfRange = Math.floor(maxButtons / 2);
-                    let startPage = Math.max(1, currentPage - halfRange);
-                    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-
-                    if (endPage - startPage + 1 < maxButtons) {
-                      startPage = Math.max(1, endPage - maxButtons + 1);
-                    }
-
-                    const pages = [];
-                    for (let i = startPage; i <= endPage; i++) {
-                      pages.push(i);
-                    }
-
-                    return pages.map((page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                      >
-                        {page}
-                      </Button>
-                    ));
-                  })()}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  <span className="hidden md:inline">Siguiente</span>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Mostrando {startIndex}-{endIndex} de {pagination.total_records} empresas
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Mostrando {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedCompanies.length)} de {sortedCompanies.length} empresas
-              </p>
-            </div>
+            )}
           </>
         )}
       </CardContent>
