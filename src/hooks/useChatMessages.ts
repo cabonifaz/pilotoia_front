@@ -1,12 +1,20 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { chatApi } from '../api/chatApi';
-import type { Message } from '../types/message';
-import { queryKeys } from '../lib/queryClient';
-import { useEffect, useRef } from 'react';
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { chatApi } from "../api/chatApi";
+import type { Message } from "../types/message";
+import { queryKeys } from "../lib/queryClient";
+import { useEffect, useRef } from "react";
 
 const MAX_RECENT_CHATS = 10;
 
-export const useChatMessages = (chatId: number | null | undefined, company_id: number, area_id: number) => {
+export const useChatMessages = (
+  chatId: number | null | undefined,
+  company_id: number,
+  area_id: number
+) => {
   const queryClient = useQueryClient();
   const recentChatsRef = useRef<(number | null)[]>([]);
 
@@ -16,7 +24,10 @@ export const useChatMessages = (chatId: number | null | undefined, company_id: n
       const currentChatId = chatId ?? null;
 
       // Add chat to recent list (remove if already exists to update position)
-      const updatedRecent = [currentChatId, ...recentChatsRef.current.filter(id => id !== currentChatId)];
+      const updatedRecent = [
+        currentChatId,
+        ...recentChatsRef.current.filter((id) => id !== currentChatId),
+      ];
 
       // Keep only the MAX_RECENT_CHATS most recent
       const chatsToKeep = updatedRecent.slice(0, MAX_RECENT_CHATS);
@@ -26,25 +37,47 @@ export const useChatMessages = (chatId: number | null | undefined, company_id: n
       recentChatsRef.current = chatsToKeep;
 
       // Remove message caches for old chats
-      chatsToRemove.forEach(oldChatId => {
+      chatsToRemove.forEach((oldChatId) => {
         queryClient.removeQueries({
           queryKey: queryKeys.chat.messages(oldChatId),
-          exact: true
+          exact: true,
         });
       });
     }
   }, [chatId, queryClient]);
 
-  return useQuery<Message[], Error>({
+  return useInfiniteQuery({
     queryKey: queryKeys.chat.messages(chatId ?? null),
-    queryFn: () => {
-      if (!chatId) {
-        return Promise.resolve([]);
-      }
-      return chatApi.getMessagesByChat(chatId.toString(), company_id, area_id);
+
+    // 1. Especificamos que pageParam puede ser null o el objeto de Dynamo
+    queryFn: async ({ pageParam }: { pageParam: any }) => {
+      console.log("🔍 Pidiendo página con param:", pageParam);
+      if (!chatId) return { messages: [], last_evaluated_key: null };
+      const response = await chatApi.getMessagesByChat(
+        chatId.toString(), // 2. Convertimos el número a string aquí 📝
+        company_id,
+        area_id,
+        15,
+        pageParam
+      );
+      console.log("📦 Respuesta de la API:", {
+        totalMensajes: response.messages.length,
+        siguienteLlave: response.last_evaluated_key,
+      });
+      return chatApi.getMessagesByChat(
+        chatId.toString(), // 2. Convertimos el número a string aquí 📝
+        company_id,
+        area_id,
+        15,
+        pageParam
+      );
     },
-    enabled: !!chatId, // The query will only run if chatId is not null or undefined
-    staleTime: 1000 * 60 * 60, // 1 hour
-    refetchOnWindowFocus: false,
+
+    // 3. Definimos el tipo del parámetro inicial explícitamente si es necesario
+    initialPageParam: null as any,
+
+    getNextPageParam: (lastPage) => lastPage.last_evaluated_key ?? undefined,
+    enabled: !!chatId,
+    staleTime: 1000 * 60 * 5,
   });
 };
