@@ -10,6 +10,7 @@ import { useRef, useCallback, useState } from "react";
  */
 
 const SAMPLE_RATE = 24000;
+const SCHEDULING_BUFFER_MS = 40; // Minimum buffer to prevent underruns (30-50ms recommended)
 
 interface UseAudioPlayerReturn {
   isPlaying: boolean;
@@ -64,7 +65,7 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
       bytes[i] = binaryString.charCodeAt(i);
     }
 
-    // Convert 16-bit PCM to Float32
+    // Convert 16-bit PCM to Float32 with clamping
     const dataView = new DataView(bytes.buffer);
     const numSamples = bytes.length / 2; // 16-bit = 2 bytes per sample
     const floatData = new Float32Array(numSamples);
@@ -72,8 +73,9 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
     for (let i = 0; i < numSamples; i++) {
       // Read 16-bit signed integer (little-endian)
       const int16 = dataView.getInt16(i * 2, true);
-      // Normalize to [-1, 1]
-      floatData[i] = int16 / 32768;
+      // Normalize to [-1, 1] and clamp to avoid artifacts
+      const normalized = int16 / 32768;
+      floatData[i] = Math.max(-1.0, Math.min(1.0, normalized));
     }
 
     return floatData;
@@ -108,6 +110,7 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
 
     isProcessingRef.current = true;
     const audioContext = getAudioContext();
+    const bufferOffset = SCHEDULING_BUFFER_MS / 1000; // Convert ms to seconds
 
     while (audioQueueRef.current.length > 0) {
       const buffer = audioQueueRef.current.shift()!;
@@ -115,8 +118,9 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
       source.buffer = buffer;
       source.connect(audioContext.destination);
 
-      // Schedule playback
-      const startTime = Math.max(audioContext.currentTime, nextStartTimeRef.current);
+      // Schedule playback with safety buffer to prevent underruns
+      const minStartTime = audioContext.currentTime + bufferOffset;
+      const startTime = Math.max(minStartTime, nextStartTimeRef.current);
       source.start(startTime);
       nextStartTimeRef.current = startTime + buffer.duration;
 
