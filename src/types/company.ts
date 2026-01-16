@@ -26,13 +26,6 @@ export interface Company {
   SECRET_KEY: string;
 }
 
-export interface GetCompaniesResponse {
-  companies: Company[];
-  result: {
-    idTipoMensaje: number;
-    mensaje: string;
-  };
-}
 
 export interface UpdateCompanyStatusRequest {
   id_empresa: number;

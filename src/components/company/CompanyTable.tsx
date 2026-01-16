@@ -1,11 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Building2, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
 import { Badge } from '@/components/shadcn/badge';
 import { Checkbox } from '@/components/shadcn/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/shadcn/dropdown-menu';
 import { Loader } from '@/components/loader/Loader';
 import { useGetCompaniesPaginated, useUpdateCompanyStatus } from '@/hooks/useCompanyQueries';
 import { CompanyRowActions } from '@/components/company';
@@ -30,10 +36,10 @@ interface CompanyTableProps {
 export const CompanyTable = ({ searchTerm, onUpdateLogo }: CompanyTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [orderField, setOrderField] = useState<'ID_EMPRESA' | 'RUC' | 'RAZON_SOCIAL' | 'FCHCRE' | 'FCHMOD' | 'ID_ESTADO_REGISTRO'>('RAZON_SOCIAL');
+  const [orderField, setOrderField] = useState<'ID_EMPRESA' | 'RUC' | 'RAZON_SOCIAL' | 'FCHCRE' | 'ID_ESTADO_REGISTRO'>('RAZON_SOCIAL');
   const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('ASC');
+  const [statusFilter, setStatusFilter] = useState<number | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
-
 
   // Usar hook de paginación del servidor
   const { data, isLoading, error } = useGetCompaniesPaginated(
@@ -41,7 +47,8 @@ export const CompanyTable = ({ searchTerm, onUpdateLogo }: CompanyTableProps) =>
     pageSize,
     searchTerm,
     orderField,
-    orderDirection
+    orderDirection,
+    statusFilter
   );
 
   const updateCompanyStatus = useUpdateCompanyStatus();
@@ -93,7 +100,7 @@ export const CompanyTable = ({ searchTerm, onUpdateLogo }: CompanyTableProps) =>
   };
 
   // Handle column sort
-  const handleSort = (field: 'ID_EMPRESA' | 'RUC' | 'RAZON_SOCIAL' | 'FCHCRE') => {
+  const handleSort = (field: 'ID_EMPRESA' | 'RUC' | 'RAZON_SOCIAL' | 'FCHCRE' | 'ID_ESTADO_REGISTRO') => {
     if (orderField === field) {
       // Toggle direction if same field
       setOrderDirection(orderDirection === 'ASC' ? 'DESC' : 'ASC');
@@ -164,15 +171,8 @@ export const CompanyTable = ({ searchTerm, onUpdateLogo }: CompanyTableProps) =>
           </div>
         )}
 
-        {/* Empty State */}
-        {!isLoading && !error && companies.length === 0 && (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground">No se encontraron empresas</p>
-          </div>
-        )}
-
-        {/* Table */}
-        {!isLoading && !error && companies.length > 0 && (
+        {/* Table - Always show when not loading/error */}
+        {!isLoading && !error && (
           <>
             <div ref={tableContainerRef} className="flex-1 min-h-0 border rounded-lg">
               <div className="h-full overflow-y-auto">
@@ -181,7 +181,7 @@ export const CompanyTable = ({ searchTerm, onUpdateLogo }: CompanyTableProps) =>
                     <TableRow>
                       <TableHead className="w-12"></TableHead>
                       <TableHead>
-                        <button 
+                        <button
                           onClick={() => handleSort('RUC')}
                           className="flex items-center gap-1 hover:text-foreground"
                         >
@@ -192,7 +192,7 @@ export const CompanyTable = ({ searchTerm, onUpdateLogo }: CompanyTableProps) =>
                         </button>
                       </TableHead>
                       <TableHead>
-                        <button 
+                        <button
                           onClick={() => handleSort('RAZON_SOCIAL')}
                           className="flex items-center gap-1 hover:text-foreground"
                         >
@@ -203,7 +203,7 @@ export const CompanyTable = ({ searchTerm, onUpdateLogo }: CompanyTableProps) =>
                         </button>
                       </TableHead>
                       <TableHead>
-                        <button 
+                        <button
                           onClick={() => handleSort('FCHCRE')}
                           className="flex items-center gap-1 hover:text-foreground"
                         >
@@ -213,151 +213,221 @@ export const CompanyTable = ({ searchTerm, onUpdateLogo }: CompanyTableProps) =>
                           )}
                         </button>
                       </TableHead>
-                      <TableHead>Estado</TableHead>
+
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          
+                          <button
+                            onClick={() => handleSort('ID_ESTADO_REGISTRO')} 
+                            className="flex items-center gap-1 hover:text-foreground"
+                          >
+                            Estado
+                            {orderField === 'ID_ESTADO_REGISTRO' && ( 
+                              <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                            )}
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`h-6 w-6 p-0 ${statusFilter !== null ? 'text-blue-600' : ''}`}
+                              >
+                                <Filter className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(null);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === null ? 'bg-accent' : ''}
+                              >
+                                Todos
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(1);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 1 ? 'bg-accent' : ''}
+                              >
+                                Activo
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(0);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 0 ? 'bg-accent' : ''}
+                              >
+                                Inactivo
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {companies.map((company) => (
-                      <TableRow key={company.ID_EMPRESA}>
-                        <TableCell>
-                          <Checkbox />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-blue-500" />
-                            <span>{company.RUC}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{company.RAZON_SOCIAL}</TableCell>
-                        <TableCell>{formatDate(company.FCHCRE)}</TableCell>
-                        <TableCell>
-                          <Badge variant={company.ID_ESTADO_REGISTRO === 1 ? 'success' : 'destructive'}>
-                            {company.ID_ESTADO_REGISTRO === 1 ? 'Activo' : 'Inactivo'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <CompanyRowActions
-                            companyId={company.ID_EMPRESA}
-                            companyName={company.RAZON_SOCIAL}
-                            companyLogo={company.LOGO}
-                            status={company.ID_ESTADO_REGISTRO}
-                            secretKey={company.SECRET_KEY}
-                            onDelete={handleDeleteCompany}
-                            onReactivate={handleReactivateCompany}
-                            onUpdateLogo={onUpdateLogo}
-                            onGenerateURL={handleGenerateURL}
-                            isPending={updateCompanyStatus.isPending}
-                          />
+                    {companies.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                          <p className="text-muted-foreground">
+                            {statusFilter === 1
+                              ? 'No se encontraron empresas activas'
+                              : statusFilter === 0
+                                ? 'No se encontraron empresas inactivas'
+                                : 'No se encontraron empresas'}
+                          </p>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      companies.map((company) => (
+                        <TableRow key={company.ID_EMPRESA}>
+                          <TableCell>
+                            <Checkbox />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-blue-500" />
+                              <span>{company.RUC}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{company.RAZON_SOCIAL}</TableCell>
+                          <TableCell>{formatDate(company.FCHCRE)}</TableCell>
+                          <TableCell>
+                            <Badge variant={company.ID_ESTADO_REGISTRO === 1 ? 'success' : 'destructive'}>
+                              {company.ID_ESTADO_REGISTRO === 1 ? 'Activo' : 'Inactivo'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <CompanyRowActions
+                              companyId={company.ID_EMPRESA}
+                              companyName={company.RAZON_SOCIAL}
+                              companyLogo={company.LOGO}
+                              status={company.ID_ESTADO_REGISTRO}
+                              secretKey={company.SECRET_KEY}
+                              onDelete={handleDeleteCompany}
+                              onReactivate={handleReactivateCompany}
+                              onUpdateLogo={onUpdateLogo}
+                              onGenerateURL={handleGenerateURL}
+                              isPending={updateCompanyStatus.isPending}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
             </div>
 
-            {/* Pagination */}
-            <div className="flex flex-col items-center gap-2 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="hidden md:inline">Anterior</span>
-                </Button>
+            {/* Pagination - Solo mostrar si hay datos */}
+            {companies.length > 0 && (
+              <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden md:inline">Anterior</span>
+                  </Button>
 
-                <div className="hidden md:flex gap-1">
-                  {(() => {
-                    const maxButtons = 5;
-                    const halfRange = Math.floor(maxButtons / 2);
-                    let startPage = Math.max(1, currentPage - halfRange);
-                    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+                  <div className="hidden md:flex gap-1">
+                    {(() => {
+                      const maxButtons = 5;
+                      const halfRange = Math.floor(maxButtons / 2);
+                      let startPage = Math.max(1, currentPage - halfRange);
+                      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
 
-                    if (endPage - startPage + 1 < maxButtons) {
-                      startPage = Math.max(1, endPage - maxButtons + 1);
-                    }
-
-                    const pages = [];
-
-                    if (startPage > 1) {
-                      pages.push(1);
-                      if (startPage > 2) {
-                        pages.push('...');
+                      if (endPage - startPage + 1 < maxButtons) {
+                        startPage = Math.max(1, endPage - maxButtons + 1);
                       }
-                    }
 
-                    for (let i = startPage; i <= endPage; i++) {
-                      pages.push(i);
-                    }
+                      const pages = [];
 
-                    if (endPage < totalPages) {
-                      if (endPage < totalPages - 1) {
-                        pages.push('...');
+                      if (startPage > 1) {
+                        pages.push(1);
+                        if (startPage > 2) {
+                          pages.push('...');
+                        }
                       }
-                      pages.push(totalPages);
-                    }
 
-                    return pages.map((page, idx) => (
-                      <Button
-                        key={`${page}-${idx}`}
-                        variant={currentPage === page ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => typeof page === 'number' && setCurrentPage(page)}
-                        disabled={page === '...'}
-                      >
-                        {page}
-                      </Button>
-                    ));
-                  })()}
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(i);
+                      }
+
+                      if (endPage < totalPages) {
+                        if (endPage < totalPages - 1) {
+                          pages.push('...');
+                        }
+                        pages.push(totalPages);
+                      }
+
+                      return pages.map((page, idx) => (
+                        <Button
+                          key={`${page}-${idx}`}
+                          variant={currentPage === page ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => typeof page === 'number' && setCurrentPage(page)}
+                          disabled={page === '...'}
+                        >
+                          {page}
+                        </Button>
+                      ));
+                    })()}
+                  </div>
+
+                  <div className="flex md:hidden gap-1">
+                    {(() => {
+                      const maxButtons = 4;
+                      const halfRange = Math.floor(maxButtons / 2);
+                      let startPage = Math.max(1, currentPage - halfRange);
+                      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+                      if (endPage - startPage + 1 < maxButtons) {
+                        startPage = Math.max(1, endPage - maxButtons + 1);
+                      }
+
+                      const pages = [];
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(i);
+                      }
+
+                      return pages.map((page) => (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ));
+                    })()}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <span className="hidden md:inline">Siguiente</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
-
-                <div className="flex md:hidden gap-1">
-                  {(() => {
-                    const maxButtons = 4;
-                    const halfRange = Math.floor(maxButtons / 2);
-                    let startPage = Math.max(1, currentPage - halfRange);
-                    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-
-                    if (endPage - startPage + 1 < maxButtons) {
-                      startPage = Math.max(1, endPage - maxButtons + 1);
-                    }
-
-                    const pages = [];
-                    for (let i = startPage; i <= endPage; i++) {
-                      pages.push(i);
-                    }
-
-                    return pages.map((page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                      >
-                        {page}
-                      </Button>
-                    ));
-                  })()}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  <span className="hidden md:inline">Siguiente</span>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Mostrando {startIndex}-{endIndex} de {pagination.total_records} empresas
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Mostrando {startIndex}-{endIndex} de {pagination.total_records} empresas
-              </p>
-            </div>
+            )}
           </>
         )}
       </CardContent>
