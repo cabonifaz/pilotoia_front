@@ -135,7 +135,7 @@ export const useGetCompaniesPaginated = (
   statusFilter: number | null = null  
 ) => {
   return useQuery({
-    queryKey: ['companies-paginated'],
+    queryKey: ['companies-paginated', page, pageSize, search, orderField, orderDirection, statusFilter],
     queryFn: async () => {
       return await getCompaniesPaginated(page, pageSize, search, orderField, orderDirection, statusFilter);
     },
