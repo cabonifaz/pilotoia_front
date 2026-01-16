@@ -1,104 +1,143 @@
-import { ChevronsUpDown } from 'lucide-react';
-import { Button } from '@/components/shadcn/button';
+import { useState, useMemo, useEffect } from "react";
+import { ChevronsUpDown } from "lucide-react";
+import { Button } from "@/components/shadcn/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/shadcn/dropdown-menu';
-import { useQueryAuthContext } from '../../contexts/QueryAuthContext';
-import { useChangeCompanyArea } from '../../hooks/useUserQueries';
-import { toast } from '../../hooks/use-toast';
+} from "@/components/shadcn/dropdown-menu";
+import { useQueryAuthContext } from "../../contexts/QueryAuthContext";
+import { useChangeCompanyArea } from "../../hooks/useUserQueries";
+import { toast } from "../../hooks/use-toast";
 
-interface CompanyAreaDropdownProps {
+const CompanyAreaDropdown = ({
+  isDisabled = false,
+}: {
   isDisabled?: boolean;
-}
-
-const CompanyAreaDropdown = ({ isDisabled = false }: CompanyAreaDropdownProps) => {
+}) => {
   const { user } = useQueryAuthContext();
   const changeCompanyArea = useChangeCompanyArea();
 
-  // Get actual company and area info
-  const actualCompanyArea = (user as any)?.actual_company_area;
-  const companyName = actualCompanyArea?.EMPRESA;
-  const areaName = actualCompanyArea?.AREA;
+  // 1. Estados locales para la UI
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(
+    null
+  );
+  const [selectedAreaId, setSelectedAreaId] = useState<number | null>(null);
 
-  const currentKey = actualCompanyArea ?
-    `${actualCompanyArea.ID_EMPRESA}-${actualCompanyArea.ID_AREA}` : '';
+  // 2. EFECTO CRUCIAL: Sincronizar con los datos del usuario al cargar o cambiar
+  useEffect(() => {
+    const actual = (user as any)?.actual_company_area;
+    if (actual) {
+      setSelectedCompanyId(actual.ID_EMPRESA);
+      setSelectedAreaId(actual.ID_AREA);
+    }
+  }, [user]);
 
-  const handleCompanyAreaChange = (selectedCompanyArea: any) => {
+  if (!user || !user.company_areas) return null;
+
+  // 3. Obtener empresas únicas para el primer dropdown
+  const uniqueCompanies = useMemo(() => {
+    const companiesMap = new Map();
+    user.company_areas.forEach((item: any) => {
+      if (!companiesMap.has(item.ID_EMPRESA)) {
+        companiesMap.set(item.ID_EMPRESA, item.EMPRESA);
+      }
+    });
+    return Array.from(companiesMap.entries());
+  }, [user.company_areas]);
+
+  // 4. Filtrar áreas de la empresa seleccionada
+  const availableAreas = useMemo(() => {
+    return user.company_areas.filter(
+      (item: any) => item.ID_EMPRESA === selectedCompanyId
+    );
+  }, [selectedCompanyId, user.company_areas]);
+
+  // 5. Determinar nombres a mostrar
+  const currentCompanyName =
+    uniqueCompanies.find(([id]) => id === selectedCompanyId)?.[1] ||
+    "Seleccionar Empresa";
+
+  // Solo mostramos el nombre del área si coincide con la empresa seleccionada
+  const currentArea = availableAreas.find(
+    (a: any) => a.ID_AREA === selectedAreaId
+  );
+  const currentAreaName = currentArea ? currentArea.AREA : "Seleccionar Área";
+
+  const handleCompanyChange = (id: number) => {
+    setSelectedCompanyId(id);
+    setSelectedAreaId(null); // Reseteamos el área visualmente para obligar a elegir una nueva
+  };
+
+  const handleAreaChange = (companyArea: any) => {
     try {
-      changeCompanyArea(selectedCompanyArea);
-
+      changeCompanyArea(companyArea);
+      // No necesitamos setear el ID aquí manualmente porque el useEffect
+      // lo hará cuando el "user" se actualice globalmente tras el cambio
       toast({
         title: "Éxito",
-        description: `Empresa/área cambiada a ${selectedCompanyArea.EMPRESA} - ${selectedCompanyArea.AREA}`,
-        variant: "success"
+        description: `Cambiado a ${companyArea.EMPRESA} - ${companyArea.AREA}`,
+        variant: "success",
       });
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo cambiar la empresa/área. Inténtalo de nuevo.",
-        variant: "destructive"
-      });
+      toast({ title: "Error", variant: "destructive" });
     }
   };
 
-  if (!user) {
-    return null;
-  }
-
-  // Check if user has multiple company areas
-  const hasMultipleCompanyAreas = user.company_areas && user.company_areas.length > 1;
-
-  if (!companyName) {
-    return null;
-  }
-
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          disabled={isDisabled}
-          className="flex items-center gap-2 px-3 py-1.5 h-auto text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-        >
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{companyName}</span>
-            {areaName && (
-              <>
-                <span>•</span>
-                <span>{areaName}</span>
-              </>
-            )}
-            {hasMultipleCompanyAreas && (
-              <ChevronsUpDown className="h-3 w-3" />
-            )}
-          </div>
-        </Button>
-      </DropdownMenuTrigger>
-
-      {hasMultipleCompanyAreas && (
-        <DropdownMenuContent align="end" className="w-56 text-xs max-h-64 overflow-y-auto">
-          {user.company_areas?.map((companyArea: any) => {
-            const key = `${companyArea.ID_EMPRESA}-${companyArea.ID_AREA}`;
-            const isCurrent = key === currentKey;
-
-            return (
-              !isCurrent && (
-                <DropdownMenuItem
-                  key={key}
-                  onClick={() => handleCompanyAreaChange(companyArea)}
-                  className="cursor-pointer"
-                >
-                  <span>{companyArea.EMPRESA} • {companyArea.AREA}</span>
-                </DropdownMenuItem>
-              )
-            );
-          })}
+    <div className="flex flex-col sm:flex-row gap-2">
+      {/* Selector de Empresa */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            disabled={isDisabled}
+            className="justify-between min-w-[160px] text-xs h-9"
+          >
+            <span className="truncate font-medium">{currentCompanyName}</span>
+            <ChevronsUpDown className="h-3 w-3 opacity-50" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-56 text-xs">
+          {uniqueCompanies.map(([id, name]) => (
+            <DropdownMenuItem key={id} onClick={() => handleCompanyChange(id)}>
+              {name}
+            </DropdownMenuItem>
+          ))}
         </DropdownMenuContent>
-      )}
-    </DropdownMenu>
+      </DropdownMenu>
+
+      {/* Selector de Área */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            disabled={isDisabled || !selectedCompanyId}
+            className="justify-between min-w-[160px] text-xs h-9"
+          >
+            <span className="truncate">{currentAreaName}</span>
+            <ChevronsUpDown className="h-3 w-3 opacity-50" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          className="w-56 text-xs max-h-64 overflow-y-auto"
+        >
+          {availableAreas.map((item: any) => (
+            <DropdownMenuItem
+              key={item.ID_AREA}
+              onClick={() => handleAreaChange(item)}
+              className={
+                item.ID_AREA === selectedAreaId ? "bg-accent font-bold" : ""
+              }
+            >
+              {item.AREA}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 };
 
