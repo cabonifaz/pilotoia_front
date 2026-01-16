@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createCompany, getCompanies, updateCompanyStatus, getCompaniesLogin, generateLogoPresignedUrl, uploadLogoToS3 } from '../api/companyApi';
+import { createCompany, updateCompanyStatus, getCompaniesLogin, generateLogoPresignedUrl, uploadLogoToS3, getCompaniesPaginated } from '../api/companyApi';
 import type { CreateCompanyRequest, UpdateCompanyStatusRequest } from '@/types/company';
 import { toast } from './use-toast';
 
@@ -15,7 +15,7 @@ export const useCreateCompany = () => {
       // Invalidate user and company-areas queries to refetch updated data
       queryClient.invalidateQueries({ queryKey: ['user'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
-      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      queryClient.invalidateQueries({ queryKey: ['companies-paginated'] });
       queryClient.invalidateQueries({ queryKey: ['companies-login'] });
 
       // Get message from results array (SP response) or from result wrapper
@@ -38,15 +38,7 @@ export const useCreateCompany = () => {
   });
 };
 
-export const useGetCompanies = () => {
-  return useQuery({
-    queryKey: ['companies'],
-    queryFn: async () => {
-      return await getCompanies();
-    },
-    retry: false,
-  });
-};
+
 
 export const useUpdateCompanyStatus = () => {
   const queryClient = useQueryClient();
@@ -58,7 +50,7 @@ export const useUpdateCompanyStatus = () => {
     retry: false,
     onSuccess: (data) => {
       // Invalidate companies and company-areas queries to refetch updated data
-      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      queryClient.invalidateQueries({ queryKey: ['companies-paginated'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
       queryClient.invalidateQueries({ queryKey: ['companies-login'] });
 
@@ -112,7 +104,7 @@ export const useUploadCompanyLogo = () => {
     retry: false,
     onSuccess: () => {
       // Invalidate queries to refetch with updated logo
-      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      queryClient.invalidateQueries({ queryKey: ['companies-paginated'] });
       queryClient.invalidateQueries({ queryKey: ['user'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
       queryClient.invalidateQueries({ queryKey: ['companies-login'] });
@@ -131,5 +123,25 @@ export const useUploadCompanyLogo = () => {
         variant: 'destructive',
       });
     },
+  });
+};
+
+export const useGetCompaniesPaginated = (
+  page: number,
+  pageSize: number,
+  search: string,
+  orderField: 'ID_EMPRESA' | 'RUC' | 'RAZON_SOCIAL' | 'FCHCRE' | 'ID_ESTADO_REGISTRO' = 'RAZON_SOCIAL',
+  orderDirection: 'ASC' | 'DESC' = 'ASC',
+  statusFilter: number | null = null  
+) => {
+  return useQuery({
+    queryKey: ['companies-paginated', page, pageSize, search, orderField, orderDirection, statusFilter],
+    queryFn: async () => {
+      return await getCompaniesPaginated(page, pageSize, search, orderField, orderDirection, statusFilter);
+    },
+    retry: false,
+    placeholderData: (previousData) => previousData,
+    staleTime: 0,
+    gcTime: 0,
   });
 };
