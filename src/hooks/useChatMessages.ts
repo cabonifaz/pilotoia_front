@@ -46,19 +46,8 @@ export const useChatMessages = (
 
     // 1. Especificamos que pageParam puede ser null o el objeto de Dynamo
     queryFn: async ({ pageParam }: { pageParam: any }) => {
-      console.log("🔍 Pidiendo página con param:", pageParam);
       if (!chatId) return { messages: [], last_evaluated_key: null };
-      const response = await chatApi.getMessagesByChat(
-        chatId.toString(), // 2. Convertimos el número a string aquí 📝
-        company_id,
-        area_id,
-        15,
-        pageParam
-      );
-      console.log("📦 Respuesta de la API:", {
-        totalMensajes: response.messages.length,
-        siguienteLlave: response.last_evaluated_key,
-      });
+
       return chatApi.getMessagesByChat(
         chatId.toString(), // 2. Convertimos el número a string aquí 📝
         company_id,
