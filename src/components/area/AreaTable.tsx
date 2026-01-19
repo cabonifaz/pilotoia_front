@@ -46,15 +46,16 @@ export const AreaTable = ({
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
   // Server-side pagination query
-  const { data, isLoading, error } = useGetAreasPaginated({
-    id_empresa: id_empresa || 0,
-    num_pagina: currentPage,
-    tam_pagina: pageSize,
-    term_busqueda: searchTerm,
-    campo_orden: orderField,
-    dir_orden: orderDirection,
-    filtro_estado: statusFilter
-  });
+  const { data, isLoading, error } = useGetAreasPaginated(
+    id_empresa || 0,
+    currentPage,
+    pageSize,
+    searchTerm,
+    orderField,
+    orderDirection,
+    statusFilter
+  );
+
 
   const updateAreaStatus = useUpdateAreaStatus(id_empresa);
   const updateAreaName = useUpdateAreaName(id_empresa);
@@ -338,7 +339,7 @@ export const AreaTable = ({
                       areas.map((area) => (
                         <TableRow key={area.ID_AREA}>
                           <TableCell>
-                            <Checkbox /> 
+                            <Checkbox />
                           </TableCell>
                           <TableCell>
                             {editingAreaId === area.ID_AREA ? (
