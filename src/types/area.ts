@@ -26,6 +26,8 @@ export interface Area {
 
 export interface GetAreasResponse {
   areas: Area[];
+  total_paginas: number;
+  total_registros: number;
   result: {
     idTipoMensaje: number;
     mensaje: string;
@@ -42,4 +44,31 @@ export interface UpdateAreaNameRequest {
   id_empresa: number;
   id_area: number;
   area: string;
+}
+
+export interface PaginationInfo {
+  total_records: number;
+  current_page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface GetAreasPaginatedResponse {
+  areas: Area[];
+  total_paginas: number;
+  total_registros: number;
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}
+
+export interface GetAreasParams {
+  id_empresa: number;
+  num_pagina: number;
+  tam_pagina: number;
+  term_busqueda: string;
+  campo_orden: string;
+  dir_orden: 'ASC' | 'DESC';
+  filtro_estado: number | null;
 }

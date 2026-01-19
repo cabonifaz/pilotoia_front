@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, ChevronsUpDown, CirclePlus } from 'lucide-react';
+import { useDebounce } from 'use-debounce';
+import { Search, CirclePlus } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { AreaTable, AreaSidebar, AreaAiSidebar } from '@/components/area';
@@ -10,7 +11,9 @@ const AreaManagement = () => {
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
   const [selectedAreaForAi, setSelectedAreaForAi] = useState<{ id_area: number; id_empresa: number; area_name: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'area' | 'fecha_creacion' | null>(null);
+
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
+
   const { user } = useQueryAuthContext();
 
   const closeSidebar = () => {
@@ -50,27 +53,8 @@ const AreaManagement = () => {
               />
             </div>
 
-            {/* Sort/Filter Buttons */}
+            {/* Add Button */}
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant={sortBy === 'area' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSortBy(sortBy === 'area' ? null : 'area')}
-                className="gap-2"
-              >
-                <ChevronsUpDown className="h-4 w-4 flex-shrink-0" />
-                Área
-              </Button>
-              <Button
-                variant={sortBy === 'fecha_creacion' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSortBy(sortBy === 'fecha_creacion' ? null : 'fecha_creacion')}
-                className="gap-2"
-              >
-                <ChevronsUpDown className="h-4 w-4 flex-shrink-0" />
-                Fecha
-              </Button>
-
               <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2" size="sm">
                 <CirclePlus className="h-4 w-4 flex-shrink-0" />
                 Agregar área
@@ -79,7 +63,10 @@ const AreaManagement = () => {
           </div>
 
           {/* Table Section */}
-          <AreaTable searchTerm={searchTerm} sortBy={sortBy} onConfigureAi={handleConfigureAi} />
+          <AreaTable 
+            searchTerm={debouncedSearchTerm}
+            onConfigureAi={handleConfigureAi} 
+          />
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createArea, getAreas, updateAreaStatus, updateAreaName } from '../api/areaApi';
-import type { CreateAreaRequest, UpdateAreaStatusRequest, UpdateAreaNameRequest } from '@/types/area';
+import { createArea, getAreas, getAreasPaginated, updateAreaStatus, updateAreaName } from '../api/areaApi';
+import type { CreateAreaRequest, UpdateAreaStatusRequest, UpdateAreaNameRequest, GetAreasParams } from '@/types/area';
 import { toast } from './use-toast';
 
 export const useCreateArea = (id_empresa: number) => {
@@ -56,6 +56,7 @@ export const useUpdateAreaStatus = (id_empresa: number) => {
     retry: false,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['areas', id_empresa] });
+      queryClient.invalidateQueries({ queryKey: ['areas-paginated'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
 
       // Get message from results array (SP response) or from result wrapper
@@ -88,6 +89,7 @@ export const useUpdateAreaName = (id_empresa: number) => {
     retry: false,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['areas', id_empresa] });
+      queryClient.invalidateQueries({ queryKey: ['areas-paginated'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
 
       // Get message from results array (SP response) or from result wrapper
@@ -107,5 +109,26 @@ export const useUpdateAreaName = (id_empresa: number) => {
         variant: 'destructive',
       });
     },
+  });
+};
+
+export const useGetAreasPaginated = (params: GetAreasParams) => {
+  return useQuery({
+    queryKey: [
+      'areas-paginated',
+      params.id_empresa,
+      params.num_pagina,
+      params.tam_pagina,
+      params.term_busqueda,
+      params.campo_orden,
+      params.dir_orden
+    ],
+    queryFn: async () => {
+      return await getAreasPaginated(params);
+    },
+    enabled: !!params.id_empresa && params.id_empresa > 0,
+    retry: false,
+    staleTime: 0,
+    gcTime: 60000,
   });
 };
