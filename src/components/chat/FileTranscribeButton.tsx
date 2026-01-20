@@ -43,7 +43,7 @@ export const FileTranscribeButton = ({
       disabled={isDisabled || isTranscribing}
       variant="ghost"
       size="icon"
-      className="absolute right-0.5 bottom-0.5 rounded-full hover:bg-transparent"
+      className="rounded-full hover:bg-transparent"
       title={
         isTranscribing
           ? "Transcribiendo archivo..."

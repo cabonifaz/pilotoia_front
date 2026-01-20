@@ -2,7 +2,7 @@ import { useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/select';
-import { Square, Languages } from 'lucide-react';
+import { Square, Languages, AudioLines } from 'lucide-react';
 import { VoiceRecordButton } from './VoiceRecordButton';
 import { FileTranscribeButton } from './FileTranscribeButton';
 import { CommandMenu } from './CommandMenu';
@@ -21,7 +21,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Get command state from context
-  const { userQuery, onQueryChange, isLoading, onCancel, onSearchVectorial, selectedAction, onSearchVectorialSQL } = useCommand();
+  const { userQuery, onQueryChange, isLoading, onCancel, onSearchVectorial, selectedAction, onSearchVectorialSQL, ttsEnabled, onTtsEnabledChange } = useCommand();
 
   // Resize textarea to fit content
   const resizeTextarea = () => {
@@ -117,63 +117,76 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
             </Button>
           )}
           {!isLoading && (
-            <>
-              {/* Language selector - positioned to the left of transcription button */}
-              <div className="absolute right-14 bottom-1">
-                <Select
-                  value={selectedLanguage}
-                  onValueChange={(value) => {
-                    setSelectedLanguage(value);
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-[100px] text-xs border-muted-foreground/30">
-                    <Languages className="h-3 w-3 mr-1" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
-                    {availableLanguages.map((lang) => {
-                      const provider = transcribeProvider === 'aws' ? 'aws' : 'openai';
-                      const code = getLanguageCode(lang, provider);
-                      if (!code) return null;
-                      return (
-                        <SelectItem key={code} value={code} className="text-xs">
-                          {lang.name}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="absolute right-3 bottom-1 flex items-center gap-1">
+              {/* Language selector */}
+              <Select
+                value={selectedLanguage}
+                onValueChange={(value) => {
+                  setSelectedLanguage(value);
+                }}
+              >
+                <SelectTrigger className="h-8 w-[100px] text-xs border-muted-foreground/30">
+                  <Languages className="h-3 w-3 mr-1" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {availableLanguages.map((lang) => {
+                    const provider = transcribeProvider === 'aws' ? 'aws' : 'openai';
+                    const code = getLanguageCode(lang, provider);
+                    if (!code) return null;
+                    return (
+                      <SelectItem key={code} value={code} className="text-xs">
+                        {lang.name}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
 
-              {/* Transcription button */}
-              <div className="absolute right-3 bottom-1">
-                {transcribeProvider === 'aws' ? (
-                  <VoiceRecordButton
-                    isRecording={isRecording}
-                    isConnecting={isConnecting}
-                    isDisabled={isLoading}
-                    onClick={() => {
-                      onMicrophoneClick();
-                      focusTextarea();
-                    }}
-                  />
-                ) : (
-                  <FileTranscribeButton
-                    isRecording={isFileRecording}
-                    isTranscribing={isFileTranscribing}
-                    isDisabled={isLoading}
-                    onClick={() => {
-                      if (isFileRecording) {
-                        onStopRecording();
-                      } else {
-                        onStartRecording();
-                      }
-                      focusTextarea();
-                    }}
-                  />
-                )}
-              </div>
-            </>
+              {/* Transcription button (STT) */}
+              {transcribeProvider === 'aws' ? (
+                <VoiceRecordButton
+                  isRecording={isRecording}
+                  isConnecting={isConnecting}
+                  isDisabled={isLoading}
+                  onClick={() => {
+                    onMicrophoneClick();
+                    focusTextarea();
+                  }}
+                />
+              ) : (
+                <FileTranscribeButton
+                  isRecording={isFileRecording}
+                  isTranscribing={isFileTranscribing}
+                  isDisabled={isLoading}
+                  onClick={() => {
+                    if (isFileRecording) {
+                      onStopRecording();
+                    } else {
+                      onStartRecording();
+                    }
+                    focusTextarea();
+                  }}
+                />
+              )}
+
+              {/* TTS toggle button */}
+              <Button
+                onClick={() => {
+                  onTtsEnabledChange(!ttsEnabled);
+                  requestAnimationFrame(() => {
+                    textareaRef.current?.focus();
+                  });
+                }}
+                variant="ghost"
+                size="icon"
+                tabIndex={-1}
+                className={`rounded-full ${ttsEnabled ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''}`}
+                title={ttsEnabled ? 'Desactivar texto a voz' : 'Activar texto a voz'}
+              >
+                <AudioLines className="w-4 h-4" />
+              </Button>
+            </div>
           )}
         </div>
       </div>
