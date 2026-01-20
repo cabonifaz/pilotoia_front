@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
-import { Square } from 'lucide-react';
+import { Square, AudioLines } from 'lucide-react';
 //import { VoiceRecordButton } from './VoiceRecordButton';
 //import { FileTranscribeButton } from './FileTranscribeButton';
 import { CommandMenu } from './CommandMenu';
@@ -19,7 +19,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Get command state from context
-  const { userQuery, onQueryChange, isLoading, onCancel, onSearchVectorial, selectedAction, onSearchVectorialSQL } = useCommand();
+  const { userQuery, onQueryChange, isLoading, onCancel, onSearchVectorial, selectedAction, onSearchVectorialSQL, ttsEnabled, onTtsEnabledChange } = useCommand();
 
   // Resize textarea to fit content
   const resizeTextarea = () => {
@@ -147,6 +147,23 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
               )}
             </div>
           )*/}
+          {!isLoading && (
+            <Button
+              onClick={() => {
+                onTtsEnabledChange(!ttsEnabled);
+                requestAnimationFrame(() => {
+                  textareaRef.current?.focus();
+                });
+              }}
+              variant="ghost"
+              size="icon"
+              tabIndex={-1}
+              className={`absolute right-3 bottom-1 rounded-full ${ttsEnabled ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''}`}
+              title={ttsEnabled ? 'Desactivar texto a voz' : 'Activar texto a voz'}
+            >
+              <AudioLines className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

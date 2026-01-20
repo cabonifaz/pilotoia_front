@@ -9,10 +9,12 @@ import {
 import { showStreamingErrorToast } from "../utils/errorHandler";
 import { type Message } from "@/types/message";
 import { type ChatContext } from "@/types/aiConfig";
+import { useAudioPlayer } from "./useAudioPlayer";
 
 type JsonRecord = Record<string, unknown>;
 
-export type ChunkEvent = { type: "chunk"; content: string };
+export type TextChunkEvent = { type: "text_chunk"; content: string };
+export type AudioChunkEvent = { type: "audio_chunk"; content: string };
 export type CompleteEvent = { type: "complete" } & JsonRecord;
 export type ErrorEvent = {
   type: "error";
@@ -45,7 +47,8 @@ export type ChatCreatedEvent = {
 export type UnknownEvent = { type: string } & JsonRecord;
 
 export type StreamEvent =
-  | ChunkEvent
+  | TextChunkEvent
+  | AudioChunkEvent
   | CompleteEvent
   | ErrorEvent
   | ProgressEvent
@@ -57,13 +60,18 @@ interface UseChatStreamReturn {
   isLoading: boolean;
   streamingMessageId: string | null;
   progressMessage: string | null;
-  searchVectorial: (message: string, chatContext: ChatContext) => Promise<void>;
+  isPlayingAudio: boolean;
+  isAudioInitialized: boolean;
+  initializeAudio: () => void;
+  searchVectorial: (message: string, chatContext: ChatContext, tts: boolean) => Promise<void>;
   searchVectorialSQL: (
     message: string,
     chatContext: ChatContext,
     token: string
   ) => Promise<void>;
   cancelMessage: () => void;
+  stopAudio: () => void;
+  resetAudio: () => void;
   currentChatId: number | null;
 }
 
@@ -80,9 +88,16 @@ function asStreamEvent(u: unknown): StreamEvent | undefined {
   const t = u["type"];
   if (!isString(t)) return undefined;
 
-  if (t === "chunk") {
+  if (t === "text_chunk") {
     if (isString(u["content"])) {
-      return { type: "chunk", content: u["content"] };
+      return { type: "text_chunk", content: u["content"] };
+    }
+    return undefined;
+  }
+
+  if (t === "audio_chunk") {
+    if (isString(u["content"])) {
+      return { type: "audio_chunk", content: u["content"] };
     }
     return undefined;
   }
@@ -125,6 +140,16 @@ export const useChatStream = (): UseChatStreamReturn => {
   const animationFrameRef = useRef<number | null>(null);
   const activeChatIdRef = useRef<number | null>(null); // Track the active chat_id for cache operations
   const streamingMessageIdRef = useRef<string | null>(null); // Track the streaming message ID for cache operations
+
+  // Audio player for TTS
+  const {
+    isPlaying: isPlayingAudio,
+    isInitialized: isAudioInitialized,
+    initialize: initializeAudio,
+    addAudioChunk,
+    stop: stopAudio,
+    reset: resetAudio
+  } = useAudioPlayer();
 
   // Track recently accessed chats (max 10)
   const recentChatsRef = useRef<(number | null)[]>([]);
@@ -249,7 +274,8 @@ export const useChatStream = (): UseChatStreamReturn => {
 
   const cancelMessage = useCallback(() => {
     abortRef.current?.abort();
-  }, []);
+    stopAudio();
+  }, [stopAudio]);
 
   // Update streaming message content on animation frame
   const updateStreamingContent = useCallback(
@@ -282,11 +308,16 @@ export const useChatStream = (): UseChatStreamReturn => {
   }, []);
 
   const searchVectorial = useCallback(
-    async (messageContent: string, chatContext: ChatContext) => {
+    async (messageContent: string, chatContext: ChatContext, tts: boolean) => {
       if (!messageContent.trim()) return;
 
       setIsLoading(true);
       setProgressMessage(null); // Reset progress message
+
+      // Reset audio player for new stream (if TTS enabled)
+      if (tts) {
+        resetAudio();
+      }
 
       // Reset streaming content ref
       streamingContentRef.current = "";
@@ -319,6 +350,7 @@ export const useChatStream = (): UseChatStreamReturn => {
           company_id: chatContext.company_id,
           area_id: chatContext.area_id,
           chat_id: chatContext.chat_id,
+          tts,
         };
 
         // Remove titulo if chat_id is not null (existing chat)
@@ -391,19 +423,23 @@ export const useChatStream = (): UseChatStreamReturn => {
                 setStreamingMessageId(assistantMessage.id);
                 streamingMessageIdRef.current = assistantMessage.id; // Also update ref for callback access
                 break;
-              case "chunk":
+              case "text_chunk":
                 // Only update if we have a streaming message ID
                 if (streamingMessageIdRef.current) {
                   updateStreamingContent(
                     activeChatIdRef.current,
                     streamingMessageIdRef.current,
-                    (evt as ChunkEvent).content
+                    (evt as TextChunkEvent).content
                   );
                 } else {
                   console.warn(
-                    "[STREAM] Received chunk but no streaming message ID!"
+                    "[STREAM] Received text_chunk but no streaming message ID!"
                   );
                 }
+                break;
+              case "audio_chunk":
+                // Play audio chunk through Web Audio API
+                addAudioChunk((evt as AudioChunkEvent).content);
                 break;
               case "complete":
                 setProgressMessage(null); // Clear progress message on completion
@@ -512,6 +548,8 @@ export const useChatStream = (): UseChatStreamReturn => {
       addMessagesToCache,
       updateMessageInCache,
       streamingMessageId,
+      resetAudio,
+      addAudioChunk,
     ]
   );
 
@@ -626,19 +664,23 @@ export const useChatStream = (): UseChatStreamReturn => {
                 setStreamingMessageId(assistantMessage.id);
                 streamingMessageIdRef.current = assistantMessage.id; // Also update ref for callback access
                 break;
-              case "chunk":
+              case "text_chunk":
                 // Only update if we have a streaming message ID
                 if (streamingMessageIdRef.current) {
                   updateStreamingContent(
                     activeChatIdRef.current,
                     streamingMessageIdRef.current,
-                    (evt as ChunkEvent).content
+                    (evt as TextChunkEvent).content
                   );
                 } else {
                   console.warn(
-                    "[STREAM] Received chunk but no streaming message ID!"
+                    "[STREAM] Received text_chunk but no streaming message ID!"
                   );
                 }
+                break;
+              case "audio_chunk":
+                // Play audio chunk through Web Audio API
+                addAudioChunk((evt as AudioChunkEvent).content);
                 break;
               case "complete":
                 setProgressMessage(null); // Clear progress message on completion
@@ -746,6 +788,8 @@ export const useChatStream = (): UseChatStreamReturn => {
       addMessagesToCache,
       updateMessageInCache,
       streamingMessageId,
+      resetAudio,
+      addAudioChunk,
     ]
   );
 
@@ -753,9 +797,14 @@ export const useChatStream = (): UseChatStreamReturn => {
     isLoading,
     streamingMessageId,
     progressMessage,
+    isPlayingAudio,
+    isAudioInitialized,
+    initializeAudio,
     searchVectorial,
     searchVectorialSQL,
     cancelMessage,
+    stopAudio,
+    resetAudio,
     currentChatId,
   };
 };
