@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { Mic, Square, Loader2 } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { cn } from '@/lib/utils';
@@ -7,9 +6,7 @@ interface VoiceRecordButtonProps {
   isRecording: boolean;
   isConnecting: boolean;
   isDisabled?: boolean;
-  onClick?: () => void; // Optional for 'click' mode
-  onStart: () => void; // For 'hold' mode
-  onStop: () => void;  // For 'hold' mode
+  onClick: () => void;
 }
 
 export const VoiceRecordButton = ({
@@ -17,42 +14,8 @@ export const VoiceRecordButton = ({
   isConnecting,
   isDisabled = false,
   onClick,
-  onStart,
-  onStop,
 }: VoiceRecordButtonProps) => {
-  // Detect device type based on window width and select recording mode (once, doesn't change during session)
-  // Mobile (hold mode): width <= 768px
-  // Web (click mode): width > 768px
-  const recordMode = useMemo(() => {
-    if (typeof window === 'undefined') return 'click' as const;
-    return (window.innerWidth <= 768 ? 'hold' : 'click') as 'click' | 'hold';
-  }, []);
-
-  const handlePress = (e: React.MouseEvent | React.TouchEvent) => {
-    if (recordMode === 'hold') {
-      e.preventDefault();
-      e.stopPropagation();
-      onStart();
-    }
-  };
-
-  const handleRelease = (e: React.MouseEvent | React.TouchEvent) => {
-    if (recordMode === 'hold') {
-      e.preventDefault();
-      e.stopPropagation();
-      onStop();
-    }
-  };
-
-  const handleButtonClick = (e: React.MouseEvent) => {
-    if (recordMode === 'click' && onClick) {
-      onClick();
-    } else if (recordMode === 'hold') {
-      // In hold mode, prevent the click handler from doing anything
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  };
+  // Always use click mode: press once to start, press again to stop (or auto-stop on silence)
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Prevent Space from triggering the button, but let Enter propagate
@@ -74,26 +37,14 @@ export const VoiceRecordButton = ({
     <Button
       type="button"
       tabIndex={-1}
-      onClick={handleButtonClick}
-      onMouseDown={handlePress as React.MouseEventHandler}
-      onMouseUp={handleRelease as React.MouseEventHandler}
-      onMouseLeave={handleRelease as React.MouseEventHandler} // Stop if mouse leaves while holding
-      onTouchStart={handlePress as React.TouchEventHandler}
-      onTouchEnd={handleRelease as React.TouchEventHandler}
+      onClick={onClick}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
       disabled={isDisabled || (isConnecting && !isRecording)}
       variant="ghost"
       size="icon"
-      className={cn(
-        "rounded-full hover:bg-transparent",
-        recordMode === 'hold' && isRecording && "active:scale-95"
-      )}
-      title={
-        recordMode === 'hold'
-          ? (isRecording ? "Suelta para detener" : "Presiona y mantén para grabar")
-          : (isRecording ? "Detener grabación" : "Grabar audio")
-      }
+      className="rounded-full hover:bg-transparent"
+      title={isRecording ? "Detener grabación" : "Grabar audio"}
     >
       {isConnecting ? (
         <Loader2 className={cn("w-4 h-4 animate-spin", isRecording && "text-destructive")} />

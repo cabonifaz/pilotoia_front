@@ -3,13 +3,6 @@ import { toast } from './use-toast';
 import { fileTranscribeApi } from '../api/fileTranscribeApi';
 import type { FileTranscriptionResult } from '../api/fileTranscribeApi';
 
-// Re-export supported languages from API
-export const SUPPORTED_LANGUAGES = fileTranscribeApi.getSupportedLanguages();
-export type LanguageCode = keyof typeof SUPPORTED_LANGUAGES;
-
-// Re-export supported formats from API
-export const SUPPORTED_FORMATS = fileTranscribeApi.getSupportedFormats();
-
 // Re-export transcription result type
 export type TranscriptionResult = FileTranscriptionResult;
 
@@ -17,25 +10,18 @@ interface UseFileTranscribeReturn {
     isRecording: boolean;
     isTranscribing: boolean;
     transcriptionResult: TranscriptionResult | null;
-    currentLanguage: LanguageCode;
-    setLanguage: (language: LanguageCode) => void;
     prepareRecording: () => void;
     cancelPrepareRecording: () => Promise<void>;
-    startRecording: () => Promise<void>;
+    startRecording: (language: string) => Promise<void>;
     stopRecording: () => void;
-    transcribeFile: (file: File) => Promise<void>;
+    transcribeFile: (file: File, language: string) => Promise<void>;
     clearResult: () => void;
-    supportedLanguages: typeof SUPPORTED_LANGUAGES;
-    supportedFormats: typeof SUPPORTED_FORMATS;
 }
 
 export const useFileTranscribe = (): UseFileTranscribeReturn => {
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
     const [transcriptionResult, setTranscriptionResult] = useState<TranscriptionResult | null>(null);
-    const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>(
-        (import.meta.env.VITE_TRANSCRIBE_DEFAULT_LANGUAGE || 'es-ES') as LanguageCode
-    );
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -49,11 +35,12 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
     const pendingStreamRequestRef = useRef<Promise<MediaStream> | null>(null);
     const shouldStartRecordingRef = useRef<boolean>(false);
     const stopRecordingRef = useRef<(() => void) | null>(null);
+    const recordingLanguageRef = useRef<string>('es');
 
     /**
      * Transcribe an audio file using OpenAI API
      */
-    const transcribeFile = useCallback(async (file: File) => {
+    const transcribeFile = useCallback(async (file: File, language: string) => {
         try {
             setIsTranscribing(true);
 
@@ -71,7 +58,7 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
             // Transcribe file using API client
             // multipartClient automatically handles JWT token from sessionStorage
             const result = await fileTranscribeApi.transcribeFile(file, {
-                language_code: currentLanguage
+                language_code: language
             });
 
             setTranscriptionResult(result);
@@ -86,7 +73,7 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
         } finally {
             setIsTranscribing(false);
         }
-    }, [currentLanguage]);
+    }, []);
 
     /**
      * Prepare recording by requesting microphone access early.
@@ -135,7 +122,7 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
     /**
      * Start recording from microphone
      */
-    const startRecording = useCallback(async () => {
+    const startRecording = useCallback(async (language: string) => {
         try {
             // Safety check: ensure we're not already recording
             if (isRecording) {
@@ -148,6 +135,9 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
                 console.warn('Cannot start recording while transcribing');
                 return;
             }
+
+            // Store language for use in onstop handler
+            recordingLanguageRef.current = language;
 
             // Mark that we want to record
             shouldStartRecordingRef.current = true;
@@ -295,7 +285,7 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
 
                 // Transcribe the recorded file with error handling
                 try {
-                    await transcribeFile(audioFile);
+                    await transcribeFile(audioFile, recordingLanguageRef.current);
                 } catch (error) {
                     // Ensure transcription errors don't break future recordings
                     console.error('Error in onstop handler:', error);
@@ -334,7 +324,7 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
             analyserRef.current = analyser;
             sourceRef.current = source;
 
-            const SILENCE_THRESHOLD = 5000; // 5 seconds
+            const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '3000', 10);
             const SILENCE_LEVEL = parseInt(import.meta.env.VITE_SILENCE_LEVEL || '15', 10);
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
@@ -473,15 +463,11 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
         isRecording,
         isTranscribing,
         transcriptionResult,
-        currentLanguage,
-        setLanguage: setCurrentLanguage,
         prepareRecording,
         cancelPrepareRecording,
         startRecording,
         stopRecording,
         transcribeFile,
-        clearResult,
-        supportedLanguages: SUPPORTED_LANGUAGES,
-        supportedFormats: SUPPORTED_FORMATS
+        clearResult
     };
 };

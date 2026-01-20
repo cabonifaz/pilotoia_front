@@ -20,23 +20,32 @@ import {
 import { Avatar, AvatarFallback } from "@/components/shadcn/avatar";
 import { Bot, Loader2 } from "lucide-react";
 import { useInView } from "react-intersection-observer";
+import { getDefaultLanguage } from "../../constants/languages";
+
 interface ChatComponentProps {
   chatContext: ChatContext;
   onChatIdChange?: (chatId: number) => void;
   onStreamingStateChange?: (isStreaming: boolean) => void;
-  onOpenConfigSidebar?: () => void;
 }
 
 const ChatComponent = ({
   chatContext,
   onChatIdChange,
   onStreamingStateChange,
-  onOpenConfigSidebar,
 }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState("");
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Get transcription provider from environment
+  const transcribeProvider = import.meta.env.VITE_TRANSCRIBE_PROVIDER;
+
+  // Initialize with provider-aware default language
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(
+    getDefaultLanguage(transcribeProvider === "aws" ? "aws" : "openai")
+  );
+
   const currentMainActionRef = useRef<() => void>(() => {});
   const isUserSendingRef = useRef(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
@@ -51,9 +60,6 @@ const ChatComponent = ({
     },
     enabled: false,
   });
-
-  // Get transcription provider from environment
-  const transcribeProvider = import.meta.env.VITE_TRANSCRIBE_PROVIDER;
 
   // Get messages from TanStack Query cache
   const {
@@ -82,8 +88,10 @@ const ChatComponent = ({
     resetAudio,
   } = useChatStream();
   const { isAuthenticated, token } = useExternalLogin();
-  // 2. Referencia para detectar el tope del scroll (hacia arriba) 🕵️
+
+  // Reference to detect scroll top (for pagination)
   const { ref: topSentinelRef } = useInView({ threshold: 0 });
+
   // Get logo URL from actual company area
   const { user } = useQueryAuthContext();
   const actualCompanyArea = (user as any)?.actual_company_area;
@@ -93,25 +101,25 @@ const ChatComponent = ({
       }?v=${Date.now()}`
     : "/fractal-logo.svg";
   const previousScrollHeightRef = useRef<number>(0);
-  // Get transcription functions (streaming - AWS)
 
+  // Get transcription functions (streaming - AWS)
   const {
     isRecording,
     isConnecting,
     transcript,
     partialTranscript,
-    startRecording, // This is the start for AWS streaming
-    stopRecording, // This is the stop for AWS streaming
+    startRecording,
+    stopRecording,
     clearTranscript,
   } = useTranscribe();
-  // 1. Aseguramos que 'messages' reaccione a CUALQUIER cambio en 'data'
+
+  // Flatten paginated messages
   const messages = useMemo(() => {
     if (!data?.pages) return [];
-    // Invertimos las páginas (lo viejo primero), pero NO ordenamos manualmente
-    // para no romper el orden que ya trae la API dentro de cada bloque.
     return [...data.pages].reverse().flatMap((page) => page.messages);
   }, [data]);
-  // 2. Función única y centralizada para bajar el scroll
+
+  // Centralized scroll to bottom function
   const scrollToBottom = useCallback(
     (behavior: "smooth" | "auto" = "smooth") => {
       if (scrollContainerRef.current) {
@@ -129,46 +137,42 @@ const ChatComponent = ({
     isRecording: isFileRecording,
     isTranscribing: isFileTranscribing,
     transcriptionResult: fileTranscriptionResult,
-    prepareRecording: prepareFileRecording,
-    cancelPrepareRecording: cancelPrepareFileRecording,
     startRecording: startFileRecording,
     stopRecording: stopFileRecording,
   } = useFileTranscribe();
 
+  // Scroll management effect
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container || isFetchingNextPage) return;
 
-    // 1. PRIORIDAD MÁXIMA: Envío del usuario
+    // Priority 1: User sending message
     if (isUserSendingRef.current) {
       container.scrollTop = container.scrollHeight;
       previousScrollHeightRef.current = 0;
       setShouldAutoScroll(true);
 
-      // ⏱️ TIMEOUT CRÍTICO: Mantenemos la bandera 'true' un momento más
-      // para evitar que el handleScroll capture este movimiento automático.
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
       scrollTimeoutRef.current = setTimeout(() => {
         isUserSendingRef.current = false;
-      }, 500); // 500ms es suficiente seguridad
+      }, 500);
 
       return;
     }
 
-    // 2. PRIORIDAD MEDIA: Ajuste por carga de mensajes antiguos
+    // Priority 2: Adjust for loading older messages
     if (previousScrollHeightRef.current > 0) {
-      // ... (Tu lógica existente) ...
       const delta = container.scrollHeight - previousScrollHeightRef.current;
       container.scrollTop = delta;
       previousScrollHeightRef.current = 0;
       return;
     }
 
-    // 3. PRIORIDAD NORMAL
+    // Priority 3: Auto-scroll during streaming
     if (shouldAutoScroll || !!streamingMessageId) {
       scrollToBottom("smooth");
     }
-  }, [messages.length, isFetchingNextPage, streamingMessageId]);
+  }, [messages.length, isFetchingNextPage, streamingMessageId, scrollToBottom, shouldAutoScroll]);
 
   // Update parent when chat_id is received from backend
   useEffect(() => {
@@ -183,18 +187,18 @@ const ChatComponent = ({
       onStreamingStateChange(isLoading);
     }
   }, [isLoading, onStreamingStateChange]);
+
   const isChatEmpty = messages.length === 0;
   const isProcessing = isLoading || !!streamingMessageId;
   const showWelcomeScreen = isChatEmpty && !isProcessing;
+
   // Debounced scroll handler
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
-      // 🛡️ GUARDIA: Si el usuario está enviando, ignoramos cualquier evento de scroll
       if (isUserSendingRef.current) return;
 
       const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
 
-      // ... resto de tu lógica ...
       const isAtBottom = scrollHeight - scrollTop <= clientHeight + 100;
       setShouldAutoScroll(isAtBottom);
 
@@ -205,6 +209,7 @@ const ChatComponent = ({
     },
     [hasNextPage, isFetchingNextPage, fetchNextPage]
   );
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -229,14 +234,20 @@ const ChatComponent = ({
     }
   }, [fileTranscriptionResult]);
 
-  const handleMicrophoneClick = async () => {
+  // Handle microphone click for AWS transcription
+  const handleMicrophoneClick = useCallback(async () => {
     if (isRecording) {
       stopRecording();
     } else {
       clearTranscript();
-      await startRecording({ language_code: "es-ES" });
+      await startRecording({ language_code: selectedLanguage as any });
     }
-  };
+  }, [isRecording, stopRecording, clearTranscript, startRecording, selectedLanguage]);
+
+  // Wrapper for file transcription that uses selected language
+  const handleStartFileRecording = useCallback(async () => {
+    await startFileRecording(selectedLanguage);
+  }, [startFileRecording, selectedLanguage]);
 
   // TTS toggle handler - initializes audio on enable, resets on disable
   const handleTtsToggle = (enabled: boolean) => {
@@ -254,12 +265,11 @@ const ChatComponent = ({
     const currentQuery = userQuery;
     setUserQuery("");
 
-    // 1. LIMPIEZA CRÍTICA: Reseteamos cualquier rastro de scroll histórico
+    // Reset scroll state before sending
     previousScrollHeightRef.current = 0;
     isUserSendingRef.current = true;
     setShouldAutoScroll(true);
 
-    // 2. Forzado inmediato al fondo
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
@@ -271,13 +281,14 @@ const ChatComponent = ({
   const cancelar = () => {
     cancelMessage();
   };
+
   const agentQuery = async () => {
     if (!userQuery.trim() || !token) return;
 
     const currentQuery = userQuery;
     setUserQuery("");
 
-    // Bloqueo de scroll histórico antes de la petición
+    // Reset scroll state before sending
     previousScrollHeightRef.current = 0;
     isUserSendingRef.current = true;
     setShouldAutoScroll(true);
@@ -289,6 +300,7 @@ const ChatComponent = ({
 
     await searchVectorialSQL(currentQuery, chatContext, token);
   };
+
   return (
     <CommandProvider
       userQuery={userQuery}
@@ -307,19 +319,14 @@ const ChatComponent = ({
     >
       <TranscriptionProvider
         transcribeProvider={transcribeProvider}
+        selectedLanguage={selectedLanguage}
+        setSelectedLanguage={setSelectedLanguage}
         isRecording={isRecording}
         isConnecting={isConnecting}
         onMicrophoneClick={handleMicrophoneClick}
-        startMicrophoneRecording={async () => {
-          clearTranscript();
-          await startRecording({ language_code: "es-ES" });
-        }}
-        stopMicrophoneRecording={stopRecording}
         isFileRecording={isFileRecording}
         isFileTranscribing={isFileTranscribing}
-        onPrepareRecording={prepareFileRecording}
-        onCancelPrepareRecording={cancelPrepareFileRecording}
-        onStartRecording={startFileRecording}
+        onStartRecording={handleStartFileRecording}
         onStopRecording={stopFileRecording}
       >
         <div className="h-full flex flex-col">
@@ -347,7 +354,6 @@ const ChatComponent = ({
                 <QueryInputSection
                   company={chatContext.company}
                   area={chatContext.area}
-                  onOpenConfigSidebar={onOpenConfigSidebar}
                 />
               </div>
             </div>
@@ -355,7 +361,7 @@ const ChatComponent = ({
             <>
               <div className="flex-1 min-h-0 overflow-hidden flex">
                 <div
-                  ref={scrollContainerRef} // Asegúrate de que la ref esté aquí
+                  ref={scrollContainerRef}
                   className="w-full h-full overflow-y-auto messages-container"
                   onScroll={handleScroll}
                 >
@@ -406,7 +412,6 @@ const ChatComponent = ({
                   <QueryInputSection
                     company={chatContext.company}
                     area={chatContext.area}
-                    onOpenConfigSidebar={onOpenConfigSidebar}
                   />
                 </div>
               </div>
