@@ -4,19 +4,17 @@ import type { ReactNode } from 'react';
 interface TranscriptionContextType {
   // Configuration
   transcribeProvider: string;
+  selectedLanguage: string;
+  setSelectedLanguage: (language: string) => void;
 
   // Voice recording (AWS)
   isRecording: boolean;
   isConnecting: boolean;
   onMicrophoneClick: () => void;
-  startMicrophoneRecording: () => Promise<void>;
-  stopMicrophoneRecording: () => void;
 
   // File transcription (OpenAI)
   isFileRecording: boolean;
   isFileTranscribing: boolean;
-  onPrepareRecording: () => void;
-  onCancelPrepareRecording: () => void;
   onStartRecording: () => void | Promise<void>;
   onStopRecording: () => void;
 }
@@ -28,19 +26,17 @@ interface TranscriptionProviderProps {
 
   // Configuration
   transcribeProvider: string;
+  selectedLanguage: string;
+  setSelectedLanguage: (language: string) => void;
 
   // Voice recording (AWS)
   isRecording: boolean;
   isConnecting: boolean;
   onMicrophoneClick: () => void;
-  startMicrophoneRecording: () => Promise<void>;
-  stopMicrophoneRecording: () => void;
 
   // File transcription (OpenAI)
   isFileRecording: boolean;
   isFileTranscribing: boolean;
-  onPrepareRecording: () => void;
-  onCancelPrepareRecording: () => void;
   onStartRecording: () => void | Promise<void>;
   onStopRecording: () => void;
 }
@@ -48,15 +44,13 @@ interface TranscriptionProviderProps {
 export const TranscriptionProvider = ({
   children,
   transcribeProvider,
+  selectedLanguage,
+  setSelectedLanguage,
   isRecording,
   isConnecting,
   onMicrophoneClick,
-  startMicrophoneRecording,
-  stopMicrophoneRecording,
   isFileRecording,
   isFileTranscribing,
-  onPrepareRecording,
-  onCancelPrepareRecording,
   onStartRecording,
   onStopRecording,
 }: TranscriptionProviderProps) => {
@@ -64,29 +58,25 @@ export const TranscriptionProvider = ({
   const value = useMemo<TranscriptionContextType>(
     () => ({
       transcribeProvider,
+      selectedLanguage,
+      setSelectedLanguage,
       isRecording,
       isConnecting,
       onMicrophoneClick,
-      startMicrophoneRecording,
-      stopMicrophoneRecording,
       isFileRecording,
       isFileTranscribing,
-      onPrepareRecording,
-      onCancelPrepareRecording,
       onStartRecording,
       onStopRecording,
     }),
     [
       transcribeProvider,
+      selectedLanguage,
+      setSelectedLanguage,
       isRecording,
       isConnecting,
       onMicrophoneClick,
-      startMicrophoneRecording,
-      stopMicrophoneRecording,
       isFileRecording,
       isFileTranscribing,
-      onPrepareRecording,
-      onCancelPrepareRecording,
       onStartRecording,
       onStopRecording,
     ]
