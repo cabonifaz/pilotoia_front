@@ -6,7 +6,8 @@ import { useRef, useCallback, useState, useEffect } from "react";
  * - 24kHz
  * - 16-bit signed PCM (little-endian)
  * - Mono
- * - Proper scheduling (NO loops, NO gaps)
+ * - Proper scheduling
+ * - Byte-aligned decoding (NO static / NO chirrido)
  */
 
 const SAMPLE_RATE = 24000;
@@ -29,6 +30,9 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
 
   // Queue of decoded PCM samples
   const samplesQueueRef = useRef<Float32Array[]>([]);
+
+  // 🔥 Pending byte for PCM alignment
+  const pendingBytesRef = useRef<Uint8Array | null>(null);
 
   // Playback control
   const isPlaybackStartedRef = useRef(false);
@@ -60,17 +64,42 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
 
   /**
    * Decode base64 PCM16 → Float32Array
+   * 🔥 Handles byte alignment correctly
    */
   const decodePCM = useCallback((base64Data: string): Float32Array => {
     const binary = atob(base64Data);
-    const bytes = new Uint8Array(binary.length);
+    const incoming = new Uint8Array(binary.length);
 
     for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
+      incoming[i] = binary.charCodeAt(i);
     }
 
-    const view = new DataView(bytes.buffer);
+    // Concatenate pending byte if exists
+    let bytes: Uint8Array;
+
+    if (pendingBytesRef.current) {
+      bytes = new Uint8Array(
+        pendingBytesRef.current.length + incoming.length
+      );
+      bytes.set(pendingBytesRef.current, 0);
+      bytes.set(incoming, pendingBytesRef.current.length);
+      pendingBytesRef.current = null;
+    } else {
+      bytes = incoming;
+    }
+
+    // If odd number of bytes, keep last one for next chunk
+    if (bytes.length % 2 !== 0) {
+      pendingBytesRef.current = bytes.slice(bytes.length - 1);
+      bytes = bytes.slice(0, bytes.length - 1);
+    }
+
     const samples = new Float32Array(bytes.length / 2);
+    const view = new DataView(
+      bytes.buffer,
+      bytes.byteOffset,
+      bytes.byteLength
+    );
 
     for (let i = 0; i < samples.length; i++) {
       const int16 = view.getInt16(i * 2, true);
@@ -86,7 +115,6 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
   const schedulePlayback = useCallback(() => {
     const audioContext = getAudioContext();
 
-    // Keep playhead in the future
     if (playheadTimeRef.current < audioContext.currentTime) {
       playheadTimeRef.current = audioContext.currentTime;
     }
@@ -99,6 +127,7 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
         samples.length,
         SAMPLE_RATE
       );
+
       buffer.getChannelData(0).set(samples);
 
       const source = audioContext.createBufferSource();
@@ -133,6 +162,8 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
         getAudioContext();
 
         const samples = decodePCM(base64Chunk);
+        if (samples.length === 0) return;
+
         samplesQueueRef.current.push(samples);
         chunksReceivedRef.current++;
 
@@ -158,6 +189,7 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
    */
   const stop = useCallback(() => {
     samplesQueueRef.current = [];
+    pendingBytesRef.current = null;
     chunksReceivedRef.current = 0;
     playheadTimeRef.current = 0;
     isPlaybackStartedRef.current = false;
@@ -193,4 +225,3 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
     reset,
   };
 };
-
