@@ -149,7 +149,12 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
           )*/}
           {!isLoading && (
             <Button
-              onClick={() => onTtsEnabledChange(!ttsEnabled)}
+              onClick={() => {
+                onTtsEnabledChange(!ttsEnabled);
+                requestAnimationFrame(() => {
+                  textareaRef.current?.focus();
+                });
+              }}
               variant="ghost"
               size="icon"
               tabIndex={-1}
