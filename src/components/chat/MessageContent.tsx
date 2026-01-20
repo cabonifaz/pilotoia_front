@@ -1,40 +1,153 @@
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 
 // Add \displaystyle to math formulas to prevent size reduction
-export const addDisplayStyle = (text: string): string => {
-  // Match both $...$ and $$...$$ patterns
-  const displayPattern = /\$\$([^$]+)\$\$/g;
-  const inlinePattern = /\$([^$]+)\$/g;
+export const addDisplayStyle = (text: string | null | undefined): string => {
+  if (!text || typeof text !== "string") return "";
 
-  // First handle display math $$...$$
-  let result = text.replace(displayPattern, (match, formula) => {
-    if (!formula.trim().startsWith('\\displaystyle')) {
-      return `$$\\displaystyle ${formula}$$`;
-    }
-    return match;
-  });
+  // 1. Limpieza inicial y normalización
+  let cleanText = text
+    .replace(/\\displaystyle/g, "")
+    .replace(/\\\[/g, "$$")
+    .replace(/\\\]/g, "$$")
+    .replace(/\\\(/g, "$")
+    .replace(/\\\)/g, "$")
+    .replace(/([^\n])\s*(##\s+\d+)/g, "$1\n\n$2")
+    // PARCHE 2: Recuperar backslashes perdidos en letras griegas comunes si el JSON falló
+    // Si llegó un caracter raro antes de "eta" (por el \b de beta), intentamos arreglarlo
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0008]eta/g, "\\beta")
 
-  // Then handle inline math $...$ but avoid double-processing
-  result = result.replace(inlinePattern, (match, formula) => {
-    if (!formula.trim().startsWith('\\displaystyle') && match.match(/^\$[^$]+\$$/)) {
-      return match; // Skip if it's part of $$
-    }
-    if (!formula.trim().startsWith('\\displaystyle')) {
-      return `$\\displaystyle ${formula}$`;
-    }
-    return match;
-  });
+    .replace(/\\displaystyle/g, "");
 
-  return result;
+  // 2. CORRECCIÓN DE ESPACIOS Y CIERRES
+  cleanText = cleanText
+    .split("\n")
+    .map((line) => {
+      let l = line;
+
+      // Cerrar $ impares
+      const dollarCount = (l.match(/(?<!\\)\$/g) || []).length;
+      if (dollarCount % 2 !== 0) l = l + "$";
+
+      // A. Quitar espacios INTERNOS: "$ \frac" -> "$\frac"
+      l = l.replace(/\$\s+(?=\S)/g, "$").replace(/(?<=\S)\s+\$/g, "$");
+
+      // B. Asegurar espacios EXTERNOS (CORREGIDO)
+      // Antes solo miraba letras. Ahora mira: Letras, Números (0-9) y Puntuación (.,:;)
+      l = l
+        .replace(/([a-zA-Záéíóúñ0-9.,:;)])\$/g, "$1 $") // Espacio antes del $
+        .replace(/\$([a-zA-Záéíóúñ0-9])/g, "$ $1"); // Espacio después del $
+
+      return l;
+    })
+    .join("\n");
+
+  const lines = cleanText.split("\n");
+  const processedLines: string[] = [];
+  let mathBuffer: string[] = [];
+  let isInBlockMath = false;
+
+  const isMathLine = (line: string) => {
+    const t = line.trim();
+    if (!t || t.includes("**") || t.includes("|")) return false;
+
+    // Si tiene comandos matemáticos muy claros, es math aunque sea larga
+    const hasStrongMath = /\\(frac|dfrac|sum|sqrt|aligned|left|right)/.test(t);
+
+    // Si es una línea de texto normal muy larga sin comandos fuertes, es texto
+    if (t.length > 60 && !hasStrongMath) return false;
+
+    if (t === "$" || t === "$$") return true;
+
+    const words = t.split(/\s+/);
+    if (words.length > 4 && !hasStrongMath) return false;
+
+    return /\\(frac|dfrac|sum|boxed|overline|sqrt|aligned|left|right)|[_^{}=+\-*/<>∑]/.test(
+      t,
+    );
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Manejo de bloques explícitos $$
+    if (trimmed.startsWith("$$") || (trimmed === "$" && !isInBlockMath)) {
+      if (mathBuffer.length > 0) {
+        processedLines.push(flushBuffer(mathBuffer));
+        mathBuffer = [];
+      }
+      isInBlockMath = !isInBlockMath;
+      processedLines.push("$$");
+      continue;
+    }
+
+    if (isInBlockMath) {
+      if (trimmed === "$" || trimmed === "$$") {
+        isInBlockMath = false;
+        processedLines.push("$$");
+        continue;
+      }
+      processedLines.push(line);
+      continue;
+    }
+
+    if (isMathLine(line)) {
+      mathBuffer.push(line.trim());
+    } else {
+      // Soltar buffer si veníamos de una fórmula
+      if (mathBuffer.length > 0) {
+        processedLines.push(flushBuffer(mathBuffer));
+        mathBuffer = [];
+      }
+
+      // 3. VARIABLES INLINE
+      // Tu lógica de variables inline estaba bien, la mantenemos
+      let inlineProcessed = line.replace(
+        /\b([VNS])(\d+|[a-z])\b/g,
+        " $ $1_{$2}$ ",
+      );
+
+      // Limpieza final de espacios dobles
+      inlineProcessed = inlineProcessed.replace(/\s+/g, " ");
+
+      processedLines.push(inlineProcessed);
+    }
+  }
+
+  if (mathBuffer.length > 0) {
+    processedLines.push(flushBuffer(mathBuffer));
+  }
+
+  // Limpieza final de displaystyle redundante
+  return processedLines
+    .map((line) => line.replace(/\\displaystyle/g, "").trim())
+    .join("\n");
 };
 
+const flushBuffer = (buffer: string[]): string => {
+  if (buffer.length === 0) return "";
+
+  let combined = buffer.join("\n").trim();
+  combined = combined.replace(/^\$|\$$/g, "").trim();
+
+  if (combined.includes("\\begin{aligned}")) {
+    return `$$\n${combined}\n$$`;
+  }
+
+  combined = combined
+    .replace(/\\frac_/g, "\\frac")
+    .replace(/\\sum\{/g, "\\sum_{");
+
+  return `$$\n\\displaystyle ${combined}\n$$`;
+};
 // Simplified table fix for remark-gfm
 export const fixTableMarkdown = (text: string): string => {
   // Split into lines and filter out empty/invalid rows
-  const lines = text.split('\n');
+  const lines = text.split("\n");
   const filteredLines: string[] = [];
   let inTable = false;
   let skipFirstColumn = false;
@@ -43,35 +156,38 @@ export const fixTableMarkdown = (text: string): string => {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const isTableRow = line.trim().startsWith('|') && line.trim().endsWith('|');
+    const isTableRow = line.trim().startsWith("|") && line.trim().endsWith("|");
     const isEmptyTableRow = /^\s*\|\s*(\|\s*)*\|?\s*$/.test(line);
     const isEmpty = !line.trim();
     const isSeparator = /^\s*\|[\s\-:|]+\|\s*$/.test(line);
 
     // Detect rows that look like table titles (mostly empty with one bold cell)
     // Example: | **Tabla de acopio y evacuación** | | |
-    const cells = line.split('|');
-    const nonEmptyCells = cells.filter(c => c.trim() && c.trim() !== '');
-    const isTableTitle = isTableRow && !isSeparator &&
-      line.includes('**') &&
+    const cells = line.split("|");
+    const nonEmptyCells = cells.filter((c) => c.trim() && c.trim() !== "");
+    const isTableTitle =
+      isTableRow &&
+      !isSeparator &&
+      line.includes("**") &&
       nonEmptyCells.length === 1 && // Only one non-empty cell
       cells.length >= 3; // But multiple columns
 
     // Check if first column is empty (indicates nested table pattern)
-    const hasEmptyFirstColumn = isTableRow && !isSeparator && /^\s*\|\s*\|/.test(line);
+    const hasEmptyFirstColumn =
+      isTableRow && !isSeparator && /^\s*\|\s*\|/.test(line);
 
     // If we hit a table title, convert it to plain text heading
     if (isTableTitle) {
       if (inTable) {
         // End current table
-        filteredLines.push('');
+        filteredLines.push("");
         inTable = false;
       }
       // Extract the text from the table row and make it a heading
       const titleText = nonEmptyCells[0].trim();
-      filteredLines.push('');
+      filteredLines.push("");
       filteredLines.push(`### ${titleText}`);
-      filteredLines.push('');
+      filteredLines.push("");
       skipFirstColumn = true; // Next table should skip first column
       continue;
     }
@@ -83,9 +199,9 @@ export const fixTableMarkdown = (text: string): string => {
       // If we're skipping first column and it's empty, remove it
       if (skipFirstColumn && hasEmptyFirstColumn) {
         // Split by pipes to get columns
-        const parts = line.split('|');
+        const parts = line.split("|");
         // Remove first empty element and second empty column, rejoin
-        processedLine = '|' + parts.slice(2).join('|');
+        processedLine = "|" + parts.slice(2).join("|");
       }
 
       // Track if this is the start of a table
@@ -103,18 +219,23 @@ export const fixTableMarkdown = (text: string): string => {
 
       // Check if next line is NOT a separator and we haven't found one yet
       // This means we need to insert a separator after the header row
-      const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
+      const nextLine = i + 1 < lines.length ? lines[i + 1] : "";
       const nextIsSeparator = /^\s*\|[\s\-:|]+\|\s*$/.test(nextLine);
-      const nextIsTableRow = nextLine.trim().startsWith('|') && nextLine.trim().endsWith('|');
+      const nextIsTableRow =
+        nextLine.trim().startsWith("|") && nextLine.trim().endsWith("|");
 
-      if (!foundSeparator && nextIsTableRow && !nextIsSeparator && filteredLines.length === tableStartIndex + 1) {
+      if (
+        !foundSeparator &&
+        nextIsTableRow &&
+        !nextIsSeparator &&
+        filteredLines.length === tableStartIndex + 1
+      ) {
         // Insert separator after header row
-        const columnCount = processedLine.split('|').filter(c => c).length;
-        const separator = '|' + ' --- |'.repeat(columnCount);
+        const columnCount = processedLine.split("|").filter((c) => c).length;
+        const separator = "|" + " --- |".repeat(columnCount);
         filteredLines.push(separator);
         foundSeparator = true;
       }
-
     } else if (isEmptyTableRow) {
       // Skip empty table rows (only pipes and whitespace)
       continue;
@@ -134,7 +255,7 @@ export const fixTableMarkdown = (text: string): string => {
       // Regular content line (not a table row)
       if (inTable) {
         // Add blank line to separate table from following text
-        filteredLines.push('');
+        filteredLines.push("");
         inTable = false;
         skipFirstColumn = false; // Reset when exiting table
         foundSeparator = false;
@@ -143,7 +264,7 @@ export const fixTableMarkdown = (text: string): string => {
     }
   }
 
-  const result = filteredLines.join('\n');
+  const result = filteredLines.join("\n");
   return result;
 };
 
@@ -152,17 +273,26 @@ interface MessageContentProps {
   isTableOrList: boolean;
 }
 
-export const MessageContent = ({ content, isTableOrList }: MessageContentProps) => {
-  const processedContent = isTableOrList ? fixTableMarkdown(content) : content;
+export const MessageContent = ({
+  content,
+  isTableOrList,
+}: MessageContentProps) => {
+  // 1. Aplicamos la limpieza. processedContent AHORA TIENE LOS $$ AGREGADOS
+  const processedContent = isTableOrList
+    ? fixTableMarkdown(addDisplayStyle(content))
+    : addDisplayStyle(content);
+
+  const commonPlugins = [remarkGfm, remarkMath];
+  const commonRehype = [rehypeKatex];
 
   return (
-    <div className="text-xs">
+    <div className="text-xs space-y-2">
       {isTableOrList ? (
         <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeKatex]}
+          remarkPlugins={commonPlugins}
+          rehypePlugins={commonRehype as any}
           components={{
-            // Table styling
+            // ... (Tus componentes de tabla existentes se mantienen igual)
             table: ({ children }) => (
               <div className="overflow-x-auto mb-4 border border-gray-300 dark:border-gray-600">
                 <table className="w-full min-w-max border-collapse">
@@ -183,16 +313,13 @@ export const MessageContent = ({ content, isTableOrList }: MessageContentProps) 
                 {children}
               </td>
             ),
-
-            // List styling
-            ul: ({ children }) => <ul className="ml-4 mb-2 list-disc">{children}</ul>,
-            ol: ({ children }) => <ol className="ml-4 mb-2 list-decimal">{children}</ol>,
+            ul: ({ children }) => (
+              <ul className="ml-4 mb-2 list-disc">{children}</ul>
+            ),
+            ol: ({ children }) => (
+              <ol className="ml-4 mb-2 list-decimal">{children}</ol>
+            ),
             li: ({ children }) => <li className="mb-1">{children}</li>,
-
-            // Keep paragraphs clean
-            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-
-            // Code block styling with outline variant
             code: ({ children }) => (
               <code className="bg-background border border-foreground px-1 py-0.5 rounded text-sm font-mono break-words">
                 {children}
@@ -203,21 +330,38 @@ export const MessageContent = ({ content, isTableOrList }: MessageContentProps) 
                 {children}
               </pre>
             ),
+            // CORRECCIÓN: Usar p normal para evitar conflictos
+            p: ({ children }) => (
+              <div className="whitespace-pre-wrap break-words mb-2 last:mb-0">
+                {children}
+              </div>
+            ),
           }}
         >
           {processedContent}
         </ReactMarkdown>
       ) : (
         <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeKatex]}
+          remarkPlugins={commonPlugins}
+          rehypePlugins={commonRehype as any}
           components={{
-            p: ({ children }) => <span className="whitespace-pre-wrap break-words overflow-hidden">{children}</span>,
-            strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+            // 2. CORRECCIÓN CRÍTICA:
+            // No usar 'span' para 'p'. Las fórmulas matemáticas de bloque ($$...$$)
+            // generan un <div>. HTML no permite un <div> dentro de un <span>.
+            // Usamos un <p> o <div> con whitespace-pre-wrap.
+            p: ({ children }) => (
+              <div className="whitespace-pre-wrap break-words mb-2 last:mb-0">
+                {children}
+              </div>
+            ),
+            strong: ({ children }) => (
+              <strong className="font-bold">{children}</strong>
+            ),
             em: ({ children }) => <em className="italic">{children}</em>,
           }}
         >
-          {content}
+          {/* 3. ERROR ANTERIOR: Aquí tenías {content}, por eso ignoraba el arreglo */}
+          {processedContent}
         </ReactMarkdown>
       )}
     </div>
