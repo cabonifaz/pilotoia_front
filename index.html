@@ -8,6 +8,28 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Patch to handle browser extensions modifying the DOM
+      (function() {
+        const originalRemoveChild = Node.prototype.removeChild;
+        Node.prototype.removeChild = function(child) {
+          if (child.parentNode !== this) {
+            console.warn('removeChild: node is not a child, ignoring');
+            return child;
+          }
+          return originalRemoveChild.call(this, child);
+        };
+
+        const originalInsertBefore = Node.prototype.insertBefore;
+        Node.prototype.insertBefore = function(newNode, refNode) {
+          if (refNode && refNode.parentNode !== this) {
+            console.warn('insertBefore: reference node is not a child, ignoring');
+            return newNode;
+          }
+          return originalInsertBefore.call(this, newNode, refNode);
+        };
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
