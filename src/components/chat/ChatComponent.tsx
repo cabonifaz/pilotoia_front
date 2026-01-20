@@ -26,14 +26,12 @@ interface ChatComponentProps {
   chatContext: ChatContext;
   onChatIdChange?: (chatId: number) => void;
   onStreamingStateChange?: (isStreaming: boolean) => void;
-  onOpenConfigSidebar?: () => void;
 }
 
 const ChatComponent = ({
   chatContext,
   onChatIdChange,
   onStreamingStateChange,
-  onOpenConfigSidebar,
 }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState("");
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
@@ -356,7 +354,6 @@ const ChatComponent = ({
                 <QueryInputSection
                   company={chatContext.company}
                   area={chatContext.area}
-                  onOpenConfigSidebar={onOpenConfigSidebar}
                 />
               </div>
             </div>
@@ -415,7 +412,6 @@ const ChatComponent = ({
                   <QueryInputSection
                     company={chatContext.company}
                     area={chatContext.area}
-                    onOpenConfigSidebar={onOpenConfigSidebar}
                   />
                 </div>
               </div>

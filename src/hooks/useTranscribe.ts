@@ -172,7 +172,7 @@ export const useTranscribe = (): UseTranscribeReturn => {
                         // Variables para tracking de silencio (only used in 'click' mode)
                         let silenceTimeoutId: NodeJS.Timeout | null = null;
                         let stopSignalSent = false;
-                        const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '5000', 10);
+                        const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '3000', 10);
                         const SILENCE_LEVEL = parseInt(import.meta.env.VITE_SILENCE_LEVEL || '15', 10);
 
                         // Create analyser for silence detection (only used in 'click' mode)

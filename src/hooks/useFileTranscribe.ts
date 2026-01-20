@@ -324,7 +324,7 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
             analyserRef.current = analyser;
             sourceRef.current = source;
 
-            const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '5000', 10);
+            const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '3000', 10);
             const SILENCE_LEVEL = parseInt(import.meta.env.VITE_SILENCE_LEVEL || '15', 10);
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
