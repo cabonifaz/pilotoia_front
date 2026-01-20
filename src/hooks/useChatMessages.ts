@@ -8,7 +8,7 @@ const MAX_RECENT_CHATS = 10;
 export const useChatMessages = (
   chatId: number | null | undefined,
   company_id: number,
-  area_id: number
+  area_id: number,
 ) => {
   const queryClient = useQueryClient();
   const recentChatsRef = useRef<(number | null)[]>([]);
@@ -53,7 +53,7 @@ export const useChatMessages = (
         company_id,
         area_id,
         15,
-        pageParam
+        pageParam,
       );
     },
 
@@ -62,6 +62,5 @@ export const useChatMessages = (
 
     getNextPageParam: (lastPage) => lastPage.last_evaluated_key ?? undefined,
     enabled: !!chatId,
-    staleTime: 1000 * 60 * 5,
   });
 };
