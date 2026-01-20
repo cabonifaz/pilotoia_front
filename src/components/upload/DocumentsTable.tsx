@@ -1,9 +1,10 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   ChevronLeft,
   ChevronRight,
   FileText,
   LoaderCircle,
+  Filter,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
 import { Button } from "@/components/shadcn/button";
@@ -15,6 +16,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/shadcn/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/shadcn/select";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import {
   Table,
@@ -25,8 +33,7 @@ import {
   TableRow,
 } from "@/components/shadcn/table";
 import { Loader } from "@/components/loader/Loader";
-import { useProcessingLogs } from "@/hooks/useProcessingLogs";
-import type { KnowledgeLoadResponse } from "@/types/upload";
+import { useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
 
 type BadgeVariant =
   | "success"
@@ -89,48 +96,58 @@ const formatDate = (isoDate: string): string => {
 
 interface DocumentsTableProps {
   searchTerm: string;
-  sortBy: "status" | null;
   selectedRows?: string[];
   onSelectionChange?: (selectedIds: string[]) => void;
 }
 
 export const DocumentsTable = ({
   searchTerm,
-  sortBy,
   selectedRows = [],
   onSelectionChange,
 }: DocumentsTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
+  const [orderField, setOrderField] = useState<'NOMBRE_DOCUMENTO' | 'FCHMOD' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'AREA' | 'USUARIO_CARGA' | 'EMBEDDING_MODEL' | 'FCH_EXTRACCION' | 'FCH_SEGMENTACION' | 'FCH_VECTORIZACION'>('FCHMOD'); const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('DESC');
+  const [statusFilter, setStatusFilter] = useState<number | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewDocName, setPreviewDocName] = useState<string>("");
   const [loadingPreview, setLoadingPreview] = useState(false);
 
-  const pollingInterval =
-    Number(import.meta.env.VITE_POLLING_INTERVAL) || 30000;
+  // Server-side pagination query
+  const {
+    data,
+    isLoading,
+    error,
+  } = useProcessingLogsPaginated(
+    currentPage,
+    pageSize,
+    searchTerm,
+    orderField,
+    orderDirection,
+    statusFilter
+  );
+
   const handleViewDocument = async (ruta_documento: string, name: string) => {
     try {
       setLoadingPreview(true);
       setPreviewDocName(name);
 
       const response = await fetch(
-        `${
-          import.meta.env.VITE_API_BASE_URL
+        `${import.meta.env.VITE_API_BASE_URL
         }/api/v1/knowledge/document/url?ruta_documento=${encodeURIComponent(
           ruta_documento
         )}`
       );
-      console.log("Response status:", response.status);
-      console.log("Response:", response);
-      const data = await response.json();
+
+      const responseData = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.result?.mensaje || "Error al obtener documento");
+        throw new Error(responseData?.result?.mensaje || "Error al obtener documento");
       }
 
-      setPreviewUrl(data.url);
+      setPreviewUrl(responseData.url);
       setPreviewOpen(true);
     } catch (err) {
       console.error(err);
@@ -140,124 +157,60 @@ export const DocumentsTable = ({
     }
   };
 
-  const hasProcessingDocuments = (
-    uploads: KnowledgeLoadResponse[] | undefined
-  ): boolean => {
-    if (!uploads || uploads.length === 0) return false;
-    return uploads.some(
-      (upload: KnowledgeLoadResponse) => upload.id_estado_proceso !== 6
-    );
-  };
-
-  const {
-    data: uploads,
-    isLoading,
-    error,
-  } = useProcessingLogs({
-    enabled: true,
-    refetchInterval: (query: {
-      state: { data: KnowledgeLoadResponse[] | undefined };
-    }): number | false => {
-      return hasProcessingDocuments(query.state.data) ? pollingInterval : false;
-    },
-  });
-
-  // Automatically calculate items per page based on container height
-  useEffect(() => {
-    const calculateItemsPerPage = () => {
-      if (tableContainerRef.current) {
-        const containerHeight = tableContainerRef.current.clientHeight;
-        const rowHeight = 45; // Height of each table row
-        const headerHeight = 45; // Height of table header
-        const availableHeight = containerHeight - headerHeight;
-        const calculatedItems = Math.floor(availableHeight / rowHeight);
-        setItemsPerPage(Math.max(5, calculatedItems));
-      }
-    };
-
-    const timer = setTimeout(calculateItemsPerPage, 100);
-    window.addEventListener("resize", calculateItemsPerPage);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("resize", calculateItemsPerPage);
-    };
-  }, [uploads]);
-
-  // Reset to first page when search term or sort changes
+  // Reset to first page when search term or status filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sortBy]);
+  }, [searchTerm, statusFilter]);
 
-  // Process and filter documents
-  const processedDocuments = useMemo(() => {
-    if (!uploads) return [];
-
-    return uploads
-      .map((upload) => ({
-        id: upload.id,
-        id_usuario: upload.id_usuario,
-        usuario_carga: upload.usuario_carga || "Sistema",
-        id_empresa: upload.id_empresa,
-        empresa: upload.empresa || "Sin empresa",
-        id_area: upload.id_area,
-        area: upload.area || "Sin área",
-        id_estado_proceso: upload.id_estado_proceso,
-        estado_proceso: upload.estado_proceso,
-        embedding_model_provider: upload.embedding_model_provider,
-        embedding_model: upload.embedding_model,
-        name: upload.documento || "Sin nombre",
-        fecha_ultima_actualizacion: upload.fecha_ultima_actualizacion,
-        createdDate: formatDate(upload.fecha_inicio),
-        fecha_extraccion: upload.fecha_extraccion,
-        fecha_segmentacion: upload.fecha_segmentacion,
-        fecha_vectorizacion: upload.fecha_vectorizacion,
-        fecha_finalizado: upload.fecha_finalizado,
-        en_ejecucion: upload.en_ejecucion,
-        ruta_documento: upload.ruta_documento,
-        status: getStatusFromStage(
-          upload.id_estado_proceso,
-          upload.estado_proceso
-        ),
-        rawData: upload,
-      }))
-      .filter(
-        (doc) =>
-          doc.name && doc.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-  }, [uploads, searchTerm]);
-
-  // Sort documents with default and user-selected sorting
-  const sortedDocuments = useMemo(() => {
-    let sorted = [...processedDocuments];
-
-    // Apply user-selected sorting first if any
-    if (sortBy === "status") {
-      sorted.sort((a, b) => a.status.label.localeCompare(b.status.label));
+  // Handle column sort
+  const handleSort = (field: 'NOMBRE_DOCUMENTO' | 'FCHMOD' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'AREA' | 'USUARIO_CARGA' | 'EMBEDDING_MODEL' | 'FCH_EXTRACCION' | 'FCH_SEGMENTACION' | 'FCH_VECTORIZACION') => {
+    if (orderField === field) {
+      // Toggle direction if same field
+      setOrderDirection(orderDirection === 'ASC' ? 'DESC' : 'ASC');
     } else {
-      // Default sorting: by created_at (most recent first), then by process_stage (lower first)
-      sorted.sort((a, b) => {
-        // Primary sort: created_at descending (most recent first)
-        const dateA = new Date(a.rawData.fecha_inicio).getTime();
-        const dateB = new Date(b.rawData.fecha_inicio).getTime();
-
-        if (dateB !== dateA) {
-          return dateB - dateA; // Most recent first
-        }
-
-        // Secondary sort: process_stage ascending (lower status first)
-        return a.rawData.id_estado_proceso - b.rawData.id_estado_proceso;
-      });
+      // New field, set to ASC
+      setOrderField(field);
+      setOrderDirection('ASC');
     }
+    setCurrentPage(1);
+  };
 
-    return sorted;
-  }, [processedDocuments, sortBy]);
+  // Handle page size change
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(Number(value));
+    setCurrentPage(1);
+  };
 
-  const totalPages = Math.ceil(sortedDocuments.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const displayedDocuments = sortedDocuments.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
+  // Process documents from server response
+  const displayedDocuments = data?.registros?.map((upload) => ({
+    id: upload.id,
+    id_usuario: upload.id_usuario,
+    usuario_carga: upload.usuario_carga || "Sistema",
+    id_empresa: upload.id_empresa,
+    empresa: upload.empresa || "Sin empresa",
+    id_area: upload.id_area,
+    area: upload.area || "Sin área",
+    id_estado_proceso: upload.id_estado_proceso,
+    estado_proceso: upload.estado_proceso,
+    embedding_model_provider: upload.embedding_model_provider,
+    embedding_model: upload.embedding_model,
+    name: upload.documento || "Sin nombre",
+    fecha_ultima_actualizacion: upload.fecha_ultima_actualizacion,
+    createdDate: formatDate(upload.fecha_inicio),
+    fecha_extraccion: upload.fecha_extraccion,
+    fecha_segmentacion: upload.fecha_segmentacion,
+    fecha_vectorizacion: upload.fecha_vectorizacion,
+    fecha_finalizado: upload.fecha_finalizado,
+    en_ejecucion: upload.en_ejecucion,
+    ruta_documento: upload.ruta_documento,
+    status: getStatusFromStage(
+      upload.id_estado_proceso,
+      upload.estado_proceso
+    ),
+  })) || [];
+
+  const totalPages = data?.total_paginas || 0;
+  const totalRecords = data?.total_registros || 0;
 
   // Checkbox handlers
   const handleSelectAll = (checked: boolean) => {
@@ -284,32 +237,47 @@ export const DocumentsTable = ({
   return (
     <Card className="flex-1 flex flex-col min-h-0">
       <CardHeader className="pb-3">
-        <div className="flex flex-col items-start gap-1">
-          <h1 className="text-2xl font-bold text-foreground">Documentos</h1>
-          <p className="text-xs text-muted-foreground">
-            Gestiona todos los documentos de la empresa.
-          </p>
+        <div className="flex justify-between items-start">
+          <div className="flex flex-col items-start gap-1">
+            <h1 className="text-2xl font-bold text-foreground">Documentos</h1>
+            <p className="text-xs text-muted-foreground">
+              Gestiona todos los documentos de la empresa.
+            </p>
+          </div>
+
+          {/* Page size selector - Top right */}
+          {!isLoading && !error && displayedDocuments.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Filas por página:</span>
+              <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+                <SelectTrigger className="w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="15">15</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
+        {/* Loading State */}
         {isLoading && <Loader text="Cargando documentos..." />}
 
+        {/* Error State */}
         {error && (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-red-500">Error: {error.message}</p>
           </div>
         )}
 
-        {!isLoading && !error && displayedDocuments.length === 0 && (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground">
-              No se encontraron documentos
-            </p>
-          </div>
-        )}
-
-        {!isLoading && !error && displayedDocuments.length > 0 && (
+        {/* Table - Always show when not loading/error */}
+        {!isLoading && !error && (
           <>
             <div
               ref={tableContainerRef}
@@ -326,221 +294,421 @@ export const DocumentsTable = ({
                           aria-label="Seleccionar todos"
                         />
                       </TableHead>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Usuario Carga</TableHead>
-                      <TableHead>Modelo Embedding</TableHead>
-                      <TableHead>Creado el</TableHead>
-                      <TableHead>Extracción</TableHead>
-                      <TableHead>Segmentación</TableHead>
-                      <TableHead>Vectorización</TableHead>
-                      <TableHead>Finalizado</TableHead>
-                      <TableHead>Estado</TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('NOMBRE_DOCUMENTO')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Nombre
+                          {orderField === 'NOMBRE_DOCUMENTO' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('USUARIO_CARGA')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Usuario Carga
+                          {orderField === 'USUARIO_CARGA' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('EMBEDDING_MODEL')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Modelo Embedding
+                          {orderField === 'EMBEDDING_MODEL' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('FCHCRE')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Creado el
+                          {orderField === 'FCHCRE' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('FCH_EXTRACCION')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Extracción
+                          {orderField === 'FCH_EXTRACCION' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('FCH_SEGMENTACION')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Segmentación
+                          {orderField === 'FCH_SEGMENTACION' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('FCH_VECTORIZACION')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Vectorización
+                          {orderField === 'FCH_VECTORIZACION' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('FCHMOD')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Finalizado
+                          {orderField === 'FCHMOD' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleSort('ID_ESTADO_PROCESO')}
+                            className="flex items-center gap-1 hover:text-foreground"
+                          >
+                            Estado
+                            {orderField === 'ID_ESTADO_PROCESO' && (
+                              <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                            )}
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`h-6 w-6 p-0 ${statusFilter !== null ? 'text-blue-600' : ''}`}
+                              >
+                                <Filter className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(null);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === null ? 'bg-accent' : ''}
+                              >
+                                Todos
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(0);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 0 ? 'bg-accent' : ''}
+                              >
+                                Subiendo
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(1);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 1 ? 'bg-accent' : ''}
+                              >
+                                En cola
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(2);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 2 ? 'bg-accent' : ''}
+                              >
+                                Procesando
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(3);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 3 ? 'bg-accent' : ''}
+                              >
+                                Texto extraído
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(4);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 4 ? 'bg-accent' : ''}
+                              >
+                                Texto segmentado
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(5);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 5 ? 'bg-accent' : ''}
+                              >
+                                Segmentos vectorizados
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(6);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 6 ? 'bg-accent' : ''}
+                              >
+                                Cargado
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(7);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 7 ? 'bg-accent' : ''}
+                              >
+                                Error
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {displayedDocuments.map((doc) => (
-                      <TableRow key={doc.id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedRows.includes(doc.id)}
-                            onCheckedChange={(checked) =>
-                              handleSelectRow(doc.id, checked as boolean)
-                            }
-                            aria-label={`Seleccionar ${doc.name}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-blue-500" />
-                            <span>{doc.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{doc.usuario_carga}</TableCell>
-                        <TableCell>{doc.embedding_model}</TableCell>
-                        <TableCell>{doc.createdDate}</TableCell>
-                        <TableCell>
-                          {doc.fecha_extraccion
-                            ? formatDate(doc.fecha_extraccion)
-                            : "-"}
-                        </TableCell>
-                        <TableCell>
-                          {doc.fecha_segmentacion
-                            ? formatDate(doc.fecha_segmentacion)
-                            : "-"}
-                        </TableCell>
-                        <TableCell>
-                          {doc.fecha_vectorizacion
-                            ? formatDate(doc.fecha_vectorizacion)
-                            : "-"}
-                        </TableCell>
-                        <TableCell>
-                          {doc.fecha_finalizado
-                            ? formatDate(doc.fecha_finalizado)
-                            : "-"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={doc.status.variant}>
-                              {doc.status.label}
-                            </Badge>
-                            {doc.en_ejecucion === 1 && (
-                              <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className="text-muted-foreground hover:text-foreground px-2">
-                                ⋮
-                              </button>
-                            </DropdownMenuTrigger>
-
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  handleViewDocument(
-                                    doc.ruta_documento,
-                                    doc.name
-                                  )
-                                }
-                              >
-                                Ver documento
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                    {displayedDocuments.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={12} className="h-24 text-center">
+                          <p className="text-muted-foreground">
+                            {statusFilter !== null
+                              ? `No se encontraron documentos en el estado seleccionado`
+                              : searchTerm
+                                ? `No se encontraron documentos que coincidan con "${searchTerm}"`
+                                : 'No hay documentos registrados'}
+                          </p>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      displayedDocuments.map((doc) => (
+                        <TableRow key={doc.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedRows.includes(doc.id)}
+                              onCheckedChange={(checked) =>
+                                handleSelectRow(doc.id, checked as boolean)
+                              }
+                              aria-label={`Seleccionar ${doc.name}`}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-blue-500" />
+                              <span>{doc.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{doc.usuario_carga}</TableCell>
+                          <TableCell>{doc.embedding_model}</TableCell>
+                          <TableCell>{doc.createdDate}</TableCell>
+                          <TableCell>
+                            {doc.fecha_extraccion
+                              ? formatDate(doc.fecha_extraccion)
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {doc.fecha_segmentacion
+                              ? formatDate(doc.fecha_segmentacion)
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {doc.fecha_vectorizacion
+                              ? formatDate(doc.fecha_vectorizacion)
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {doc.fecha_finalizado
+                              ? formatDate(doc.fecha_finalizado)
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={doc.status.variant}>
+                                {doc.status.label}
+                              </Badge>
+                              {doc.en_ejecucion === 1 && (
+                                <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="text-muted-foreground hover:text-foreground px-2">
+                                  ⋮
+                                </button>
+                              </DropdownMenuTrigger>
+
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleViewDocument(
+                                      doc.ruta_documento,
+                                      doc.name
+                                    )
+                                  }
+                                >
+                                  Ver documento
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
             </div>
 
-            <div className="flex flex-col items-center gap-2 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="hidden md:inline">Anterior</span>
-                </Button>
+            {/* Pagination - Only show when there's data */}
+            {displayedDocuments.length > 0 && (
+              <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden md:inline">Anterior</span>
+                  </Button>
 
-                <div className="hidden md:flex gap-1">
-                  {(() => {
-                    const maxButtons = 5;
-                    const halfRange = Math.floor(maxButtons / 2);
-                    let startPage = Math.max(1, currentPage - halfRange);
-                    let endPage = Math.min(
-                      totalPages,
-                      startPage + maxButtons - 1
-                    );
+                  <div className="hidden md:flex gap-1">
+                    {(() => {
+                      const maxButtons = 5;
+                      const halfRange = Math.floor(maxButtons / 2);
+                      let startPage = Math.max(1, currentPage - halfRange);
+                      let endPage = Math.min(
+                        totalPages,
+                        startPage + maxButtons - 1
+                      );
 
-                    if (endPage - startPage + 1 < maxButtons) {
-                      startPage = Math.max(1, endPage - maxButtons + 1);
-                    }
-
-                    const pages = [];
-
-                    if (startPage > 1) {
-                      pages.push(1);
-                      if (startPage > 2) {
-                        pages.push("...");
+                      if (endPage - startPage + 1 < maxButtons) {
+                        startPage = Math.max(1, endPage - maxButtons + 1);
                       }
-                    }
 
-                    for (let i = startPage; i <= endPage; i++) {
-                      pages.push(i);
-                    }
+                      const pages = [];
 
-                    if (endPage < totalPages) {
-                      if (endPage < totalPages - 1) {
-                        pages.push("...");
-                      }
-                      pages.push(totalPages);
-                    }
-
-                    return pages.map((page, idx) => (
-                      <Button
-                        key={`${page}-${idx}`}
-                        variant={currentPage === page ? "default" : "outline"}
-                        size="sm"
-                        onClick={() =>
-                          typeof page === "number" && setCurrentPage(page)
+                      if (startPage > 1) {
+                        pages.push(1);
+                        if (startPage > 2) {
+                          pages.push("...");
                         }
-                        disabled={page === "..."}
-                      >
-                        {page}
-                      </Button>
-                    ));
-                  })()}
-                </div>
+                      }
 
-                <div className="flex md:hidden gap-1">
-                  {(() => {
-                    const maxButtons = 4;
-                    const halfRange = Math.floor(maxButtons / 2);
-                    let startPage = Math.max(1, currentPage - halfRange);
-                    let endPage = Math.min(
-                      totalPages,
-                      startPage + maxButtons - 1
-                    );
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(i);
+                      }
 
-                    if (endPage - startPage + 1 < maxButtons) {
-                      startPage = Math.max(1, endPage - maxButtons + 1);
+                      if (endPage < totalPages) {
+                        if (endPage < totalPages - 1) {
+                          pages.push("...");
+                        }
+                        pages.push(totalPages);
+                      }
+
+                      return pages.map((page, idx) => (
+                        <Button
+                          key={`${page}-${idx}`}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() =>
+                            typeof page === "number" && setCurrentPage(page)
+                          }
+                          disabled={page === "..."}
+                        >
+                          {page}
+                        </Button>
+                      ));
+                    })()}
+                  </div>
+
+                  <div className="flex md:hidden gap-1">
+                    {(() => {
+                      const maxButtons = 4;
+                      const halfRange = Math.floor(maxButtons / 2);
+                      let startPage = Math.max(1, currentPage - halfRange);
+                      let endPage = Math.min(
+                        totalPages,
+                        startPage + maxButtons - 1
+                      );
+
+                      if (endPage - startPage + 1 < maxButtons) {
+                        startPage = Math.max(1, endPage - maxButtons + 1);
+                      }
+
+                      const pages = [];
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(i);
+                      }
+
+                      return pages.map((page) => (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ));
+                    })()}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setCurrentPage(Math.min(totalPages, currentPage + 1))
                     }
-
-                    const pages = [];
-                    for (let i = startPage; i <= endPage; i++) {
-                      pages.push(i);
-                    }
-
-                    return pages.map((page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                      >
-                        {page}
-                      </Button>
-                    ));
-                  })()}
+                    disabled={currentPage === totalPages}
+                  >
+                    <span className="hidden md:inline">Siguiente</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setCurrentPage(Math.min(totalPages, currentPage + 1))
-                  }
-                  disabled={currentPage === totalPages}
-                >
-                  <span className="hidden md:inline">Siguiente</span>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Mostrando {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalRecords)} de {totalRecords} documentos
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Mostrando {startIndex + 1}-
-                {Math.min(startIndex + itemsPerPage, sortedDocuments.length)} de{" "}
-                {sortedDocuments.length} documentos
-              </p>
-            </div>
+            )}
           </>
         )}
       </CardContent>
       <DocumentPreviewModal
-  open={previewOpen}
-  onOpenChange={setPreviewOpen}
-  url={previewUrl}
-  documentName={previewDocName}
-  loading={loadingPreview}
-/>
-
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        url={previewUrl}
+        documentName={previewDocName}
+        loading={loadingPreview}
+      />
     </Card>
   );
 };

@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCompanyUploads, batchDeleteKnowledge } from '@/api/uploadApi';
+import { getCompanyUploads, batchDeleteKnowledge, getCompanyUploadsPaginated } from '@/api/uploadApi';
 import { useCurrentUser } from '@/hooks/useUserQueries';
 import type { KnowledgeLoadResponse } from '@/types/upload';
 import { toast } from '@/hooks/use-toast';
+
 
 interface UseProcessingLogsOptions {
   enabled?: boolean;
@@ -24,6 +25,39 @@ export const useProcessingLogs = ({
     enabled: enabled && !!companyId && !!areaId,
     refetchInterval,
     staleTime: 20 * 60 * 1000, // 20 minutes
+  });
+};
+
+export const useProcessingLogsPaginated = (
+  page: number,
+  pageSize: number,
+  searchTerm: string,
+  orderField: 'NOMBRE_DOCUMENTO' | 'FCHMOD' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'AREA' | 'USUARIO_CARGA' | 'EMBEDDING_MODEL' | 'FCH_EXTRACCION' | 'FCH_SEGMENTACION' | 'FCH_VECTORIZACION',
+  orderDirection: 'ASC' | 'DESC',
+  statusFilter: number | null
+) => {
+  const { user } = useCurrentUser();
+  const companyId = user?.actual_company_area?.ID_EMPRESA;
+  const areaId = user?.actual_company_area?.ID_AREA;
+
+  return useQuery({
+    queryKey: ['knowledge-paginated', companyId, areaId, page, pageSize, searchTerm, orderField, orderDirection, statusFilter],
+    queryFn: () =>
+      getCompanyUploadsPaginated(
+        companyId!,
+        areaId,
+        page,
+        pageSize,
+        searchTerm,
+        orderField,
+        orderDirection,
+        statusFilter !== null ? statusFilter : undefined
+      ),
+    enabled: !!companyId,
+    retry: false,
+    placeholderData: (prev) => prev,
+    staleTime: 0,
+    gcTime: 0
   });
 };
 

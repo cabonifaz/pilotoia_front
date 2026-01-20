@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, ChevronsUpDown, CirclePlus, Trash2 } from 'lucide-react';
+import { useDebounce } from 'use-debounce';
+import { Search, CirclePlus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { DocumentsTable, UploadSidebar } from '@/components/upload';
@@ -17,9 +18,11 @@ import {
 const DocumentUpload = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'status' | null>(null);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // Debounce search term
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
 
   const { user } = useCurrentUser();
   const areaName = user?.actual_company_area?.AREA || 'esta área';
@@ -65,15 +68,7 @@ const DocumentUpload = () => {
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant={sortBy === 'status' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSortBy(sortBy === 'status' ? null : 'status')}
-                className="gap-2"
-              >
-                <ChevronsUpDown className="h-4 w-4 flex-shrink-0" />
-                Estado
-              </Button>
+              {/* ELIMINADO: Botón de ordenar por estado */}
 
               <Button
                 variant="destructive"
@@ -93,8 +88,7 @@ const DocumentUpload = () => {
             </div>
           </div>
           <DocumentsTable
-            searchTerm={searchTerm}
-            sortBy={sortBy}
+            searchTerm={debouncedSearchTerm}
             selectedRows={selectedRows}
             onSelectionChange={setSelectedRows}
           />
