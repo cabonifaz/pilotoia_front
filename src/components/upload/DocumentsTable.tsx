@@ -33,7 +33,8 @@ import {
   TableRow,
 } from "@/components/shadcn/table";
 import { Loader } from "@/components/loader/Loader";
-import { useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
+import { useProcessingLogs, useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
+import type { KnowledgeLoadResponse } from "@/types/upload";
 
 type BadgeVariant =
   | "success"
@@ -57,17 +58,16 @@ type StatusBadge = {
   variant?: BadgeVariant;
 };
 
-// Map process_stage to status display
 const getStatusFromStage = (idEstadoProceso: number, estadoProceso: string) => {
   const badgeColorMap: { [key: number]: BadgeVariant } = {
-    0: "cyan", // State 0 - Subiendo (Uploading)
-    1: "warning", // State 1 - En cola (In queue)
-    2: "purple", // State 2 - Procesando (Processing)
-    3: "info", // State 3 - Texto extraído (Text extracted)
-    4: "orange", // State 4 - Texto segmentado (Text segmented)
-    5: "teal", // State 5 - Segmentos vectorizados (Segments vectorized)
-    6: "success", // State 6 - Cargado (Loaded/Completed)
-    7: "destructive", // State 7 - Error
+    0: "cyan",
+    1: "warning",
+    2: "purple",
+    3: "info",
+    4: "orange",
+    5: "teal",
+    6: "success",
+    7: "destructive",
   };
 
   let statusBadge: StatusBadge = { label: estadoProceso };
@@ -75,14 +75,12 @@ const getStatusFromStage = (idEstadoProceso: number, estadoProceso: string) => {
   if (idEstadoProceso < 0) {
     statusBadge.variant = "destructive" as const;
   } else {
-    statusBadge.variant =
-      badgeColorMap[idEstadoProceso] || ("secondary" as const);
+    statusBadge.variant = badgeColorMap[idEstadoProceso] || ("secondary" as const);
   }
 
   return statusBadge || { label: "Desconocido", variant: "secondary" as const };
 };
 
-// Format date to readable format with time
 const formatDate = (isoDate: string): string => {
   const date = new Date(isoDate);
   return date.toLocaleDateString("es-ES", {
@@ -107,7 +105,8 @@ export const DocumentsTable = ({
 }: DocumentsTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [orderField, setOrderField] = useState<'NOMBRE_DOCUMENTO' | 'FCHMOD' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'AREA' | 'USUARIO_CARGA' | 'EMBEDDING_MODEL' | 'FCH_EXTRACCION' | 'FCH_SEGMENTACION' | 'FCH_VECTORIZACION'>('FCHMOD'); const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('DESC');
+  const [orderField, setOrderField] = useState<'NOMBRE_DOCUMENTO' | 'FCHMOD' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'AREA' | 'USUARIO_CARGA' | 'EMBEDDING_MODEL' | 'FCH_EXTRACCION' | 'FCH_SEGMENTACION' | 'FCH_VECTORIZACION'>('FCHMOD');
+  const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('DESC');
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -115,7 +114,24 @@ export const DocumentsTable = ({
   const [previewDocName, setPreviewDocName] = useState<string>("");
   const [loadingPreview, setLoadingPreview] = useState(false);
 
-  // Server-side pagination query
+  // Polling interval for background updates
+  const pollingInterval = Number(import.meta.env.VITE_POLLING_INTERVAL) || 30000;
+
+  // Helper to check if there are processing documents
+  const hasProcessingDocuments = (uploads: KnowledgeLoadResponse[] | undefined): boolean => {
+    if (!uploads || uploads.length === 0) return false;
+    return uploads.some((upload: KnowledgeLoadResponse) => upload.id_estado_proceso !== 6);
+  };
+
+  // Background polling to detect changes
+  const { data: _uploads } = useProcessingLogs({
+    enabled: true,
+    refetchInterval: (query: { state: { data: KnowledgeLoadResponse[] | undefined } }): number | false => {
+      return hasProcessingDocuments(query.state.data) ? pollingInterval : false;
+    },
+  });
+
+  // Server-side pagination query for the table
   const {
     data,
     isLoading,
@@ -135,10 +151,7 @@ export const DocumentsTable = ({
       setPreviewDocName(name);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL
-        }/api/v1/knowledge/document/url?ruta_documento=${encodeURIComponent(
-          ruta_documento
-        )}`
+        `${import.meta.env.VITE_API_BASE_URL}/api/v1/knowledge/document/url?ruta_documento=${encodeURIComponent(ruta_documento)}`
       );
 
       const responseData = await response.json();
@@ -157,31 +170,25 @@ export const DocumentsTable = ({
     }
   };
 
-  // Reset to first page when search term or status filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
 
-  // Handle column sort
   const handleSort = (field: 'NOMBRE_DOCUMENTO' | 'FCHMOD' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'AREA' | 'USUARIO_CARGA' | 'EMBEDDING_MODEL' | 'FCH_EXTRACCION' | 'FCH_SEGMENTACION' | 'FCH_VECTORIZACION') => {
     if (orderField === field) {
-      // Toggle direction if same field
       setOrderDirection(orderDirection === 'ASC' ? 'DESC' : 'ASC');
     } else {
-      // New field, set to ASC
       setOrderField(field);
       setOrderDirection('ASC');
     }
     setCurrentPage(1);
   };
 
-  // Handle page size change
   const handlePageSizeChange = (value: string) => {
     setPageSize(Number(value));
     setCurrentPage(1);
   };
 
-  // Process documents from server response
   const displayedDocuments = data?.registros?.map((upload) => ({
     id: upload.id,
     id_usuario: upload.id_usuario,
@@ -203,16 +210,12 @@ export const DocumentsTable = ({
     fecha_finalizado: upload.fecha_finalizado,
     en_ejecucion: upload.en_ejecucion,
     ruta_documento: upload.ruta_documento,
-    status: getStatusFromStage(
-      upload.id_estado_proceso,
-      upload.estado_proceso
-    ),
+    status: getStatusFromStage(upload.id_estado_proceso, upload.estado_proceso),
   })) || [];
 
   const totalPages = data?.total_paginas || 0;
   const totalRecords = data?.total_registros || 0;
 
-  // Checkbox handlers
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       const allIds = displayedDocuments.map((doc) => doc.id);
@@ -233,6 +236,7 @@ export const DocumentsTable = ({
   const isAllSelected =
     displayedDocuments.length > 0 &&
     displayedDocuments.every((doc) => selectedRows.includes(doc.id));
+
 
   return (
     <Card className="flex-1 flex flex-col min-h-0">
