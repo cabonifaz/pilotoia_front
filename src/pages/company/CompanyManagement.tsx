@@ -11,7 +11,7 @@ const CompanyManagement = () => {
   const [isLogoSidebarOpen, setIsLogoSidebarOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<{ id: number; name: string; logo: string | null } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy] = useState<'ruc' | 'razon_social' | null>(null);
+  // const [sortBy] = useState<'ruc' | 'razon_social' | null>(null);
 
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
 
@@ -61,7 +61,7 @@ const CompanyManagement = () => {
           {/* Table Section */}
           <CompanyTable
             searchTerm={debouncedSearchTerm}
-            sortBy={sortBy}
+            // sortBy={sortBy}
             onUpdateLogo={handleUpdateLogo}
           />
         </div>

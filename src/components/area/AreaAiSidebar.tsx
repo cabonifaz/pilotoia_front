@@ -113,9 +113,9 @@ export const AreaAiSidebar = ({
   if (!fetchedConfig?.result) {
     return (
       <div
-        className={`fixed top-16 bottom-0 right-0 w-96 bg-background border-l shadow-lg transform transition-all duration-300 flex flex-col ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        className={`fixed top-16 bottom-0 right-0 w-96 bg-background border-l shadow-lg transform transition-all duration-300 flex flex-col z-50 ${
+        isOpen ? 'translate-x-0' : 'translate-x-full'
+      }`}
       >
         <Card className="h-full rounded-none border-0 flex flex-col">
           <CardHeader className="pt-3 pb-3 border-b flex-shrink-0">

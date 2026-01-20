@@ -35,6 +35,7 @@ const ChatComponent = ({
 }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState("");
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const currentMainActionRef = useRef<() => void>(() => {});
   const isUserSendingRef = useRef(false);
@@ -77,6 +78,8 @@ const ChatComponent = ({
     searchVectorialSQL,
     cancelMessage,
     currentChatId,
+    initializeAudio,
+    resetAudio,
   } = useChatStream();
   const { isAuthenticated, token } = useExternalLogin();
   // 2. Referencia para detectar el tope del scroll (hacia arriba) 🕵️
@@ -234,6 +237,17 @@ const ChatComponent = ({
       await startRecording({ language_code: "es-ES" });
     }
   };
+
+  // TTS toggle handler - initializes audio on enable, resets on disable
+  const handleTtsToggle = (enabled: boolean) => {
+    if (enabled) {
+      initializeAudio();
+    } else {
+      resetAudio();
+    }
+    setTtsEnabled(enabled);
+  };
+
   const chatQuery = async () => {
     if (!userQuery.trim()) return;
 
@@ -251,7 +265,7 @@ const ChatComponent = ({
         scrollContainerRef.current.scrollHeight;
     }
 
-    await searchVectorial(currentQuery, chatContext);
+    await searchVectorial(currentQuery, chatContext, ttsEnabled);
   };
 
   const cancelar = () => {
@@ -288,6 +302,8 @@ const ChatComponent = ({
       onMainActionChange={(action) => {
         currentMainActionRef.current = action;
       }}
+      ttsEnabled={ttsEnabled}
+      onTtsEnabledChange={handleTtsToggle}
     >
       <TranscriptionProvider
         transcribeProvider={transcribeProvider}

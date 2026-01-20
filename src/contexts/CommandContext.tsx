@@ -20,6 +20,10 @@ interface CommandContextType {
   // User input
   userQuery: string;
   onQueryChange: (query: string) => void;
+
+  // TTS state
+  ttsEnabled: boolean;
+  onTtsEnabledChange: (enabled: boolean) => void;
 }
 
 const CommandContext = createContext<CommandContextType | undefined>(undefined);
@@ -45,6 +49,10 @@ interface CommandProviderProps {
 
   // Main action callback
   onMainActionChange: (action: () => void) => void;
+
+  // TTS state
+  ttsEnabled: boolean;
+  onTtsEnabledChange: (enabled: boolean) => void;
 }
 
 export const CommandProvider = ({
@@ -58,6 +66,8 @@ export const CommandProvider = ({
   isAuthenticated,
   token,
   onMainActionChange,
+  ttsEnabled,
+  onTtsEnabledChange,
 }: CommandProviderProps) => {
   const [selectedAction, setSelectedAction] = useState<'vectorial' | 'vectorial+sql' | 'login'>('vectorial');
 
@@ -91,8 +101,10 @@ export const CommandProvider = ({
       token,
       userQuery,
       onQueryChange,
+      ttsEnabled,
+      onTtsEnabledChange,
     }),
-    [selectedAction, onSearchVectorial, onSearchVectorialSQL, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange]
+    [selectedAction, onSearchVectorial, onSearchVectorialSQL, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange, ttsEnabled, onTtsEnabledChange]
   );
 
   return (
