@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createArea, getAreas, updateAreaStatus, updateAreaName } from '../api/areaApi';
+import { createArea, getAreas, getAreasPaginated, updateAreaStatus, updateAreaName } from '../api/areaApi';
 import type { CreateAreaRequest, UpdateAreaStatusRequest, UpdateAreaNameRequest } from '@/types/area';
 import { toast } from './use-toast';
 
@@ -13,6 +13,7 @@ export const useCreateArea = (id_empresa: number) => {
     retry: false,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['areas', id_empresa] });
+      queryClient.invalidateQueries({ queryKey: ['areas-paginated'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
 
       // Get message from results array (SP response) or from result wrapper
@@ -56,6 +57,7 @@ export const useUpdateAreaStatus = (id_empresa: number) => {
     retry: false,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['areas', id_empresa] });
+      queryClient.invalidateQueries({ queryKey: ['areas-paginated'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
 
       // Get message from results array (SP response) or from result wrapper
@@ -88,6 +90,7 @@ export const useUpdateAreaName = (id_empresa: number) => {
     retry: false,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['areas', id_empresa] });
+      queryClient.invalidateQueries({ queryKey: ['areas-paginated'] });
       queryClient.invalidateQueries({ queryKey: ['user', 'company-areas'] });
 
       // Get message from results array (SP response) or from result wrapper
@@ -107,5 +110,34 @@ export const useUpdateAreaName = (id_empresa: number) => {
         variant: 'destructive',
       });
     },
+  });
+};
+
+export const useGetAreasPaginated = (
+  id_empresa: number,
+  page: number,
+  pageSize: number,
+  search: string,
+  orderField: 'AREA' | 'FCHCRE' | 'ID_ESTADO_REGISTRO',
+  orderDirection: 'ASC' | 'DESC',
+  statusFilter: number | null
+) => {
+  return useQuery({
+    queryKey: ['areas-paginated', id_empresa, page, pageSize, search, orderField, orderDirection, statusFilter],
+    queryFn: () =>
+      getAreasPaginated({
+        id_empresa,
+        num_pagina: page,
+        tam_pagina: pageSize,
+        term_busqueda: search,
+        campo_orden: orderField,
+        dir_orden: orderDirection,
+        filtro_estado: statusFilter
+      }),
+    retry: false,
+
+    placeholderData: (prev) => prev,
+    staleTime: 0,
+    gcTime: 0
   });
 };

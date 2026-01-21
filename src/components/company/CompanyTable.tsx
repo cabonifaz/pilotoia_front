@@ -29,7 +29,7 @@ const formatDate = (isoDate: string): string => {
 
 interface CompanyTableProps {
   searchTerm: string;
-  sortBy: 'ruc' | 'razon_social' | null;
+  // sortBy: 'ruc' | 'razon_social' | null;
   onUpdateLogo: (companyId: number, companyName: string, companyLogo: string | null) => void;
 }
 

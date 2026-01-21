@@ -1,12 +1,14 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, FolderOpen, Check, X } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, FolderOpen, Check, X, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
 import { Badge } from '@/components/shadcn/badge';
 import { Checkbox } from '@/components/shadcn/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/shadcn/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/select';
 import { Loader } from '@/components/loader/Loader';
-import { useGetAreas, useUpdateAreaStatus, useUpdateAreaName } from '@/hooks/useAreaQueries';
+import { useUpdateAreaStatus, useUpdateAreaName, useGetAreasPaginated } from '@/hooks/useAreaQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 import { AreaRowActions } from '@/components/area';
 import { Input } from '@/components/shadcn/input';
@@ -23,23 +25,38 @@ const formatDate = (isoDate: string): string => {
 
 interface AreaTableProps {
   searchTerm: string;
-  sortBy: 'area' | 'fecha_creacion' | null;
   onConfigureAi?: (areaId: number, idEmpresa: number, areaName: string) => void;
 }
 
-export const AreaTable = ({ searchTerm, sortBy, onConfigureAi }: AreaTableProps) => {
+export const AreaTable = ({
+  searchTerm,
+  onConfigureAi
+}: AreaTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
+  const [orderField, setOrderField] = useState<'AREA' | 'FCHCRE' | 'ID_ESTADO_REGISTRO'>('AREA');
+  const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('ASC');
+  const [statusFilter, setStatusFilter] = useState<number | null>(null);
   const [editingAreaId, setEditingAreaId] = useState<number | null>(null);
   const [editingAreaName, setEditingAreaName] = useState<string>('');
   const [originalAreaName, setOriginalAreaName] = useState<string>('');
-  const tableContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { user } = useQueryAuthContext();
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
-  const { data, isLoading, error } = useGetAreas(id_empresa);
+  // Server-side pagination query
+  const { data, isLoading, error } = useGetAreasPaginated(
+    id_empresa || 0,
+    currentPage,
+    pageSize,
+    searchTerm,
+    orderField,
+    orderDirection,
+    statusFilter
+  );
+
+
   const updateAreaStatus = useUpdateAreaStatus(id_empresa);
   const updateAreaName = useUpdateAreaName(id_empresa);
 
@@ -50,6 +67,8 @@ export const AreaTable = ({ searchTerm, sortBy, onConfigureAi }: AreaTableProps)
   };
 
   const handleDeleteArea = (areaId: number) => {
+    if (!id_empresa) return;
+
     updateAreaStatus.mutate({
       id_empresa,
       id_area: areaId,
@@ -58,6 +77,8 @@ export const AreaTable = ({ searchTerm, sortBy, onConfigureAi }: AreaTableProps)
   };
 
   const handleReactivateArea = (areaId: number) => {
+    if (!id_empresa) return;
+
     updateAreaStatus.mutate({
       id_empresa,
       id_area: areaId,
@@ -66,7 +87,7 @@ export const AreaTable = ({ searchTerm, sortBy, onConfigureAi }: AreaTableProps)
   };
 
   const handleSaveAreaName = async () => {
-    if (!editingAreaId || editingAreaName.trim() === '') {
+    if (!editingAreaId || !id_empresa || editingAreaName.trim() === '') {
       setEditingAreaId(null);
       return;
     }
@@ -123,77 +144,79 @@ export const AreaTable = ({ searchTerm, sortBy, onConfigureAi }: AreaTableProps)
     }
   }, [editingAreaId]);
 
-  // Automatically calculate items per page based on container height
-  useEffect(() => {
-    const calculateItemsPerPage = () => {
-      if (tableContainerRef.current) {
-        const containerHeight = tableContainerRef.current.clientHeight;
-        const rowHeight = 45; // Height of each table row
-        const headerHeight = 45; // Height of table header
-        const availableHeight = containerHeight - headerHeight;
-        const calculatedItems = Math.floor(availableHeight / rowHeight);
-        setItemsPerPage(Math.max(5, calculatedItems));
-      }
-    };
-
-    const timer = setTimeout(calculateItemsPerPage);
-    window.addEventListener('resize', calculateItemsPerPage);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', calculateItemsPerPage);
-    };
-  }, [data]);
-
-  // Reset to first page when search term or sort changes
+  // Reset to first page when search term or status filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sortBy]);
+  }, [searchTerm, statusFilter]);
 
-  const processedAreas = useMemo(() => {
-    if (!data?.areas) return [];
-
-    return data.areas
-      .filter(area =>
-        area.AREA.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-  }, [data?.areas, searchTerm]);
-
-  // Sort areas
-  const sortedAreas = useMemo(() => {
-    let sorted = [...processedAreas];
-
-    if (sortBy === 'area') {
-      sorted.sort((a, b) => a.AREA.localeCompare(b.AREA));
-    } else if (sortBy === 'fecha_creacion') {
-      sorted.sort((a, b) => {
-        const dateA = new Date(a.FCHCRE).getTime();
-        const dateB = new Date(b.FCHCRE).getTime();
-        return dateB - dateA;
-      });
+  // Handle column sort
+  const handleSort = (field: 'AREA' | 'FCHCRE' | 'ID_ESTADO_REGISTRO') => {
+    if (orderField === field) {
+      // Toggle direction if same field
+      setOrderDirection(orderDirection === 'ASC' ? 'DESC' : 'ASC');
     } else {
-      // Default sorting: by created date (most recent first)
-      sorted.sort((a, b) => {
-        const dateA = new Date(a.FCHCRE).getTime();
-        const dateB = new Date(b.FCHCRE).getTime();
-        return dateB - dateA;
-      });
+      // New field, set to ASC
+      setOrderField(field);
+      setOrderDirection('ASC');
     }
+    setCurrentPage(1);
+  };
 
-    return sorted;
-  }, [processedAreas, sortBy]);
+  // Handle page size change
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(Number(value));
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
 
-  const totalPages = Math.ceil(sortedAreas.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const displayedAreas = sortedAreas.slice(startIndex, startIndex + itemsPerPage);
+  const areas = data?.areas || [];
+  const totalPages = data?.total_paginas || 0;
+  const totalRecords = data?.total_registros || 0;
+
+  if (!id_empresa) {
+    return (
+      <Card className="flex-1 flex flex-col min-h-0">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col items-start gap-1">
+            <h1 className="text-2xl font-bold text-foreground">Áreas</h1>
+            <p className="text-xs text-muted-foreground">
+              Gestiona las áreas disponibles.
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground">No se pudo cargar la información de la empresa</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="flex-1 flex flex-col min-h-0">
       <CardHeader className="pb-3">
-        <div className="flex flex-col items-start gap-1">
-          <h1 className="text-2xl font-bold text-foreground">Áreas</h1>
-          <p className="text-xs text-muted-foreground">
-            Gestiona las áreas disponibles.
-          </p>
+        <div className="flex justify-between items-start">
+          <div className="flex flex-col items-start gap-1">
+            <h1 className="text-2xl font-bold text-foreground">Áreas</h1>
+            <p className="text-xs text-muted-foreground">
+              Gestiona las áreas disponibles.
+            </p>
+          </div>
+
+          {/* Page size selector - Top right */}
+          {!isLoading && !error && areas.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Filas por página:</span>
+              <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+                <SelectTrigger className="w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="15">15</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </CardHeader>
 
@@ -210,202 +233,293 @@ export const AreaTable = ({ searchTerm, sortBy, onConfigureAi }: AreaTableProps)
           </div>
         )}
 
-        {/* Empty State */}
-        {!isLoading && !error && displayedAreas.length === 0 && (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground">No se encontraron áreas</p>
-          </div>
-        )}
-
-        {/* Table */}
-        {!isLoading && !error && displayedAreas.length > 0 && (
+        {/* Table - Always show when not loading/error */}
+        {!isLoading && !error && (
           <>
-            <div ref={tableContainerRef} className="flex-1 min-h-0 border rounded-lg">
+            <div className="flex-1 min-h-0 border rounded-lg">
               <div className="h-full overflow-y-auto">
                 <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12"></TableHead>
-                    <TableHead>Área</TableHead>
-                    <TableHead>ID Área</TableHead>
-                    <TableHead>Fecha de Creación</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {displayedAreas.map((area) => (
-                    <TableRow key={area.ID_AREA}>
-                      <TableCell>
-                        <Checkbox />
-                      </TableCell>
-                      <TableCell>
-                        {editingAreaId === area.ID_AREA ? (
-                          <div className="flex items-center gap-2">
-                            <FolderOpen className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                            <Input
-                              ref={inputRef}
-                              value={editingAreaName}
-                              onChange={(e) => setEditingAreaName(e.target.value)}
-                              onKeyDown={handleKeyDown}
-                              onBlur={handleSaveAreaName}
-                              className="h-8 text-sm"
-                              disabled={updateAreaName.isPending}
-                            />
-                            <div className="flex items-center gap-1">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12"></TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('AREA')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Área
+                          {orderField === 'AREA' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('FCHCRE')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Fecha de Creación
+                          {orderField === 'FCHCRE' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleSort('ID_ESTADO_REGISTRO')}
+                            className="flex items-center gap-1 hover:text-foreground"
+                          >
+                            Estado
+                            {orderField === 'ID_ESTADO_REGISTRO' && (
+                              <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                            )}
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
                               <Button
-                                size="sm"
                                 variant="ghost"
-                                className="h-6 w-6 p-0"
-                                onClick={handleSaveAreaName}
-                                disabled={updateAreaName.isPending}
-                              >
-                                <Check className="h-4 w-4 text-green-600" />
-                              </Button>
-                              <Button
                                 size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0"
-                                onClick={handleCancelEdit}
-                                disabled={updateAreaName.isPending}
+                                className={`h-6 w-6 p-0 ${statusFilter !== null ? 'text-blue-600' : ''}`}
                               >
-                                <X className="h-4 w-4 text-red-600" />
+                                <Filter className="h-4 w-4" />
                               </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <FolderOpen className="h-4 w-4 text-amber-500" />
-                            <span>{area.AREA}</span>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>{area.ID_AREA}</TableCell>
-                      <TableCell>{formatDate(area.FCHCRE)}</TableCell>
-                      <TableCell>
-                        <Badge variant={area.ID_ESTADO_REGISTRO === 1 ? 'success' : 'destructive'}>
-                          {area.ID_ESTADO_REGISTRO === 1 ? 'Activo' : 'Inactivo'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <AreaRowActions
-                          areaId={area.ID_AREA}
-                          areaName={area.AREA}
-                          status={area.ID_ESTADO_REGISTRO}
-                          onEdit={() => handleEditArea(area.ID_AREA, area.AREA)}
-                          onDelete={handleDeleteArea}
-                          onReactivate={handleReactivateArea}
-                          onConfigureAi={onConfigureAi ? () => onConfigureAi(area.ID_AREA, id_empresa, area.AREA) : undefined}
-                        />
-                      </TableCell>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(null);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === null ? 'bg-accent' : ''}
+                              >
+                                Todos
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(1);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 1 ? 'bg-accent' : ''}
+                              >
+                                Activo
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(0);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 0 ? 'bg-accent' : ''}
+                              >
+                                Inactivo
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableHead>
+                      <TableHead className="w-12"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {areas.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">
+                          <p className="text-muted-foreground">
+                            {statusFilter === 1
+                              ? 'No se encontraron áreas activas'
+                              : statusFilter === 0
+                                ? 'No se encontraron áreas inactivas'
+                                : searchTerm
+                                  ? `No se encontraron áreas que coincidan con "${searchTerm}"`
+                                  : 'No hay áreas registradas'}
+                          </p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      areas.map((area) => (
+                        <TableRow key={area.ID_AREA}>
+                          <TableCell>
+                            <Checkbox />
+                          </TableCell>
+                          <TableCell>
+                            {editingAreaId === area.ID_AREA ? (
+                              <div className="flex items-center gap-2">
+                                <FolderOpen className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                                <Input
+                                  ref={inputRef}
+                                  value={editingAreaName}
+                                  onChange={(e) => setEditingAreaName(e.target.value)}
+                                  onKeyDown={handleKeyDown}
+                                  className="h-8 text-sm"
+                                  disabled={updateAreaName.isPending}
+                                />
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      handleSaveAreaName();
+                                    }}
+                                    disabled={updateAreaName.isPending}
+                                  >
+                                    <Check className="h-4 w-4 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      handleCancelEdit();
+                                    }}
+                                    disabled={updateAreaName.isPending}
+                                  >
+                                    <X className="h-4 w-4 text-red-600" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <FolderOpen className="h-4 w-4 text-amber-500" />
+                                <span>{area.AREA}</span>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>{formatDate(area.FCHCRE)}</TableCell>
+                          <TableCell>
+                            <Badge variant={area.ID_ESTADO_REGISTRO === 1 ? 'success' : 'destructive'}>
+                              {area.ID_ESTADO_REGISTRO === 1 ? 'Activo' : 'Inactivo'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <AreaRowActions
+                              areaId={area.ID_AREA}
+                              areaName={area.AREA}
+                              status={area.ID_ESTADO_REGISTRO}
+                              onEdit={() => handleEditArea(area.ID_AREA, area.AREA)}
+                              onDelete={handleDeleteArea}
+                              onReactivate={handleReactivateArea}
+                              onConfigureAi={onConfigureAi ? () => onConfigureAi(area.ID_AREA, id_empresa, area.AREA) : undefined}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </div>
 
-            {/* Pagination */}
-            <div className="flex flex-col items-center gap-2 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="hidden md:inline">Anterior</span>
-                </Button>
+            {/* Pagination and page size selector - Only show when there's data */}
+            {areas.length > 0 && (
+              <>
 
-                <div className="hidden md:flex gap-1">
-                  {(() => {
-                    const maxButtons = 5;
-                    const halfRange = Math.floor(maxButtons / 2);
-                    let startPage = Math.max(1, currentPage - halfRange);
-                    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
 
-                    if (endPage - startPage + 1 < maxButtons) {
-                      startPage = Math.max(1, endPage - maxButtons + 1);
-                    }
+                {/* Pagination controls */}
+                <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="hidden md:inline">Anterior</span>
+                    </Button>
 
-                    const pages = [];
+                    <div className="hidden md:flex gap-1">
+                      {(() => {
+                        const maxButtons = 5;
+                        const halfRange = Math.floor(maxButtons / 2);
+                        let startPage = Math.max(1, currentPage - halfRange);
+                        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
 
-                    if (startPage > 1) {
-                      pages.push(1);
-                      if (startPage > 2) {
-                        pages.push('...');
-                      }
-                    }
+                        if (endPage - startPage + 1 < maxButtons) {
+                          startPage = Math.max(1, endPage - maxButtons + 1);
+                        }
 
-                    for (let i = startPage; i <= endPage; i++) {
-                      pages.push(i);
-                    }
+                        const pages = [];
 
-                    if (endPage < totalPages) {
-                      if (endPage < totalPages - 1) {
-                        pages.push('...');
-                      }
-                      pages.push(totalPages);
-                    }
+                        if (startPage > 1) {
+                          pages.push(1);
+                          if (startPage > 2) {
+                            pages.push('...');
+                          }
+                        }
 
-                    return pages.map((page, idx) => (
-                      <Button
-                        key={`${page}-${idx}`}
-                        variant={currentPage === page ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => typeof page === 'number' && setCurrentPage(page)}
-                        disabled={page === '...'}
-                      >
-                        {page}
-                      </Button>
-                    ));
-                  })()}
+                        for (let i = startPage; i <= endPage; i++) {
+                          pages.push(i);
+                        }
+
+                        if (endPage < totalPages) {
+                          if (endPage < totalPages - 1) {
+                            pages.push('...');
+                          }
+                          pages.push(totalPages);
+                        }
+
+                        return pages.map((page, idx) => (
+                          <Button
+                            key={`${page}-${idx}`}
+                            variant={currentPage === page ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => typeof page === 'number' && setCurrentPage(page)}
+                            disabled={page === '...'}
+                          >
+                            {page}
+                          </Button>
+                        ));
+                      })()}
+                    </div>
+
+                    <div className="flex md:hidden gap-1">
+                      {(() => {
+                        const maxButtons = 4;
+                        const halfRange = Math.floor(maxButtons / 2);
+                        let startPage = Math.max(1, currentPage - halfRange);
+                        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+                        if (endPage - startPage + 1 < maxButtons) {
+                          startPage = Math.max(1, endPage - maxButtons + 1);
+                        }
+
+                        const pages = [];
+                        for (let i = startPage; i <= endPage; i++) {
+                          pages.push(i);
+                        }
+
+                        return pages.map((page) => (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                          >
+                            {page}
+                          </Button>
+                        ));
+                      })()}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <span className="hidden md:inline">Siguiente</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Mostrando {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalRecords)} de {totalRecords} áreas
+                  </p>
                 </div>
-
-                <div className="flex md:hidden gap-1">
-                  {(() => {
-                    const maxButtons = 4;
-                    const halfRange = Math.floor(maxButtons / 2);
-                    let startPage = Math.max(1, currentPage - halfRange);
-                    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-
-                    if (endPage - startPage + 1 < maxButtons) {
-                      startPage = Math.max(1, endPage - maxButtons + 1);
-                    }
-
-                    const pages = [];
-                    for (let i = startPage; i <= endPage; i++) {
-                      pages.push(i);
-                    }
-
-                    return pages.map((page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                      >
-                        {page}
-                      </Button>
-                    ));
-                  })()}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  <span className="hidden md:inline">Siguiente</span>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Mostrando {startIndex + 1}-{Math.min(startIndex + itemsPerPage, sortedAreas.length)} de {sortedAreas.length} áreas
-              </p>
-            </div>
+              </>
+            )}
           </>
         )}
       </CardContent>
