@@ -52,7 +52,9 @@ export const usePresignedUrls = () => {
         await Promise.all(uploadPromises);
 
         // Step 4: Invalidate cache after successful uploads
-        queryClient.invalidateQueries({ queryKey: ['knowledge'] });
+        queryClient.invalidateQueries({ queryKey: ['knowledge-paginated'] });
+        
+
 
         // Return response with company/area IDs attached
         return {

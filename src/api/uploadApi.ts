@@ -12,19 +12,19 @@ export const getPresignedUrls = async (
   return response.data;
 };
 
-export const getCompanyUploads = async (
-  companyId: number,
-  areaId?: number
-): Promise<KnowledgeLoadResponse[]> => {
-  const response = await apiClient.post<{ knowledge: KnowledgeLoadResponse[] }>(
-    '/v1/knowledge/get_knowledge',
-    {
-      id_empresa: companyId,
-      id_area: areaId
-    }
-  );
-  return response.data.knowledge;
-};
+// export const getCompanyUploads = async (
+//   companyId: number,
+//   areaId?: number
+// ): Promise<KnowledgeLoadResponse[]> => {
+//   const response = await apiClient.post<{ knowledge: KnowledgeLoadResponse[] }>(
+//     '/v1/knowledge/get_knowledge',
+//     {
+//       id_empresa: companyId,
+//       id_area: areaId
+//     }
+//   );
+//   return response.data.knowledge;
+// };
 
 
 export interface PaginatedKnowledgeResponse {

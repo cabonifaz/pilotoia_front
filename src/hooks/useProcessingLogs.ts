@@ -1,32 +1,32 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCompanyUploads, batchDeleteKnowledge, getCompanyUploadsPaginated } from '@/api/uploadApi';
+import {/* getCompanyUploads, */batchDeleteKnowledge, getCompanyUploadsPaginated } from '@/api/uploadApi';
 import { useCurrentUser } from '@/hooks/useUserQueries';
-import type { KnowledgeLoadResponse } from '@/types/upload';
+// import type { KnowledgeLoadResponse } from '@/types/upload';
 import { toast } from '@/hooks/use-toast';
 
 
-interface UseProcessingLogsOptions {
-  enabled?: boolean;
-  refetchInterval?: number | false | ((query: { state: { data: KnowledgeLoadResponse[] | undefined } }) => number | false);
-}
+// interface UseProcessingLogsOptions {
+//   enabled?: boolean;
+//   refetchInterval?: number | false | ((query: { state: { data: KnowledgeLoadResponse[] | undefined } }) => number | false);
+// }
 
-export const useProcessingLogs = ({
-  enabled = true,
-  refetchInterval
-}: UseProcessingLogsOptions) => {
-  // Get company_id from current user's actual_company_area
-  const { user } = useCurrentUser();
-  const companyId = user?.actual_company_area?.ID_EMPRESA;
-  const areaId = user?.actual_company_area?.ID_AREA;
+// export const useProcessingLogs = ({
+//   enabled = true,
+//   refetchInterval
+// }: UseProcessingLogsOptions) => {
+//   // Get company_id from current user's actual_company_area
+//   const { user } = useCurrentUser();
+//   const companyId = user?.actual_company_area?.ID_EMPRESA;
+//   const areaId = user?.actual_company_area?.ID_AREA;
 
-  return useQuery<KnowledgeLoadResponse[], Error>({
-    queryKey: ['knowledge', companyId, areaId],
-    queryFn: () => getCompanyUploads(companyId!, areaId!),
-    enabled: enabled && !!companyId && !!areaId,
-    refetchInterval,
-    staleTime: 20 * 60 * 1000, // 20 minutes
-  });
-};
+//   return useQuery<KnowledgeLoadResponse[], Error>({
+//     queryKey: ['knowledge-paginated'],
+//     queryFn: () => getCompanyUploads(companyId!, areaId!),
+//     enabled: enabled && !!companyId && !!areaId,
+//     refetchInterval,
+//     staleTime: 20 * 60 * 1000, // 20 minutes
+//   });
+// };
 
 export const useProcessingLogsPaginated = (
   page: number,
@@ -39,6 +39,10 @@ export const useProcessingLogsPaginated = (
   const { user } = useCurrentUser();
   const companyId = user?.actual_company_area?.ID_EMPRESA;
   const areaId = user?.actual_company_area?.ID_AREA;
+  
+
+  // Polling interval
+  const pollingInterval = Number(import.meta.env.VITE_POLLING_INTERVAL) || 30000;
 
   return useQuery({
     queryKey: ['knowledge-paginated', companyId, areaId, page, pageSize, searchTerm, orderField, orderDirection, statusFilter],
@@ -57,21 +61,32 @@ export const useProcessingLogsPaginated = (
     retry: false,
     placeholderData: (prev) => prev,
     staleTime: 0,
-    gcTime: 0
+    gcTime: 0,
+    refetchInterval: (query) => {
+      // Check if any document is processing
+      const data = query.state.data;
+      const hasProcessing = data?.registros?.some(
+        (doc: any) => doc.id_estado_proceso !== 6 && doc.id_estado_proceso !== 7
+      );
+      return hasProcessing ? pollingInterval : false;
+    }
   });
 };
 
 export const useDeleteKnowledge = () => {
   const queryClient = useQueryClient();
-  const { user } = useCurrentUser();
-  const companyId = user?.actual_company_area?.ID_EMPRESA;
-  const areaId = user?.actual_company_area?.ID_AREA;
+  // const { user } = useCurrentUser();
+  // const companyId = user?.actual_company_area?.ID_EMPRESA;
+  // const areaId = user?.actual_company_area?.ID_AREA;
 
   return useMutation({
     mutationFn: (idCargas: number[]) => batchDeleteKnowledge(idCargas),
     onSuccess: (data) => {
       // Invalidate and refetch knowledge query
-      queryClient.invalidateQueries({ queryKey: ['knowledge', companyId, areaId] });
+      queryClient.invalidateQueries({ 
+        queryKey: ['knowledge-paginated'],
+        refetchType: 'active' // Solo refetch queries activas
+      });
 
       // Show success toast
       toast({

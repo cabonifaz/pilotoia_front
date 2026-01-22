@@ -33,8 +33,8 @@ import {
   TableRow,
 } from "@/components/shadcn/table";
 import { Loader } from "@/components/loader/Loader";
-import { useProcessingLogs, useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
-import type { KnowledgeLoadResponse } from "@/types/upload";
+import {  useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
+// import type { KnowledgeLoadResponse } from "@/types/upload";
 
 type BadgeVariant =
   | "success"
@@ -114,22 +114,11 @@ export const DocumentsTable = ({
   const [previewDocName, setPreviewDocName] = useState<string>("");
   const [loadingPreview, setLoadingPreview] = useState(false);
 
-  // Polling interval for background updates
-  const pollingInterval = Number(import.meta.env.VITE_POLLING_INTERVAL) || 30000;
-
   // Helper to check if there are processing documents
-  const hasProcessingDocuments = (uploads: KnowledgeLoadResponse[] | undefined): boolean => {
-    if (!uploads || uploads.length === 0) return false;
-    return uploads.some((upload: KnowledgeLoadResponse) => upload.id_estado_proceso !== 6);
-  };
-
-  // Background polling to detect changes
-  const { data: _uploads } = useProcessingLogs({
-    enabled: true,
-    refetchInterval: (query: { state: { data: KnowledgeLoadResponse[] | undefined } }): number | false => {
-      return hasProcessingDocuments(query.state.data) ? pollingInterval : false;
-    },
-  });
+  // const hasProcessingDocuments = (uploads: KnowledgeLoadResponse[] | undefined): boolean => {
+  //   if (!uploads || uploads.length === 0) return false;
+  //   return uploads.some((upload: KnowledgeLoadResponse) => upload.id_estado_proceso !== 6);
+  // };
 
   // Server-side pagination query for the table
   const {
