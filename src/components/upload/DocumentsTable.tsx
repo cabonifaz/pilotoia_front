@@ -34,7 +34,6 @@ import {
 } from "@/components/shadcn/table";
 import { Loader } from "@/components/loader/Loader";
 import {  useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
-// import type { KnowledgeLoadResponse } from "@/types/upload";
 
 type BadgeVariant =
   | "success"
@@ -124,12 +123,6 @@ export const DocumentsTable = ({
       setOrderDirection('DESC');
     }
   }, [uploadTrigger]);
-
-  // Helper to check if there are processing documents
-  // const hasProcessingDocuments = (uploads: KnowledgeLoadResponse[] | undefined): boolean => {
-  //   if (!uploads || uploads.length === 0) return false;
-  //   return uploads.some((upload: KnowledgeLoadResponse) => upload.id_estado_proceso !== 6);
-  // };
 
   // Server-side pagination query for the table
   const {
