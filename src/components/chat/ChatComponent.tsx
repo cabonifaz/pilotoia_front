@@ -122,8 +122,6 @@ const ChatComponent = ({
         // Small delay to ensure textarea is updated, then submit
         setTimeout(() => {
           submitActionRef.current?.();
-          // Clear transcript for next input (continuous mode)
-          clearTranscript();
         }, 50);
       }
     },

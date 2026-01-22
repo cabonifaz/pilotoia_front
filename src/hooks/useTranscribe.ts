@@ -265,8 +265,14 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
                         setPartialTranscript(''); // Clear partial when we get final
 
                         // Call callback if provided (for auto-submit in continuous mode)
-                        if (onFinalTranscriptRef.current) {
-                            onFinalTranscriptRef.current(fullTranscript);
+                        // Pass the new transcript only, and clear buffer if in continuous mode
+                        if (onFinalTranscriptRef.current && result.transcript.trim()) {
+                            onFinalTranscriptRef.current(result.transcript);
+                            // In continuous mode, clear the buffer after callback so next transcript starts fresh
+                            if (config.continuous) {
+                                transcriptBufferRef.current = [];
+                                setTranscript('');
+                            }
                         }
                     },
                     onError: (error: string) => {
