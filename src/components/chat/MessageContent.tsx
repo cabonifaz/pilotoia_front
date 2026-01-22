@@ -7,19 +7,16 @@ import rehypeKatex from "rehype-katex";
 export const addDisplayStyle = (text: string | null | undefined): string => {
   if (!text || typeof text !== "string") return "";
 
-  // 1. Limpieza inicial y normalización
+  // 1. Limpieza inicial
   let cleanText = text
     .replace(/\\displaystyle/g, "")
     .replace(/\\\[/g, "$$")
     .replace(/\\\]/g, "$$")
     .replace(/\\\(/g, "$")
     .replace(/\\\)/g, "$")
-    .replace(/([^\n])\s*(##\s+\d+)/g, "$1\n\n$2")
-    // PARCHE 2: Recuperar backslashes perdidos en letras griegas comunes si el JSON falló
-    // Si llegó un caracter raro antes de "eta" (por el \b de beta), intentamos arreglarlo
+    .replace(/([^\n])\s*(#{1,6}\s)/g, "$1\n\n$2")
     // eslint-disable-next-line no-control-regex
     .replace(/[\u0008]eta/g, "\\beta")
-
     .replace(/\\displaystyle/g, "");
 
   // 2. CORRECCIÓN DE ESPACIOS Y CIERRES
@@ -27,20 +24,13 @@ export const addDisplayStyle = (text: string | null | undefined): string => {
     .split("\n")
     .map((line) => {
       let l = line;
-
-      // Cerrar $ impares
       const dollarCount = (l.match(/(?<!\\)\$/g) || []).length;
       if (dollarCount % 2 !== 0) l = l + "$";
 
-      // A. Quitar espacios INTERNOS: "$ \frac" -> "$\frac"
       l = l.replace(/\$\s+(?=\S)/g, "$").replace(/(?<=\S)\s+\$/g, "$");
-
-      // B. Asegurar espacios EXTERNOS (CORREGIDO)
-      // Antes solo miraba letras. Ahora mira: Letras, Números (0-9) y Puntuación (.,:;)
       l = l
-        .replace(/([a-zA-Záéíóúñ0-9.,:;)])\$/g, "$1 $") // Espacio antes del $
-        .replace(/\$([a-zA-Záéíóúñ0-9])/g, "$ $1"); // Espacio después del $
-
+        .replace(/([a-zA-Záéíóúñ0-9.,:;)])\$/g, "$1 $")
+        .replace(/\$([a-zA-Záéíóúñ0-9])/g, "$ $1");
       return l;
     })
     .join("\n");
@@ -52,14 +42,32 @@ export const addDisplayStyle = (text: string | null | undefined): string => {
 
   const isMathLine = (line: string) => {
     const t = line.trim();
+
+    if (t.startsWith("#")) return false;
     if (!t || t.includes("**") || t.includes("|")) return false;
 
-    // Si tiene comandos matemáticos muy claros, es math aunque sea larga
-    const hasStrongMath = /\\(frac|dfrac|sum|sqrt|aligned|left|right)/.test(t);
+    const hasStrongMath =
+      /\\(frac|dfrac|sum|sqrt|aligned|left|right|begin|end)/.test(t);
 
-    // Si es una línea de texto normal muy larga sin comandos fuertes, es texto
+    // --- CORRECCIÓN 3: LISTAS Y GUIONES (SOLUCIÓN A TU PROBLEMA) ---
+    // 1. Si empieza con un guion de lista Markdown (- Texto)
+    if (/^-\s/.test(t)) return false;
+
+    // 2. Si empieza con signo menos matemático (−) o guion (-) seguido inmediatamente de letras
+    // Esto evita que "−Caudales" sea detectado como $-Caudales$ (resta de variables)
+    // Pero permite "-5" o "-x" (que suelen ser cortos o seguidos de números)
+    if (/^[−-]\s*[a-zA-ZáéíóúñA-ZÁÉÍÓÚÑ]/.test(t) && !hasStrongMath) {
+      // Si la línea es larga, es casi seguro texto con un guion al inicio
+      if (t.length > 10) return false;
+    }
+    // ----------------------------------------------------------------
+
+    // CORRECCIÓN 1: Detección de texto humano (Mantenemos esto del paso anterior)
+    const startsWithText =
+      /^(Si|No|En|El|La|Los|Las|Por|Para|Con|Una|Un|Se|Del|Al)\b/i.test(t);
+    if (startsWithText && !hasStrongMath) return false;
+
     if (t.length > 60 && !hasStrongMath) return false;
-
     if (t === "$" || t === "$$") return true;
 
     const words = t.split(/\s+/);
@@ -70,11 +78,11 @@ export const addDisplayStyle = (text: string | null | undefined): string => {
     );
   };
 
+  // ... (El resto del bucle for y flushBuffer sigue idéntico al anterior)
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
 
-    // Manejo de bloques explícitos $$
     if (trimmed.startsWith("$$") || (trimmed === "$" && !isInBlockMath)) {
       if (mathBuffer.length > 0) {
         processedLines.push(flushBuffer(mathBuffer));
@@ -98,22 +106,23 @@ export const addDisplayStyle = (text: string | null | undefined): string => {
     if (isMathLine(line)) {
       mathBuffer.push(line.trim());
     } else {
-      // Soltar buffer si veníamos de una fórmula
       if (mathBuffer.length > 0) {
         processedLines.push(flushBuffer(mathBuffer));
         mathBuffer = [];
       }
 
-      // 3. VARIABLES INLINE
-      // Tu lógica de variables inline estaba bien, la mantenemos
+      // CORRECCIÓN 2: Callback para excepciones de variables en español
       let inlineProcessed = line.replace(
         /\b([VNS])(\d+|[a-z])\b/g,
-        " $ $1_{$2}$ ",
+        (match, p1, p2) => {
+          const fullWord = p1 + p2;
+          const spanishExceptions = /^(Si|No|Ni|Na|Se|Su|Sa|So|Va|Ve|Vi|Vu)$/i;
+          if (spanishExceptions.test(fullWord)) return match;
+          return ` $ ${p1}_{${p2}} $ `;
+        },
       );
 
-      // Limpieza final de espacios dobles
       inlineProcessed = inlineProcessed.replace(/\s+/g, " ");
-
       processedLines.push(inlineProcessed);
     }
   }
@@ -122,26 +131,20 @@ export const addDisplayStyle = (text: string | null | undefined): string => {
     processedLines.push(flushBuffer(mathBuffer));
   }
 
-  // Limpieza final de displaystyle redundante
   return processedLines
     .map((line) => line.replace(/\\displaystyle/g, "").trim())
     .join("\n");
 };
 
+// ... flushBuffer igual
 const flushBuffer = (buffer: string[]): string => {
   if (buffer.length === 0) return "";
-
   let combined = buffer.join("\n").trim();
   combined = combined.replace(/^\$|\$$/g, "").trim();
-
-  if (combined.includes("\\begin{aligned}")) {
-    return `$$\n${combined}\n$$`;
-  }
-
+  if (combined.includes("\\begin{aligned}")) return `$$\n${combined}\n$$`;
   combined = combined
     .replace(/\\frac_/g, "\\frac")
     .replace(/\\sum\{/g, "\\sum_{");
-
   return `$$\n\\displaystyle ${combined}\n$$`;
 };
 // Simplified table fix for remark-gfm
