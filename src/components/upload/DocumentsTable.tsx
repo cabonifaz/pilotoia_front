@@ -96,12 +96,14 @@ interface DocumentsTableProps {
   searchTerm: string;
   selectedRows?: string[];
   onSelectionChange?: (selectedIds: string[]) => void;
+  uploadTrigger?: number;
 }
 
 export const DocumentsTable = ({
   searchTerm,
   selectedRows = [],
   onSelectionChange,
+  uploadTrigger,
 }: DocumentsTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -113,6 +115,15 @@ export const DocumentsTable = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewDocName, setPreviewDocName] = useState<string>("");
   const [loadingPreview, setLoadingPreview] = useState(false);
+
+
+  useEffect(() => {
+    if (uploadTrigger && uploadTrigger > 0) {
+      setCurrentPage(1);
+      setOrderField('FCHCRE');
+      setOrderDirection('DESC');
+    }
+  }, [uploadTrigger]);
 
   // Helper to check if there are processing documents
   // const hasProcessingDocuments = (uploads: KnowledgeLoadResponse[] | undefined): boolean => {

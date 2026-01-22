@@ -20,6 +20,7 @@ const DocumentUpload = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [uploadTrigger, setUploadTrigger] = useState(0); 
 
   // Debounce search term
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
@@ -30,6 +31,10 @@ const DocumentUpload = () => {
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
+  };
+
+  const handleUploadSuccess = () => {
+    setUploadTrigger(prev => prev + 1); // Forzar refetch en DocumentsTable
   };
 
   const handleDeleteClick = () => {
@@ -91,6 +96,7 @@ const DocumentUpload = () => {
             searchTerm={debouncedSearchTerm}
             selectedRows={selectedRows}
             onSelectionChange={setSelectedRows}
+            uploadTrigger={uploadTrigger}
           />
         </div>
       </div>
@@ -98,6 +104,7 @@ const DocumentUpload = () => {
       <UploadSidebar
         isOpen={isSidebarOpen}
         onClose={closeSidebar}
+        onUploadSuccess={handleUploadSuccess}
       />
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

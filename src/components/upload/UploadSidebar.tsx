@@ -24,12 +24,14 @@ interface UploadSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   id_empresa?: number;
+  onUploadSuccess?: () => void;
 }
 
 export const UploadSidebar = ({
   isOpen,
   onClose,
   id_empresa: propsIdEmpresa,
+  onUploadSuccess,
 }: UploadSidebarProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -105,6 +107,7 @@ export const UploadSidebar = ({
         onSuccess: () => {
           setFiles([]);
           onClose();
+          onUploadSuccess?.();
         },
       }
     );
