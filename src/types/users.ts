@@ -101,3 +101,19 @@ export interface UpdateUserAccessResponse {
     mensaje: string;
   };
 }
+
+export interface PaginationInfo {
+  total_records: number;
+  current_page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface GetUsuariosPaginatedResponse {
+  data: Usuario[];
+  pagination: PaginationInfo;
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}

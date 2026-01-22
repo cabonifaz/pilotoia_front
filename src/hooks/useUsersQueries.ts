@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getUsuarios, createUsuario, updateUsuario, updateUsuarioStatus, updateUsuarioPassword, updateUsuarioAccess } from '../api/usersApi';
+import { getUsuarios, createUsuario, updateUsuario, updateUsuarioStatus, updateUsuarioPassword, updateUsuarioAccess, getUsuariosPaginated } from '../api/usersApi';
 import type { CreateUserRequest, UpdateUserRequest, UpdateUserStatusRequest, UpdateUserPasswordRequest, UpdateUserAccessRequest } from '@/types/users';
 import { toast } from './use-toast';
 
@@ -14,6 +14,35 @@ export const useGetUsuarios = (id_empresa: number) => {
   });
 };
 
+
+export const useGetUsuariosPaginated = (
+  id_empresa: number,
+  num_pagina: number,
+  tam_pagina: number,
+  term_busqueda: string,
+  campo_orden: string,
+  dir_orden: 'ASC' | 'DESC',
+  filtro_estado: number | null
+) => {
+  return useQuery({
+    queryKey: ['usuarios-paginated', id_empresa, num_pagina, tam_pagina, term_busqueda, campo_orden, dir_orden, filtro_estado],
+    queryFn: async () => {
+      return await getUsuariosPaginated({
+        id_empresa,
+        num_pagina,
+        tam_pagina,
+        term_busqueda: term_busqueda || undefined,
+        campo_orden,
+        dir_orden,
+        filtro_estado: filtro_estado,
+      });
+    },
+    enabled: !!id_empresa && id_empresa > 0,
+    staleTime: 30000, // 30 seconds
+    retry: false,
+  });
+};
+
 export const useCreateUsuario = (id_empresa: number) => {
   const queryClient = useQueryClient();
 
@@ -23,7 +52,7 @@ export const useCreateUsuario = (id_empresa: number) => {
     },
     retry: false,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios', id_empresa] });
+      queryClient.invalidateQueries({ queryKey: ['usuarios-paginated', id_empresa] });
 
       // Get message from results array (SP response) or from result wrapper
       const successMessage = data.results?.[0]?.MENSAJE || data.result?.mensaje || 'Usuario creado exitosamente';
@@ -58,7 +87,7 @@ export const useUpdateUsuario = (id_empresa: number) => {
     },
     retry: false,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios', id_empresa] });
+      queryClient.invalidateQueries({ queryKey: ['usuarios-paginated', id_empresa] });
 
       // Get message from results array (SP response) or from result wrapper
       const successMessage = data.results?.[0]?.MENSAJE || data.result?.mensaje || 'Usuario actualizado exitosamente';
@@ -93,7 +122,7 @@ export const useUpdateUsuarioStatus = (id_empresa: number) => {
     },
     retry: false,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios', id_empresa] });
+      queryClient.invalidateQueries({ queryKey: ['usuarios-paginated', id_empresa] });
 
       // Get message from results array (SP response) or from result wrapper
       const successMessage = data.results?.[0]?.MENSAJE || data.result?.mensaje || 'Estado del usuario actualizado exitosamente';
@@ -128,7 +157,7 @@ export const useUpdateUsuarioPassword = (id_empresa: number) => {
     },
     retry: false,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios', id_empresa] });
+      queryClient.invalidateQueries({ queryKey: ['usuarios-paginated', id_empresa] });
 
       // Get message from results array (SP response) or from result wrapper
       const successMessage = data.results?.[0]?.MENSAJE || data.result?.mensaje || 'Contraseña del usuario actualizada exitosamente';
@@ -163,7 +192,7 @@ export const useUpdateUsuarioAccess = (id_empresa: number) => {
     },
     retry: false,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios', id_empresa] });
+      queryClient.invalidateQueries({ queryKey: ['usuarios-paginated', id_empresa] });
 
       // Get message from results array (SP response) or from result wrapper
       const successMessage = data.results?.[0]?.MENSAJE || data.result?.mensaje || 'Acceso del usuario actualizado exitosamente';
