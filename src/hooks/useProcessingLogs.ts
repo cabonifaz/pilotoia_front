@@ -1,43 +1,64 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCompanyUploads, batchDeleteKnowledge } from '@/api/uploadApi';
+import {batchDeleteKnowledge, getCompanyUploadsPaginated } from '@/api/uploadApi';
 import { useCurrentUser } from '@/hooks/useUserQueries';
-import type { KnowledgeLoadResponse } from '@/types/upload';
 import { toast } from '@/hooks/use-toast';
 
-interface UseProcessingLogsOptions {
-  enabled?: boolean;
-  refetchInterval?: number | false | ((query: { state: { data: KnowledgeLoadResponse[] | undefined } }) => number | false);
-}
-
-export const useProcessingLogs = ({
-  enabled = true,
-  refetchInterval
-}: UseProcessingLogsOptions) => {
-  // Get company_id from current user's actual_company_area
+export const useProcessingLogsPaginated = (
+  page: number,
+  pageSize: number,
+  searchTerm: string,
+  orderField: 'NOMBRE_DOCUMENTO' | 'FCHMOD' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'AREA' | 'USUARIO_CARGA' | 'EMBEDDING_MODEL' | 'FCH_EXTRACCION' | 'FCH_SEGMENTACION' | 'FCH_VECTORIZACION',
+  orderDirection: 'ASC' | 'DESC',
+  statusFilter: number | null
+) => {
   const { user } = useCurrentUser();
   const companyId = user?.actual_company_area?.ID_EMPRESA;
   const areaId = user?.actual_company_area?.ID_AREA;
+  
 
-  return useQuery<KnowledgeLoadResponse[], Error>({
-    queryKey: ['knowledge', companyId, areaId],
-    queryFn: () => getCompanyUploads(companyId!, areaId!),
-    enabled: enabled && !!companyId && !!areaId,
-    refetchInterval,
-    staleTime: 20 * 60 * 1000, // 20 minutes
+  // Polling interval
+  const pollingInterval = Number(import.meta.env.VITE_POLLING_INTERVAL) || 30000;
+
+  return useQuery({
+    queryKey: ['knowledge-paginated', companyId, areaId, page, pageSize, searchTerm, orderField, orderDirection, statusFilter],
+    queryFn: () =>
+      getCompanyUploadsPaginated(
+        companyId!,
+        areaId,
+        page,
+        pageSize,
+        searchTerm,
+        orderField,
+        orderDirection,
+        statusFilter !== null ? statusFilter : undefined
+      ),
+    enabled: !!companyId,
+    retry: false,
+    placeholderData: (prev) => prev,
+    staleTime: 0,
+    gcTime: 0,
+    refetchInterval: (query) => {
+      // Check if any document is processing
+      const data = query.state.data;
+      const hasProcessing = data?.registros?.some(
+        (doc: any) => doc.id_estado_proceso !== 6 && doc.id_estado_proceso !== 7
+      );
+      return hasProcessing ? pollingInterval : false;
+    }
   });
 };
 
 export const useDeleteKnowledge = () => {
   const queryClient = useQueryClient();
-  const { user } = useCurrentUser();
-  const companyId = user?.actual_company_area?.ID_EMPRESA;
-  const areaId = user?.actual_company_area?.ID_AREA;
 
   return useMutation({
     mutationFn: (idCargas: number[]) => batchDeleteKnowledge(idCargas),
     onSuccess: (data) => {
       // Invalidate and refetch knowledge query
-      queryClient.invalidateQueries({ queryKey: ['knowledge', companyId, areaId] });
+      queryClient.invalidateQueries({ 
+        queryKey: ['knowledge-paginated'],
+        refetchType: 'active' // Solo refetch queries activas
+      });
 
       // Show success toast
       toast({

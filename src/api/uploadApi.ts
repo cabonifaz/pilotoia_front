@@ -12,19 +12,58 @@ export const getPresignedUrls = async (
   return response.data;
 };
 
-export const getCompanyUploads = async (
+// export const getCompanyUploads = async (
+//   companyId: number,
+//   areaId?: number
+// ): Promise<KnowledgeLoadResponse[]> => {
+//   const response = await apiClient.post<{ knowledge: KnowledgeLoadResponse[] }>(
+//     '/v1/knowledge/get_knowledge',
+//     {
+//       id_empresa: companyId,
+//       id_area: areaId
+//     }
+//   );
+//   return response.data.knowledge;
+// };
+
+
+export interface PaginatedKnowledgeResponse {
+  registros: KnowledgeLoadResponse[];
+  total_registros: number;
+  total_paginas: number;
+  pagina_actual: number;
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}
+
+export const getCompanyUploadsPaginated = async (
   companyId: number,
-  areaId?: number
-): Promise<KnowledgeLoadResponse[]> => {
-  const response = await apiClient.post<{ knowledge: KnowledgeLoadResponse[] }>(
-    '/v1/knowledge/get_knowledge',
+  areaId: number | undefined,
+  numPagina: number,
+  tamPagina: number,
+  termBusqueda?: string,
+  campoOrden?: string,
+  dirOrden?: string,
+  filtroEstado?: number
+): Promise<PaginatedKnowledgeResponse> => {
+  const response = await apiClient.post<PaginatedKnowledgeResponse>(
+    '/v1/knowledge/get_knowledge_paginated',
     {
       id_empresa: companyId,
-      id_area: areaId
+      id_area: areaId,
+      num_pagina: numPagina,
+      tam_pagina: tamPagina,
+      term_busqueda: termBusqueda || null,
+      campo_orden: campoOrden || 'FCHMOD',
+      dir_orden: dirOrden || 'DESC',
+      filtro_estado: filtroEstado !== undefined ? filtroEstado : null,
     }
   );
-  return response.data.knowledge;
+  return response.data;
 };
+
 
 export const uploadPdfToS3 = async (
   presignedUrl: string,
