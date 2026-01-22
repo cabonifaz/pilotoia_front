@@ -11,6 +11,8 @@ import {
 import { Square, Languages, AudioLines } from 'lucide-react';
 import { VoiceRecordButton } from './VoiceRecordButton';
 import { FileTranscribeButton } from './FileTranscribeButton';
+import { ContinuousVoiceButton } from './ContinuousVoiceButton';
+import { ContinuousFileTranscribeButton } from './ContinuousFileTranscribeButton';
 import { CommandMenu } from './CommandMenu';
 import { useCommand } from '../../contexts/CommandContext';
 import { useTranscription } from '../../contexts/TranscriptionContext';
@@ -50,6 +52,12 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     isFileTranscribing,
     onStartRecording,
     onStopRecording,
+    isContinuousRecording,
+    isContinuousConnecting,
+    onContinuousVoiceClick,
+    isContinuousFileRecording,
+    isContinuousFileTranscribing,
+    onContinuousFileClick,
   } = useTranscription();
 
   /* ---------------- TEXTAREA AUTO-RESIZE ---------------- */
@@ -172,27 +180,49 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                 </Select>
 
                 {transcribeProvider === 'aws' ? (
-                  <VoiceRecordButton
-                    isRecording={isRecording}
-                    isConnecting={isConnecting}
-                    isDisabled={isLoading}
-                    onClick={() => {
-                      onMicrophoneClick();
-                      textareaRef.current?.focus();
-                    }}
-                  />
+                  <>
+                    <VoiceRecordButton
+                      isRecording={isRecording}
+                      isConnecting={isConnecting}
+                      isDisabled={isLoading || isContinuousRecording}
+                      onClick={() => {
+                        onMicrophoneClick();
+                        textareaRef.current?.focus();
+                      }}
+                    />
+                    <ContinuousVoiceButton
+                      isRecording={isContinuousRecording}
+                      isConnecting={isContinuousConnecting}
+                      isDisabled={isLoading || isRecording}
+                      onClick={() => {
+                        onContinuousVoiceClick();
+                        textareaRef.current?.focus();
+                      }}
+                    />
+                  </>
                 ) : (
-                  <FileTranscribeButton
-                    isRecording={isFileRecording}
-                    isTranscribing={isFileTranscribing}
-                    isDisabled={isLoading}
-                    onClick={() => {
-                      isFileRecording
-                        ? onStopRecording()
-                        : onStartRecording();
-                      textareaRef.current?.focus();
-                    }}
-                  />
+                  <>
+                    <FileTranscribeButton
+                      isRecording={isFileRecording}
+                      isTranscribing={isFileTranscribing}
+                      isDisabled={isLoading || isContinuousFileRecording}
+                      onClick={() => {
+                        isFileRecording
+                          ? onStopRecording()
+                          : onStartRecording();
+                        textareaRef.current?.focus();
+                      }}
+                    />
+                    <ContinuousFileTranscribeButton
+                      isRecording={isContinuousFileRecording}
+                      isTranscribing={isContinuousFileTranscribing}
+                      isDisabled={isLoading || isFileRecording}
+                      onClick={() => {
+                        onContinuousFileClick();
+                        textareaRef.current?.focus();
+                      }}
+                    />
+                  </>
                 )}
 
                 <Button

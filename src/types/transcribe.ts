@@ -13,6 +13,8 @@ export interface TranscribeConfig {
     show_speaker_label?: boolean;
     enable_channel_identification?: boolean;
     number_of_channels?: number;
+    /** If true, disables auto-stop on silence (continuous/hands-free mode) */
+    continuous?: boolean;
 }
 
 export interface TranscriptResult {

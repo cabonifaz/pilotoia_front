@@ -3,6 +3,11 @@ import { transcribeApi } from '../api/transcribeApi';
 import type { TranscribeConfig, TranscriptResult } from '../types/transcribe';
 import { toast } from './use-toast';
 
+interface UseTranscribeOptions {
+    /** Callback when final transcript is received (useful for auto-submit in continuous mode) */
+    onFinalTranscript?: (transcript: string) => void;
+}
+
 interface UseTranscribeReturn {
     isRecording: boolean;
     isConnecting: boolean;
@@ -13,7 +18,13 @@ interface UseTranscribeReturn {
     clearTranscript: () => void;
 }
 
-export const useTranscribe = (): UseTranscribeReturn => {
+export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribeReturn => {
+    const { onFinalTranscript } = options;
+    const onFinalTranscriptRef = useRef(onFinalTranscript);
+
+    useEffect(() => {
+        onFinalTranscriptRef.current = onFinalTranscript;
+    }, [onFinalTranscript]);
     const [isRecording, setIsRecording] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
     const [transcript, setTranscript] = useState('');
@@ -194,8 +205,8 @@ export const useTranscribe = (): UseTranscribeReturn => {
                             }
                         };
 
-                        // Only enable silence detection in 'click' mode
-                        if (recordMode === 'click') {
+                        // Only enable silence detection in 'click' mode and not in continuous mode
+                        if (recordMode === 'click' && !config.continuous) {
                             const detectSilence = () => {
                                 analyser.getByteFrequencyData(dataArray);
                                 const sum = dataArray.reduce((a, b) => a + b, 0);
@@ -249,8 +260,14 @@ export const useTranscribe = (): UseTranscribeReturn => {
                     onFinalResult: (result: TranscriptResult) => {
                         // Add to transcript buffer
                         transcriptBufferRef.current.push(result.transcript);
-                        setTranscript(transcriptBufferRef.current.join(' '));
+                        const fullTranscript = transcriptBufferRef.current.join(' ');
+                        setTranscript(fullTranscript);
                         setPartialTranscript(''); // Clear partial when we get final
+
+                        // Call callback if provided (for auto-submit in continuous mode)
+                        if (onFinalTranscriptRef.current) {
+                            onFinalTranscriptRef.current(fullTranscript);
+                        }
                     },
                     onError: (error: string) => {
                         console.error('❌ Error:', error);
