@@ -3,21 +3,39 @@ import { transcribeApi } from '../api/transcribeApi';
 import type { TranscribeConfig, TranscriptResult } from '../types/transcribe';
 import { toast } from './use-toast';
 
+interface UseTranscribeOptions {
+    /** Callback when final transcript is received (useful for auto-submit in continuous mode) */
+    onFinalTranscript?: (transcript: string) => void;
+}
+
 interface UseTranscribeReturn {
     isRecording: boolean;
     isConnecting: boolean;
+    isPaused: boolean;
     transcript: string;
     partialTranscript: string;
+    prepareRecording: () => void;
+    cancelPrepareRecording: () => Promise<void>;
     startRecording: (config?: Partial<TranscribeConfig>) => Promise<void>;
     stopRecording: () => void;
+    pauseRecording: () => void;
+    resumeRecording: () => void;
     clearTranscript: () => void;
 }
 
-export const useTranscribe = (): UseTranscribeReturn => {
+export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribeReturn => {
+    const { onFinalTranscript } = options;
+    const onFinalTranscriptRef = useRef(onFinalTranscript);
+
+    useEffect(() => {
+        onFinalTranscriptRef.current = onFinalTranscript;
+    }, [onFinalTranscript]);
     const [isRecording, setIsRecording] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [partialTranscript, setPartialTranscript] = useState('');
+    const isPausedRef = useRef(false);
 
     // Always use click mode: press once to start, press again to stop (or auto-stop on silence)
     const recordMode = 'click' as const;
@@ -32,6 +50,8 @@ export const useTranscribe = (): UseTranscribeReturn => {
     const isStoppingRef = useRef<boolean>(false);
     const recordingStartTimeRef = useRef<number>(0);
     const isWaitingForCloseRef = useRef<boolean>(false);
+    const pendingStreamRequestRef = useRef<Promise<MediaStream> | null>(null);
+    const shouldStartRecordingRef = useRef<boolean>(false);
 
     /**
      * Cleanup audio resources
@@ -76,11 +96,80 @@ export const useTranscribe = (): UseTranscribeReturn => {
 
         setIsRecording(false);
         setIsConnecting(false);
+        setIsPaused(false);
+        isPausedRef.current = false;
         setPartialTranscript('');
         isStoppingRef.current = false;
         isWaitingForCloseRef.current = false;
         recordingStartTimeRef.current = 0;
+        pendingStreamRequestRef.current = null;
+        shouldStartRecordingRef.current = false;
     }, []);
+
+    /**
+     * Prepare recording by requesting microphone access early.
+     * This is called to reduce latency when restarting recording in continuous mode.
+     */
+    const prepareRecording = useCallback(() => {
+        // Don't prepare if already recording or connecting
+        if (isRecording || isConnecting) {
+            return;
+        }
+
+        // Don't create duplicate requests
+        if (pendingStreamRequestRef.current) {
+            return;
+        }
+
+        // Start requesting microphone access immediately
+        pendingStreamRequestRef.current = navigator.mediaDevices.getUserMedia({
+            audio: {
+                channelCount: 1,
+                sampleRate: 16000,
+                echoCancellation: true,
+                noiseSuppression: true
+            }
+        });
+    }, [isRecording, isConnecting]);
+
+    /**
+     * Cancel prepared recording if user decides not to record
+     */
+    const cancelPrepareRecording = useCallback(async () => {
+        shouldStartRecordingRef.current = false;
+
+        // If there's a pending stream request, wait for it and clean up
+        if (pendingStreamRequestRef.current) {
+            try {
+                const stream = await pendingStreamRequestRef.current;
+                stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                // Ignore errors (user might have denied permission)
+            }
+            pendingStreamRequestRef.current = null;
+        }
+    }, []);
+
+    /**
+     * Pause recording (stops sending audio but keeps connection alive)
+     * Useful for continuous mode when processing a request
+     */
+    const pauseRecording = useCallback(() => {
+        if (isRecording && !isPausedRef.current) {
+            isPausedRef.current = true;
+            setIsPaused(true);
+        }
+    }, [isRecording]);
+
+    /**
+     * Resume recording after pause
+     */
+    const resumeRecording = useCallback(() => {
+        if (isRecording && isPausedRef.current) {
+            isPausedRef.current = false;
+            setIsPaused(false);
+        }
+    }, [isRecording]);
 
     /**
      * Start recording and transcription
@@ -105,15 +194,34 @@ export const useTranscribe = (): UseTranscribeReturn => {
             const defaultSampleRate = parseInt(import.meta.env.VITE_TRANSCRIBE_SAMPLE_RATE || '16000', 10);
             const defaultAudioEncoding = import.meta.env.VITE_TRANSCRIBE_AUDIO_ENCODING || 'ogg-opus';
 
-            // Request microphone access
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    channelCount: 1,
-                    sampleRate: config.sample_rate || defaultSampleRate,
-                    echoCancellation: true,
-                    noiseSuppression: true
-                }
-            });
+            // Mark that we want to record
+            shouldStartRecordingRef.current = true;
+
+            // Use pending stream request if available, otherwise create new one
+            let streamPromise = pendingStreamRequestRef.current;
+            if (!streamPromise) {
+                streamPromise = navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 1,
+                        sampleRate: config.sample_rate || defaultSampleRate,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+            }
+
+            // Wait for stream to be ready
+            const stream = await streamPromise;
+
+            // Clear pending request
+            pendingStreamRequestRef.current = null;
+
+            // Check if we should still record (user might have cancelled)
+            if (!shouldStartRecordingRef.current) {
+                stream.getTracks().forEach(track => track.stop());
+                setIsConnecting(false);
+                return;
+            }
 
             // Determine audio format based on what MediaRecorder supports
             let audioEncoding = defaultAudioEncoding;
@@ -184,18 +292,25 @@ export const useTranscribe = (): UseTranscribeReturn => {
                         const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
                         // Listen to messages from AudioWorklet (PCM audio data)
+                        let audioChunkCount = 0;
                         workletNode.port.onmessage = (event) => {
                             if (!client.isConnected()) return;
+                            // Skip sending audio when paused (for continuous mode processing)
+                            if (isPausedRef.current) {
+                                return;
+                            }
 
                             if (event.data.type === 'audio') {
+                                audioChunkCount++;
+
                                 // Send raw PCM bytes as binary (including silence)
                                 const blob = new Blob([event.data.data], { type: 'application/octet-stream' });
                                 client.sendAudioChunk(blob);
                             }
                         };
 
-                        // Only enable silence detection in 'click' mode
-                        if (recordMode === 'click') {
+                        // Only enable silence detection in 'click' mode and not in continuous mode
+                        if (recordMode === 'click' && !config.continuous) {
                             const detectSilence = () => {
                                 analyser.getByteFrequencyData(dataArray);
                                 const sum = dataArray.reduce((a, b) => a + b, 0);
@@ -249,8 +364,20 @@ export const useTranscribe = (): UseTranscribeReturn => {
                     onFinalResult: (result: TranscriptResult) => {
                         // Add to transcript buffer
                         transcriptBufferRef.current.push(result.transcript);
-                        setTranscript(transcriptBufferRef.current.join(' '));
+                        const fullTranscript = transcriptBufferRef.current.join(' ');
+                        setTranscript(fullTranscript);
                         setPartialTranscript(''); // Clear partial when we get final
+
+                        // Call callback if provided (for auto-submit in continuous mode)
+                        // Pass the new transcript only, and clear buffer if in continuous mode
+                        if (onFinalTranscriptRef.current && result.transcript.trim()) {
+                            onFinalTranscriptRef.current(result.transcript);
+                            // In continuous mode, clear the buffer after callback so next transcript starts fresh
+                            if (config.continuous) {
+                                transcriptBufferRef.current = [];
+                                setTranscript('');
+                            }
+                        }
                     },
                     onError: (error: string) => {
                         console.error('❌ Error:', error);
@@ -327,10 +454,15 @@ export const useTranscribe = (): UseTranscribeReturn => {
     return {
         isRecording,
         isConnecting,
+        isPaused,
         transcript,
         partialTranscript,
+        prepareRecording,
+        cancelPrepareRecording,
         startRecording,
         stopRecording,
+        pauseRecording,
+        resumeRecording,
         clearTranscript
     };
 };

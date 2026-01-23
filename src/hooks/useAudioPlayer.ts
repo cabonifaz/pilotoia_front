@@ -20,6 +20,10 @@ interface UseAudioPlayerReturn {
   addAudioChunk: (base64Chunk: string) => void;
   stop: () => void;
   reset: () => void;
+  /** Get the AudioContext instance (for AEC integration) */
+  getAudioContext: () => AudioContext | null;
+  /** Get the destination node (for routing analysis) */
+  getDestination: () => AudioNode | null;
 }
 
 export const useAudioPlayer = (): UseAudioPlayerReturn => {
@@ -38,6 +42,9 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
   const isPlaybackStartedRef = useRef(false);
   const playheadTimeRef = useRef(0);
   const chunksReceivedRef = useRef(0);
+
+  // Track active audio sources for immediate stop (barge-in support)
+  const activeSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
 
   /**
    * Get or create AudioContext
@@ -134,10 +141,16 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
       source.buffer = buffer;
       source.connect(audioContext.destination);
 
+      // Track active source for barge-in support
+      activeSourcesRef.current.add(source);
+
       source.start(playheadTimeRef.current);
       playheadTimeRef.current += buffer.duration;
 
       source.onended = () => {
+        // Remove from active sources
+        activeSourcesRef.current.delete(source);
+
         if (
           samplesQueueRef.current.length === 0 &&
           playheadTimeRef.current <= audioContext.currentTime + 0.01
@@ -185,15 +198,39 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
   );
 
   /**
-   * Stop playback immediately
+   * Stop playback immediately (supports barge-in)
    */
   const stop = useCallback(() => {
+    // Stop all active audio sources immediately
+    activeSourcesRef.current.forEach((source) => {
+      try {
+        source.stop();
+      } catch (e) {
+        // Source might already be stopped
+      }
+    });
+    activeSourcesRef.current.clear();
+
     samplesQueueRef.current = [];
     pendingBytesRef.current = null;
     chunksReceivedRef.current = 0;
     playheadTimeRef.current = 0;
     isPlaybackStartedRef.current = false;
     setIsPlaying(false);
+  }, []);
+
+  /**
+   * Get AudioContext instance (for AEC integration with VAD)
+   */
+  const getAudioContextInstance = useCallback((): AudioContext | null => {
+    return audioContextRef.current;
+  }, []);
+
+  /**
+   * Get destination node (for routing analysis)
+   */
+  const getDestinationNode = useCallback((): AudioNode | null => {
+    return audioContextRef.current?.destination ?? null;
   }, []);
 
   /**
@@ -223,5 +260,7 @@ export const useAudioPlayer = (): UseAudioPlayerReturn => {
     addAudioChunk,
     stop,
     reset,
+    getAudioContext: getAudioContextInstance,
+    getDestination: getDestinationNode,
   };
 };
