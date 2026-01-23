@@ -108,6 +108,7 @@ const ChatComponent = ({
   // Refs for stop/start recording in continuous mode (AWS)
   const stopRecordingRef = useRef<(() => void) | null>(null);
   const startRecordingRef = useRef<((config?: any) => Promise<void>) | null>(null);
+  const prepareRecordingRef = useRef<(() => void) | null>(null);
   // Track the language for restarting recording
   const selectedLanguageRef = useRef<string>('es-ES');
   // Guard to prevent double submit in continuous mode (for in-flight transcripts)
@@ -127,6 +128,7 @@ const ChatComponent = ({
     isConnecting,
     transcript,
     partialTranscript,
+    prepareRecording,
     startRecording,
     stopRecording,
     clearTranscript,
@@ -408,7 +410,11 @@ const ChatComponent = ({
       shouldRestartFileOnComplete
     });
 
-    // Pre-request microphone permissions for continuous file mode (runs in parallel with searchVectorial)
+    // Pre-request microphone permissions (runs in parallel with searchVectorial)
+    if (shouldRestartOnComplete) {
+      console.log('[CONTINUOUS] Pre-requesting microphone permissions...');
+      prepareRecordingRef.current?.();
+    }
     if (shouldRestartFileOnComplete) {
       console.log('[CONTINUOUS-FILE] Pre-requesting microphone permissions...');
       prepareFileRecordingRef.current?.();
@@ -473,6 +479,11 @@ const ChatComponent = ({
   useEffect(() => {
     startRecordingRef.current = startRecording;
   }, [startRecording]);
+
+  // Keep prepareRecordingRef updated for continuous mode
+  useEffect(() => {
+    prepareRecordingRef.current = prepareRecording;
+  }, [prepareRecording]);
 
   // Keep selectedLanguageRef updated
   useEffect(() => {

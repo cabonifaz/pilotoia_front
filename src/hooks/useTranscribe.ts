@@ -14,6 +14,8 @@ interface UseTranscribeReturn {
     isPaused: boolean;
     transcript: string;
     partialTranscript: string;
+    prepareRecording: () => void;
+    cancelPrepareRecording: () => Promise<void>;
     startRecording: (config?: Partial<TranscribeConfig>) => Promise<void>;
     stopRecording: () => void;
     pauseRecording: () => void;
@@ -48,6 +50,8 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
     const isStoppingRef = useRef<boolean>(false);
     const recordingStartTimeRef = useRef<number>(0);
     const isWaitingForCloseRef = useRef<boolean>(false);
+    const pendingStreamRequestRef = useRef<Promise<MediaStream> | null>(null);
+    const shouldStartRecordingRef = useRef<boolean>(false);
 
     /**
      * Cleanup audio resources
@@ -98,6 +102,53 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
         isStoppingRef.current = false;
         isWaitingForCloseRef.current = false;
         recordingStartTimeRef.current = 0;
+        pendingStreamRequestRef.current = null;
+        shouldStartRecordingRef.current = false;
+    }, []);
+
+    /**
+     * Prepare recording by requesting microphone access early.
+     * This is called to reduce latency when restarting recording in continuous mode.
+     */
+    const prepareRecording = useCallback(() => {
+        // Don't prepare if already recording or connecting
+        if (isRecording || isConnecting) {
+            return;
+        }
+
+        // Don't create duplicate requests
+        if (pendingStreamRequestRef.current) {
+            return;
+        }
+
+        console.log('[TRANSCRIBE] Pre-requesting microphone permissions...');
+        // Start requesting microphone access immediately
+        pendingStreamRequestRef.current = navigator.mediaDevices.getUserMedia({
+            audio: {
+                channelCount: 1,
+                sampleRate: 16000,
+                echoCancellation: true,
+                noiseSuppression: true
+            }
+        });
+    }, [isRecording, isConnecting]);
+
+    /**
+     * Cancel prepared recording if user decides not to record
+     */
+    const cancelPrepareRecording = useCallback(async () => {
+        shouldStartRecordingRef.current = false;
+
+        // If there's a pending stream request, wait for it and clean up
+        if (pendingStreamRequestRef.current) {
+            try {
+                const stream = await pendingStreamRequestRef.current;
+                stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                // Ignore errors (user might have denied permission)
+            }
+            pendingStreamRequestRef.current = null;
+        }
     }, []);
 
     /**
@@ -150,15 +201,34 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
             const defaultSampleRate = parseInt(import.meta.env.VITE_TRANSCRIBE_SAMPLE_RATE || '16000', 10);
             const defaultAudioEncoding = import.meta.env.VITE_TRANSCRIBE_AUDIO_ENCODING || 'ogg-opus';
 
-            // Request microphone access
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    channelCount: 1,
-                    sampleRate: config.sample_rate || defaultSampleRate,
-                    echoCancellation: true,
-                    noiseSuppression: true
-                }
-            });
+            // Mark that we want to record
+            shouldStartRecordingRef.current = true;
+
+            // Use pending stream request if available, otherwise create new one
+            let streamPromise = pendingStreamRequestRef.current;
+            if (!streamPromise) {
+                streamPromise = navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 1,
+                        sampleRate: config.sample_rate || defaultSampleRate,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+            }
+
+            // Wait for stream to be ready
+            const stream = await streamPromise;
+
+            // Clear pending request
+            pendingStreamRequestRef.current = null;
+
+            // Check if we should still record (user might have cancelled)
+            if (!shouldStartRecordingRef.current) {
+                stream.getTracks().forEach(track => track.stop());
+                setIsConnecting(false);
+                return;
+            }
 
             // Determine audio format based on what MediaRecorder supports
             let audioEncoding = defaultAudioEncoding;
@@ -400,6 +470,8 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
         isPaused,
         transcript,
         partialTranscript,
+        prepareRecording,
+        cancelPrepareRecording,
         startRecording,
         stopRecording,
         pauseRecording,
