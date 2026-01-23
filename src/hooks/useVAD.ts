@@ -125,13 +125,11 @@ export const useVAD = ({
         preSpeechPadFrames: config.preSpeechPadFrames ?? 5,
         onSpeechStart: () => {
           if (isPausedRef.current) return;
-          console.log('[VAD] Speech started');
           setIsSpeaking(true);
           onSpeechStartRef.current?.();
         },
         onSpeechEnd: (audio: Float32Array) => {
           if (isPausedRef.current) return;
-          console.log('[VAD] Speech ended');
           setIsSpeaking(false);
           onSpeechEndRef.current?.(audio);
         },
@@ -146,7 +144,6 @@ export const useVAD = ({
 
       setIsListening(true);
       setIsLoaded(true);
-      console.log('[VAD] Started successfully');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to initialize VAD';
       console.error('[VAD] Error starting:', errorMessage);
@@ -164,7 +161,6 @@ export const useVAD = ({
    * Stop VAD and release resources
    */
   const stop = useCallback(() => {
-    console.log('[VAD] Stopping...');
 
     if (vadRef.current) {
       vadRef.current.pause();
@@ -189,7 +185,6 @@ export const useVAD = ({
     if (vadRef.current) {
       vadRef.current.pause();
       isPausedRef.current = true;
-      console.log('[VAD] Paused');
     }
   }, []);
 
@@ -200,7 +195,6 @@ export const useVAD = ({
     if (vadRef.current) {
       vadRef.current.start();
       isPausedRef.current = false;
-      console.log('[VAD] Resumed');
     }
   }, []);
 

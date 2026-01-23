@@ -538,15 +538,11 @@ export const useChatStream = (): UseChatStreamReturn => {
           }
         }
       } finally {
-        console.log('[STREAM] finally block reached, hasOnComplete:', !!onComplete);
         setIsLoading(false);
         setStreamingMessageId(null);
         streamingMessageIdRef.current = null; // Reset ref
         // Call completion callback if provided
-        if (onComplete) {
-          console.log('[STREAM] Calling onComplete callback...');
-          onComplete();
-        }
+        onComplete?.();
       }
     },
     [

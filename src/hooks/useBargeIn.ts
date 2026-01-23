@@ -96,7 +96,6 @@ export const useBargeIn = ({
   const handleSpeechStart = useCallback(() => {
     speechStartTimeRef.current = Date.now();
     hasTriggeredBargeInRef.current = false;
-    console.log('[BargeIn] Speech detected, waiting for minimum duration...');
   }, []);
 
   /**
@@ -108,21 +107,16 @@ export const useBargeIn = ({
         ? Date.now() - speechStartTimeRef.current
         : 0;
 
-      console.log(`[BargeIn] Speech ended, duration: ${speechDuration}ms`);
-
       // Only trigger if speech was long enough
       if (speechDuration >= minSpeechDuration) {
         // Trigger barge-in if not already triggered
         if (!hasTriggeredBargeInRef.current) {
-          console.log('[BargeIn] Triggering barge-in callback');
           onBargeInRef.current?.();
           hasTriggeredBargeInRef.current = true;
         }
 
         // Call speech end callback
         onSpeechEndRef.current?.(audio);
-      } else {
-        console.log('[BargeIn] Speech too short, ignoring');
       }
 
       speechStartTimeRef.current = null;
@@ -146,7 +140,6 @@ export const useBargeIn = ({
       ) {
         const elapsed = Date.now() - speechStartTimeRef.current;
         if (elapsed >= minSpeechDuration) {
-          console.log('[BargeIn] Early barge-in triggered');
           onBargeInRef.current?.();
           hasTriggeredBargeInRef.current = true;
         }
@@ -183,7 +176,6 @@ export const useBargeIn = ({
    * Enable barge-in feature
    */
   const enableBargeIn = useCallback(async () => {
-    console.log('[BargeIn] Enabling...');
     setIsBargeInEnabled(true);
 
     if (autoStart) {
@@ -195,7 +187,6 @@ export const useBargeIn = ({
    * Disable barge-in feature
    */
   const disableBargeIn = useCallback(() => {
-    console.log('[BargeIn] Disabling...');
     setIsBargeInEnabled(false);
     stopVAD();
   }, [stopVAD]);
@@ -204,7 +195,6 @@ export const useBargeIn = ({
    * Temporarily pause barge-in
    */
   const pauseBargeIn = useCallback(() => {
-    console.log('[BargeIn] Pausing...');
     pauseVAD();
   }, [pauseVAD]);
 
@@ -212,7 +202,6 @@ export const useBargeIn = ({
    * Resume barge-in after pause
    */
   const resumeBargeIn = useCallback(() => {
-    console.log('[BargeIn] Resuming...');
     resumeVAD();
   }, [resumeVAD]);
 

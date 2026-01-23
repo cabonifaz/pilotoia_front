@@ -121,7 +121,6 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
             return;
         }
 
-        console.log('[TRANSCRIBE] Pre-requesting microphone permissions...');
         // Start requesting microphone access immediately
         pendingStreamRequestRef.current = navigator.mediaDevices.getUserMedia({
             audio: {
@@ -156,11 +155,9 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
      * Useful for continuous mode when processing a request
      */
     const pauseRecording = useCallback(() => {
-        console.log('[TRANSCRIBE] pauseRecording called', { isRecording, isPaused: isPausedRef.current });
         if (isRecording && !isPausedRef.current) {
             isPausedRef.current = true;
             setIsPaused(true);
-            console.log('[TRANSCRIBE] Recording paused');
         }
     }, [isRecording]);
 
@@ -168,13 +165,9 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
      * Resume recording after pause
      */
     const resumeRecording = useCallback(() => {
-        console.log('[TRANSCRIBE] resumeRecording called', { isRecording, isPaused: isPausedRef.current });
         if (isRecording && isPausedRef.current) {
             isPausedRef.current = false;
             setIsPaused(false);
-            console.log('[TRANSCRIBE] Recording resumed');
-        } else {
-            console.log('[TRANSCRIBE] Resume skipped - conditions not met');
         }
     }, [isRecording]);
 
@@ -301,10 +294,7 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
                         // Listen to messages from AudioWorklet (PCM audio data)
                         let audioChunkCount = 0;
                         workletNode.port.onmessage = (event) => {
-                            if (!client.isConnected()) {
-                                console.log('[AUDIO] Client not connected, skipping');
-                                return;
-                            }
+                            if (!client.isConnected()) return;
                             // Skip sending audio when paused (for continuous mode processing)
                             if (isPausedRef.current) {
                                 return;
@@ -312,10 +302,7 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
 
                             if (event.data.type === 'audio') {
                                 audioChunkCount++;
-                                // Log every 50 chunks to avoid spam
-                                if (audioChunkCount % 50 === 0) {
-                                    console.log('[AUDIO] Sending chunk #', audioChunkCount);
-                                }
+
                                 // Send raw PCM bytes as binary (including silence)
                                 const blob = new Blob([event.data.data], { type: 'application/octet-stream' });
                                 client.sendAudioChunk(blob);
