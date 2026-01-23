@@ -11,10 +11,13 @@ interface UseTranscribeOptions {
 interface UseTranscribeReturn {
     isRecording: boolean;
     isConnecting: boolean;
+    isPaused: boolean;
     transcript: string;
     partialTranscript: string;
     startRecording: (config?: Partial<TranscribeConfig>) => Promise<void>;
     stopRecording: () => void;
+    pauseRecording: () => void;
+    resumeRecording: () => void;
     clearTranscript: () => void;
 }
 
@@ -27,8 +30,10 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
     }, [onFinalTranscript]);
     const [isRecording, setIsRecording] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [partialTranscript, setPartialTranscript] = useState('');
+    const isPausedRef = useRef(false);
 
     // Always use click mode: press once to start, press again to stop (or auto-stop on silence)
     const recordMode = 'click' as const;
@@ -87,11 +92,40 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
 
         setIsRecording(false);
         setIsConnecting(false);
+        setIsPaused(false);
+        isPausedRef.current = false;
         setPartialTranscript('');
         isStoppingRef.current = false;
         isWaitingForCloseRef.current = false;
         recordingStartTimeRef.current = 0;
     }, []);
+
+    /**
+     * Pause recording (stops sending audio but keeps connection alive)
+     * Useful for continuous mode when processing a request
+     */
+    const pauseRecording = useCallback(() => {
+        console.log('[TRANSCRIBE] pauseRecording called', { isRecording, isPaused: isPausedRef.current });
+        if (isRecording && !isPausedRef.current) {
+            isPausedRef.current = true;
+            setIsPaused(true);
+            console.log('[TRANSCRIBE] Recording paused');
+        }
+    }, [isRecording]);
+
+    /**
+     * Resume recording after pause
+     */
+    const resumeRecording = useCallback(() => {
+        console.log('[TRANSCRIBE] resumeRecording called', { isRecording, isPaused: isPausedRef.current });
+        if (isRecording && isPausedRef.current) {
+            isPausedRef.current = false;
+            setIsPaused(false);
+            console.log('[TRANSCRIBE] Recording resumed');
+        } else {
+            console.log('[TRANSCRIBE] Resume skipped - conditions not met');
+        }
+    }, [isRecording]);
 
     /**
      * Start recording and transcription
@@ -195,10 +229,23 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
                         const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
                         // Listen to messages from AudioWorklet (PCM audio data)
+                        let audioChunkCount = 0;
                         workletNode.port.onmessage = (event) => {
-                            if (!client.isConnected()) return;
+                            if (!client.isConnected()) {
+                                console.log('[AUDIO] Client not connected, skipping');
+                                return;
+                            }
+                            // Skip sending audio when paused (for continuous mode processing)
+                            if (isPausedRef.current) {
+                                return;
+                            }
 
                             if (event.data.type === 'audio') {
+                                audioChunkCount++;
+                                // Log every 50 chunks to avoid spam
+                                if (audioChunkCount % 50 === 0) {
+                                    console.log('[AUDIO] Sending chunk #', audioChunkCount);
+                                }
                                 // Send raw PCM bytes as binary (including silence)
                                 const blob = new Blob([event.data.data], { type: 'application/octet-stream' });
                                 client.sendAudioChunk(blob);
@@ -350,10 +397,13 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
     return {
         isRecording,
         isConnecting,
+        isPaused,
         transcript,
         partialTranscript,
         startRecording,
         stopRecording,
+        pauseRecording,
+        resumeRecording,
         clearTranscript
     };
 };

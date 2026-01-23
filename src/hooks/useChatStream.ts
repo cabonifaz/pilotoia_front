@@ -63,7 +63,7 @@ interface UseChatStreamReturn {
   isPlayingAudio: boolean;
   isAudioInitialized: boolean;
   initializeAudio: () => void;
-  searchVectorial: (message: string, chatContext: ChatContext, tts: boolean) => Promise<void>;
+  searchVectorial: (message: string, chatContext: ChatContext, tts: boolean, onComplete?: () => void) => Promise<void>;
   searchVectorialSQL: (
     message: string,
     chatContext: ChatContext,
@@ -308,7 +308,7 @@ export const useChatStream = (): UseChatStreamReturn => {
   }, []);
 
   const searchVectorial = useCallback(
-    async (messageContent: string, chatContext: ChatContext, tts: boolean) => {
+    async (messageContent: string, chatContext: ChatContext, tts: boolean, onComplete?: () => void) => {
       if (!messageContent.trim()) return;
 
       setIsLoading(true);
@@ -538,9 +538,15 @@ export const useChatStream = (): UseChatStreamReturn => {
           }
         }
       } finally {
+        console.log('[STREAM] finally block reached, hasOnComplete:', !!onComplete);
         setIsLoading(false);
         setStreamingMessageId(null);
         streamingMessageIdRef.current = null; // Reset ref
+        // Call completion callback if provided
+        if (onComplete) {
+          console.log('[STREAM] Calling onComplete callback...');
+          onComplete();
+        }
       }
     },
     [

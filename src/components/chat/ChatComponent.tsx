@@ -105,6 +105,13 @@ const ChatComponent = ({
   // Ref to track if we should auto-submit on final transcript (continuous mode)
   const isContinuousModeRef = useRef(false);
   const submitActionRef = useRef<(() => void) | null>(null);
+  // Refs for stop/start recording in continuous mode
+  const stopRecordingRef = useRef<(() => void) | null>(null);
+  const startRecordingRef = useRef<((config?: any) => Promise<void>) | null>(null);
+  // Track the language for restarting recording
+  const selectedLanguageRef = useRef<string>('es-ES');
+  // Guard to prevent double submit in continuous mode (for in-flight transcripts)
+  const isProcessingContinuousRef = useRef(false);
 
   // Get transcription functions (streaming - AWS)
   const {
@@ -118,9 +125,30 @@ const ChatComponent = ({
   } = useTranscribe({
     onFinalTranscript: (finalTranscript) => {
       // Auto-submit in continuous mode when final transcript is received
+      console.log('[CONTINUOUS] onFinalTranscript called', {
+        isContinuousMode: isContinuousModeRef.current,
+        isProcessing: isProcessingContinuousRef.current,
+        hasTranscript: !!finalTranscript.trim(),
+        hasSubmitAction: !!submitActionRef.current
+      });
+
+      // Guard: Skip if we're already processing a request (prevents double messages from in-flight transcripts)
+      if (isProcessingContinuousRef.current) {
+        console.log('[CONTINUOUS] Skipping - already processing');
+        return;
+      }
+
       if (isContinuousModeRef.current && finalTranscript.trim() && submitActionRef.current) {
+        // Set guard immediately to prevent any subsequent transcripts
+        isProcessingContinuousRef.current = true;
+
+        // Stop recording (close WebSocket) while processing
+        console.log('[CONTINUOUS] Stopping recording...');
+        stopRecordingRef.current?.();
+
         // Small delay to ensure textarea is updated, then submit
         setTimeout(() => {
+          console.log('[CONTINUOUS] Calling submitActionRef...');
           submitActionRef.current?.();
         }, 50);
       }
@@ -274,10 +302,14 @@ const ChatComponent = ({
       stopRecording();
       setIsContinuousMode(false);
       isContinuousModeRef.current = false;
+      // Clear processing flag
+      isProcessingContinuousRef.current = false;
     } else {
       clearTranscript();
       setIsContinuousMode(true);
       isContinuousModeRef.current = true;
+      // Reset flag when starting
+      isProcessingContinuousRef.current = false;
       await startRecording({ language_code: selectedLanguage as any, continuous: true });
     }
   }, [isRecording, isContinuousMode, stopRecording, clearTranscript, startRecording, selectedLanguage]);
@@ -319,13 +351,55 @@ const ChatComponent = ({
         scrollContainerRef.current.scrollHeight;
     }
 
-    await searchVectorial(currentQuery, chatContext, ttsEnabled);
+    // Determine if we need to restart recording after completion (continuous mode)
+    const shouldRestartOnComplete = isProcessingContinuousRef.current && isContinuousModeRef.current;
+    console.log('[CONTINUOUS] chatQuery called', {
+      isProcessing: isProcessingContinuousRef.current,
+      isContinuousMode: isContinuousModeRef.current,
+      shouldRestartOnComplete
+    });
+
+    await searchVectorial(currentQuery, chatContext, ttsEnabled, shouldRestartOnComplete ? () => {
+      // Restart recording after search completes in continuous mode
+      console.log('[CONTINUOUS] onComplete callback fired! Will restart recording in 100ms...');
+      setTimeout(async () => {
+        // Clear the processing guard
+        isProcessingContinuousRef.current = false;
+
+        // Only restart if still in continuous mode
+        if (isContinuousModeRef.current) {
+          console.log('[CONTINUOUS] Restarting recording...');
+          await startRecordingRef.current?.({
+            language_code: selectedLanguageRef.current,
+            continuous: true
+          });
+          console.log('[CONTINUOUS] Recording restarted, ready for next transcript');
+        } else {
+          console.log('[CONTINUOUS] Not restarting - continuous mode was disabled');
+        }
+      }, 100);
+    } : undefined);
   }, [userQuery, searchVectorial, chatContext, ttsEnabled]);
 
   // Keep submitActionRef updated for continuous mode auto-submit
   useEffect(() => {
     submitActionRef.current = chatQuery;
   }, [chatQuery]);
+
+  // Keep stopRecordingRef updated for continuous mode
+  useEffect(() => {
+    stopRecordingRef.current = stopRecording;
+  }, [stopRecording]);
+
+  // Keep startRecordingRef updated for continuous mode
+  useEffect(() => {
+    startRecordingRef.current = startRecording;
+  }, [startRecording]);
+
+  // Keep selectedLanguageRef updated
+  useEffect(() => {
+    selectedLanguageRef.current = selectedLanguage;
+  }, [selectedLanguage]);
 
   const cancelar = () => {
     cancelMessage();
