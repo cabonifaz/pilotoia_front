@@ -1,0 +1,100 @@
+import { useEffect, useRef } from 'react';
+import WaveSurfer from 'wavesurfer.js';
+import RecordPlugin from 'wavesurfer.js/dist/plugins/record.esm.js';
+
+interface RecordingWaveformProps {
+  /** VAD is listening for speech */
+  isListening: boolean;
+  /** VAD detected speech - user is speaking */
+  isSpeaking: boolean;
+  /** MediaStream from the microphone */
+  mediaStream: MediaStream | null;
+}
+
+export const RecordingWaveform = ({ isListening, isSpeaking, mediaStream }: RecordingWaveformProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const wavesurferRef = useRef<WaveSurfer | null>(null);
+  const recordPluginRef = useRef<ReturnType<typeof RecordPlugin.create> | null>(null);
+
+  useEffect(() => {
+    if (!isListening || !containerRef.current) {
+      // Cleanup when not listening
+      if (recordPluginRef.current) {
+        try {
+          if (recordPluginRef.current.isRecording()) {
+            recordPluginRef.current.stopRecording();
+          }
+          recordPluginRef.current.stopMic();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+        recordPluginRef.current = null;
+      }
+      if (wavesurferRef.current) {
+        wavesurferRef.current.destroy();
+        wavesurferRef.current = null;
+      }
+      return;
+    }
+
+    // Clear container
+    if (containerRef.current) {
+      containerRef.current.innerHTML = '';
+    }
+
+    // Create Record plugin
+    const recordPlugin = RecordPlugin.create({
+      renderRecordedAudio: false,
+      scrollingWaveform: true,
+      scrollingWaveformWindow: 2,
+    });
+
+    // Create WaveSurfer instance
+    const wavesurfer = WaveSurfer.create({
+      container: containerRef.current,
+      waveColor: 'hsl(var(--primary))',
+      progressColor: 'hsl(var(--primary))',
+      cursorWidth: 0,
+      height: 32,
+      barWidth: 3,
+      barGap: 2,
+      barRadius: 3,
+      plugins: [recordPlugin],
+    });
+
+    wavesurferRef.current = wavesurfer;
+    recordPluginRef.current = recordPlugin;
+
+    // Start recording visualization
+    recordPlugin.startRecording().catch((err) => {
+      console.error('Failed to start recording visualization:', err);
+    });
+
+    return () => {
+      if (recordPluginRef.current) {
+        try {
+          if (recordPluginRef.current.isRecording()) {
+            recordPluginRef.current.stopRecording();
+          }
+          recordPluginRef.current.stopMic();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      }
+      if (wavesurferRef.current) {
+        wavesurferRef.current.destroy();
+      }
+    };
+  }, [isListening]);
+
+  if (!isListening) return null;
+
+  return (
+    <div className="absolute inset-0 flex items-center bg-background/95 rounded-lg px-3 gap-2">
+      <div ref={containerRef} className="flex-1 h-8" />
+      <span className={`text-xs whitespace-nowrap ${isSpeaking ? 'text-primary' : 'text-muted-foreground'}`}>
+        {isSpeaking ? 'Grabando...' : 'Escuchando...'}
+      </span>
+    </div>
+  );
+};

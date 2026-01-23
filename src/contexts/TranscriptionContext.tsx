@@ -14,7 +14,9 @@ interface TranscriptionContextType {
 
   // File transcription (OpenAI)
   isFileRecording: boolean;
+  isFileSpeaking: boolean;
   isFileTranscribing: boolean;
+  fileMediaStream: MediaStream | null;
   onStartRecording: () => void | Promise<void>;
   onStopRecording: () => void;
 
@@ -25,6 +27,7 @@ interface TranscriptionContextType {
 
   // Continuous file mode - OpenAI (hands-free)
   isContinuousFileRecording: boolean;
+  isContinuousFileSpeaking: boolean;
   isContinuousFileTranscribing: boolean;
   onContinuousFileClick: () => void;
 }
@@ -46,7 +49,9 @@ interface TranscriptionProviderProps {
 
   // File transcription (OpenAI)
   isFileRecording: boolean;
+  isFileSpeaking: boolean;
   isFileTranscribing: boolean;
+  fileMediaStream: MediaStream | null;
   onStartRecording: () => void | Promise<void>;
   onStopRecording: () => void;
 
@@ -57,6 +62,7 @@ interface TranscriptionProviderProps {
 
   // Continuous file mode - OpenAI (hands-free)
   isContinuousFileRecording: boolean;
+  isContinuousFileSpeaking: boolean;
   isContinuousFileTranscribing: boolean;
   onContinuousFileClick: () => void;
 }
@@ -70,13 +76,16 @@ export const TranscriptionProvider = ({
   isConnecting,
   onMicrophoneClick,
   isFileRecording,
+  isFileSpeaking,
   isFileTranscribing,
+  fileMediaStream,
   onStartRecording,
   onStopRecording,
   isContinuousRecording,
   isContinuousConnecting,
   onContinuousVoiceClick,
   isContinuousFileRecording,
+  isContinuousFileSpeaking,
   isContinuousFileTranscribing,
   onContinuousFileClick,
 }: TranscriptionProviderProps) => {
@@ -90,13 +99,16 @@ export const TranscriptionProvider = ({
       isConnecting,
       onMicrophoneClick,
       isFileRecording,
+      isFileSpeaking,
       isFileTranscribing,
+      fileMediaStream,
       onStartRecording,
       onStopRecording,
       isContinuousRecording,
       isContinuousConnecting,
       onContinuousVoiceClick,
       isContinuousFileRecording,
+      isContinuousFileSpeaking,
       isContinuousFileTranscribing,
       onContinuousFileClick,
     }),
@@ -108,13 +120,16 @@ export const TranscriptionProvider = ({
       isConnecting,
       onMicrophoneClick,
       isFileRecording,
+      isFileSpeaking,
       isFileTranscribing,
+      fileMediaStream,
       onStartRecording,
       onStopRecording,
       isContinuousRecording,
       isContinuousConnecting,
       onContinuousVoiceClick,
       isContinuousFileRecording,
+      isContinuousFileSpeaking,
       isContinuousFileTranscribing,
       onContinuousFileClick,
     ]

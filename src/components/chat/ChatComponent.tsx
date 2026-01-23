@@ -175,7 +175,9 @@ const ChatComponent = ({
   // Get file transcription functions (OpenAI)
   const {
     isRecording: isFileRecording,
+    isSpeaking: isFileSpeaking,
     isTranscribing: isFileTranscribing,
+    mediaStream: fileMediaStream,
     transcriptionResult: fileTranscriptionResult,
     prepareRecording: prepareFileRecording,
     startRecording: startFileRecording,
@@ -519,13 +521,16 @@ const ChatComponent = ({
         isConnecting={isConnecting && !isContinuousMode}
         onMicrophoneClick={handleMicrophoneClick}
         isFileRecording={isFileRecording && !isContinuousFileMode}
+        isFileSpeaking={isFileSpeaking && !isContinuousFileMode}
         isFileTranscribing={isFileTranscribing}
+        fileMediaStream={fileMediaStream}
         onStartRecording={handleStartFileRecording}
         onStopRecording={stopFileRecording}
         isContinuousRecording={isRecording && isContinuousMode}
         isContinuousConnecting={isConnecting && isContinuousMode}
         onContinuousVoiceClick={handleContinuousVoiceClick}
         isContinuousFileRecording={isFileRecording && isContinuousFileMode}
+        isContinuousFileSpeaking={isFileSpeaking && isContinuousFileMode}
         isContinuousFileTranscribing={isFileTranscribing && isContinuousFileMode}
         onContinuousFileClick={handleContinuousFileClick}
       >
