@@ -102,16 +102,56 @@ const ChatComponent = ({
     : "/fractal-logo.svg";
   const previousScrollHeightRef = useRef<number>(0);
 
+  // Ref to track if we should auto-submit on final transcript (continuous mode - AWS)
+  const isContinuousModeRef = useRef(false);
+  const submitActionRef = useRef<(() => void) | null>(null);
+  // Refs for stop/start recording in continuous mode (AWS)
+  const stopRecordingRef = useRef<(() => void) | null>(null);
+  const startRecordingRef = useRef<((config?: any) => Promise<void>) | null>(null);
+  const prepareRecordingRef = useRef<(() => void) | null>(null);
+  // Track the language for restarting recording
+  const selectedLanguageRef = useRef<string>('es-ES');
+  // Guard to prevent double submit in continuous mode (for in-flight transcripts)
+  const isProcessingContinuousRef = useRef(false);
+
+  // Refs for continuous file mode (OpenAI)
+  const isContinuousFileModeRef = useRef(false);
+  const stopFileRecordingRef = useRef<(() => void) | null>(null);
+  const startFileRecordingRef = useRef<((language: string) => Promise<void>) | null>(null);
+  const prepareFileRecordingRef = useRef<(() => void) | null>(null);
+  // Guard to prevent double submit in continuous file mode
+  const isProcessingContinuousFileRef = useRef(false);
+
   // Get transcription functions (streaming - AWS)
   const {
     isRecording,
     isConnecting,
     transcript,
     partialTranscript,
+    prepareRecording,
     startRecording,
     stopRecording,
     clearTranscript,
-  } = useTranscribe();
+  } = useTranscribe({
+    onFinalTranscript: (finalTranscript) => {
+
+      // Guard: Skip if we're already processing a request (prevents double messages from in-flight transcripts)
+      if (isProcessingContinuousRef.current) return;
+
+      if (isContinuousModeRef.current && finalTranscript.trim() && submitActionRef.current) {
+        // Set guard immediately to prevent any subsequent transcripts
+        isProcessingContinuousRef.current = true;
+
+        // Stop recording (close WebSocket) while processing
+        stopRecordingRef.current?.();
+
+        // Small delay to ensure textarea is updated, then submit
+        setTimeout(() => {
+          submitActionRef.current?.();
+        }, 50);
+      }
+    },
+  });
 
   // Flatten paginated messages
   const messages = useMemo(() => {
@@ -137,9 +177,30 @@ const ChatComponent = ({
     isRecording: isFileRecording,
     isTranscribing: isFileTranscribing,
     transcriptionResult: fileTranscriptionResult,
+    prepareRecording: prepareFileRecording,
     startRecording: startFileRecording,
     stopRecording: stopFileRecording,
-  } = useFileTranscribe();
+  } = useFileTranscribe({
+    onTranscriptionComplete: (transcript) => {
+
+      // Guard: Skip if we're already processing a request
+      if (isProcessingContinuousFileRef.current) return;
+
+      if (isContinuousFileModeRef.current && transcript.trim() && submitActionRef.current) {
+        // Set guard immediately to prevent any subsequent transcripts
+        isProcessingContinuousFileRef.current = true;
+
+        // Recording already stopped (transcription happens after stop)
+        setTimeout(() => {
+          submitActionRef.current?.();
+        }, 50);
+      }
+    },
+  });
+
+  // Track continuous mode state (reuses the same hooks)
+  const [isContinuousMode, setIsContinuousMode] = useState(false);
+  const [isContinuousFileMode, setIsContinuousFileMode] = useState(false);
 
   // Scroll management effect
   useEffect(() => {
@@ -234,6 +295,7 @@ const ChatComponent = ({
     }
   }, [fileTranscriptionResult]);
 
+
   // Handle microphone click for AWS transcription
   const handleMicrophoneClick = useCallback(async () => {
     if (isRecording) {
@@ -249,6 +311,41 @@ const ChatComponent = ({
     await startFileRecording(selectedLanguage);
   }, [startFileRecording, selectedLanguage]);
 
+  // Handle continuous voice mode click (AWS) - reuses useTranscribe with continuous=true
+  const handleContinuousVoiceClick = useCallback(async () => {
+    if (isRecording && isContinuousMode) {
+      stopRecording();
+      setIsContinuousMode(false);
+      isContinuousModeRef.current = false;
+      // Clear processing flag
+      isProcessingContinuousRef.current = false;
+    } else {
+      clearTranscript();
+      setIsContinuousMode(true);
+      isContinuousModeRef.current = true;
+      // Reset flag when starting
+      isProcessingContinuousRef.current = false;
+      await startRecording({ language_code: selectedLanguage as any, continuous: true });
+    }
+  }, [isRecording, isContinuousMode, stopRecording, clearTranscript, startRecording, selectedLanguage]);
+
+  // Handle continuous file mode click (OpenAI) - reuses useFileTranscribe with continuous behavior
+  const handleContinuousFileClick = useCallback(async () => {
+    if (isFileRecording && isContinuousFileMode) {
+      stopFileRecording();
+      setIsContinuousFileMode(false);
+      isContinuousFileModeRef.current = false;
+      // Clear processing flag
+      isProcessingContinuousFileRef.current = false;
+    } else {
+      setIsContinuousFileMode(true);
+      isContinuousFileModeRef.current = true;
+      // Reset flag when starting
+      isProcessingContinuousFileRef.current = false;
+      await startFileRecording(selectedLanguage);
+    }
+  }, [isFileRecording, isContinuousFileMode, stopFileRecording, startFileRecording, selectedLanguage]);
+
   // TTS toggle handler - initializes audio on enable, resets on disable
   const handleTtsToggle = (enabled: boolean) => {
     if (enabled) {
@@ -259,7 +356,7 @@ const ChatComponent = ({
     setTtsEnabled(enabled);
   };
 
-  const chatQuery = async () => {
+  const chatQuery = useCallback(async () => {
     if (!userQuery.trim()) return;
 
     const currentQuery = userQuery;
@@ -275,8 +372,93 @@ const ChatComponent = ({
         scrollContainerRef.current.scrollHeight;
     }
 
-    await searchVectorial(currentQuery, chatContext, ttsEnabled);
-  };
+    // Determine if we need to restart recording after completion (continuous mode - AWS)
+    const shouldRestartOnComplete = isProcessingContinuousRef.current && isContinuousModeRef.current;
+    // Determine if we need to restart file recording after completion (continuous file mode - OpenAI)
+    const shouldRestartFileOnComplete = isProcessingContinuousFileRef.current && isContinuousFileModeRef.current;
+
+    // Pre-request microphone permissions (runs in parallel with searchVectorial)
+    if (shouldRestartOnComplete) {
+      prepareRecordingRef.current?.();
+    }
+    if (shouldRestartFileOnComplete) {
+      prepareFileRecordingRef.current?.();
+    }
+
+    // Determine which onComplete callback to use
+    const onComplete = (shouldRestartOnComplete || shouldRestartFileOnComplete) ? () => {
+      if (shouldRestartOnComplete) {
+        // Restart AWS streaming recording after search completes
+        setTimeout(async () => {
+          // Clear the processing guard
+          isProcessingContinuousRef.current = false;
+
+          // Only restart if still in continuous mode
+          if (isContinuousModeRef.current) {
+            await startRecordingRef.current?.({
+              language_code: selectedLanguageRef.current,
+              continuous: true
+            });
+          }
+        }, 100);
+      }
+
+      if (shouldRestartFileOnComplete) {
+        // Restart OpenAI file recording after search completes
+        setTimeout(async () => {
+          // Clear the processing guard
+          isProcessingContinuousFileRef.current = false;
+
+          // Only restart if still in continuous file mode
+          if (isContinuousFileModeRef.current) {
+            await startFileRecordingRef.current?.(selectedLanguageRef.current);
+          }
+        }, 100);
+      }
+    } : undefined;
+
+    await searchVectorial(currentQuery, chatContext, ttsEnabled, onComplete);
+  }, [userQuery, searchVectorial, chatContext, ttsEnabled]);
+
+  // Keep submitActionRef updated for continuous mode auto-submit
+  useEffect(() => {
+    submitActionRef.current = chatQuery;
+  }, [chatQuery]);
+
+  // Keep stopRecordingRef updated for continuous mode
+  useEffect(() => {
+    stopRecordingRef.current = stopRecording;
+  }, [stopRecording]);
+
+  // Keep startRecordingRef updated for continuous mode
+  useEffect(() => {
+    startRecordingRef.current = startRecording;
+  }, [startRecording]);
+
+  // Keep prepareRecordingRef updated for continuous mode
+  useEffect(() => {
+    prepareRecordingRef.current = prepareRecording;
+  }, [prepareRecording]);
+
+  // Keep selectedLanguageRef updated
+  useEffect(() => {
+    selectedLanguageRef.current = selectedLanguage;
+  }, [selectedLanguage]);
+
+  // Keep stopFileRecordingRef updated for continuous file mode
+  useEffect(() => {
+    stopFileRecordingRef.current = stopFileRecording;
+  }, [stopFileRecording]);
+
+  // Keep startFileRecordingRef updated for continuous file mode
+  useEffect(() => {
+    startFileRecordingRef.current = startFileRecording;
+  }, [startFileRecording]);
+
+  // Keep prepareFileRecordingRef updated for continuous file mode
+  useEffect(() => {
+    prepareFileRecordingRef.current = prepareFileRecording;
+  }, [prepareFileRecording]);
 
   const cancelar = () => {
     cancelMessage();
@@ -321,13 +503,19 @@ const ChatComponent = ({
         transcribeProvider={transcribeProvider}
         selectedLanguage={selectedLanguage}
         setSelectedLanguage={setSelectedLanguage}
-        isRecording={isRecording}
-        isConnecting={isConnecting}
+        isRecording={isRecording && !isContinuousMode}
+        isConnecting={isConnecting && !isContinuousMode}
         onMicrophoneClick={handleMicrophoneClick}
-        isFileRecording={isFileRecording}
+        isFileRecording={isFileRecording && !isContinuousFileMode}
         isFileTranscribing={isFileTranscribing}
         onStartRecording={handleStartFileRecording}
         onStopRecording={stopFileRecording}
+        isContinuousRecording={isRecording && isContinuousMode}
+        isContinuousConnecting={isConnecting && isContinuousMode}
+        onContinuousVoiceClick={handleContinuousVoiceClick}
+        isContinuousFileRecording={isFileRecording && isContinuousFileMode}
+        isContinuousFileTranscribing={isFileTranscribing && isContinuousFileMode}
+        onContinuousFileClick={handleContinuousFileClick}
       >
         <div className="h-full flex flex-col">
           {isLoadingMessages ? (

@@ -6,6 +6,11 @@ import type { FileTranscriptionResult } from '../api/fileTranscribeApi';
 // Re-export transcription result type
 export type TranscriptionResult = FileTranscriptionResult;
 
+interface UseFileTranscribeOptions {
+    /** Callback when transcription is complete (useful for auto-submit in continuous mode) */
+    onTranscriptionComplete?: (transcript: string) => void;
+}
+
 interface UseFileTranscribeReturn {
     isRecording: boolean;
     isTranscribing: boolean;
@@ -18,7 +23,13 @@ interface UseFileTranscribeReturn {
     clearResult: () => void;
 }
 
-export const useFileTranscribe = (): UseFileTranscribeReturn => {
+export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFileTranscribeReturn => {
+    const { onTranscriptionComplete } = options;
+    const onTranscriptionCompleteRef = useRef(onTranscriptionComplete);
+
+    useEffect(() => {
+        onTranscriptionCompleteRef.current = onTranscriptionComplete;
+    }, [onTranscriptionComplete]);
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
     const [transcriptionResult, setTranscriptionResult] = useState<TranscriptionResult | null>(null);
@@ -62,6 +73,11 @@ export const useFileTranscribe = (): UseFileTranscribeReturn => {
             });
 
             setTranscriptionResult(result);
+
+            // Call callback if provided (for auto-submit in continuous mode)
+            if (onTranscriptionCompleteRef.current && result.transcript?.trim()) {
+                onTranscriptionCompleteRef.current(result.transcript);
+            }
 
         } catch (error) {
             console.error('Error transcribing file:', error);

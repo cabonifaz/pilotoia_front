@@ -17,6 +17,16 @@ interface TranscriptionContextType {
   isFileTranscribing: boolean;
   onStartRecording: () => void | Promise<void>;
   onStopRecording: () => void;
+
+  // Continuous voice mode - AWS (hands-free)
+  isContinuousRecording: boolean;
+  isContinuousConnecting: boolean;
+  onContinuousVoiceClick: () => void;
+
+  // Continuous file mode - OpenAI (hands-free)
+  isContinuousFileRecording: boolean;
+  isContinuousFileTranscribing: boolean;
+  onContinuousFileClick: () => void;
 }
 
 const TranscriptionContext = createContext<TranscriptionContextType | undefined>(undefined);
@@ -39,6 +49,16 @@ interface TranscriptionProviderProps {
   isFileTranscribing: boolean;
   onStartRecording: () => void | Promise<void>;
   onStopRecording: () => void;
+
+  // Continuous voice mode - AWS (hands-free)
+  isContinuousRecording: boolean;
+  isContinuousConnecting: boolean;
+  onContinuousVoiceClick: () => void;
+
+  // Continuous file mode - OpenAI (hands-free)
+  isContinuousFileRecording: boolean;
+  isContinuousFileTranscribing: boolean;
+  onContinuousFileClick: () => void;
 }
 
 export const TranscriptionProvider = ({
@@ -53,6 +73,12 @@ export const TranscriptionProvider = ({
   isFileTranscribing,
   onStartRecording,
   onStopRecording,
+  isContinuousRecording,
+  isContinuousConnecting,
+  onContinuousVoiceClick,
+  isContinuousFileRecording,
+  isContinuousFileTranscribing,
+  onContinuousFileClick,
 }: TranscriptionProviderProps) => {
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<TranscriptionContextType>(
@@ -67,6 +93,12 @@ export const TranscriptionProvider = ({
       isFileTranscribing,
       onStartRecording,
       onStopRecording,
+      isContinuousRecording,
+      isContinuousConnecting,
+      onContinuousVoiceClick,
+      isContinuousFileRecording,
+      isContinuousFileTranscribing,
+      onContinuousFileClick,
     }),
     [
       transcribeProvider,
@@ -79,6 +111,12 @@ export const TranscriptionProvider = ({
       isFileTranscribing,
       onStartRecording,
       onStopRecording,
+      isContinuousRecording,
+      isContinuousConnecting,
+      onContinuousVoiceClick,
+      isContinuousFileRecording,
+      isContinuousFileTranscribing,
+      onContinuousFileClick,
     ]
   );
 
