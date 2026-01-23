@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import type { GetUsuariosResponse, CreateUserRequest, CreateUserResponse, UpdateUserRequest, UpdateUserResponse, UpdateUserStatusRequest, UpdateUserStatusResponse, UpdateUserPasswordRequest, UpdateUserPasswordResponse, UpdateUserAccessRequest, UpdateUserAccessResponse } from '@/types/users';
+import type { GetUsuariosResponse, CreateUserRequest, CreateUserResponse, UpdateUserRequest, UpdateUserResponse, UpdateUserStatusRequest, UpdateUserStatusResponse, UpdateUserPasswordRequest, UpdateUserPasswordResponse, UpdateUserAccessRequest, UpdateUserAccessResponse, GetUsuariosPaginatedResponse  } from '@/types/users';
 
 export const getUsuarios = async (id_empresa: number): Promise<GetUsuariosResponse> => {
   const response = await apiClient.get<GetUsuariosResponse>(
@@ -54,6 +54,22 @@ export const updateUsuarioAccess = async (
   const response = await apiClient.put<UpdateUserAccessResponse>(
     '/v1/users/update_usuario_access',
     request
+  );
+  return response.data;
+};
+
+export const getUsuariosPaginated = async (params: {
+  id_empresa: number;
+  num_pagina?: number;
+  tam_pagina?: number;
+  term_busqueda?: string;
+  campo_orden?: string;
+  dir_orden?: 'ASC' | 'DESC';
+  filtro_estado?: number | null;
+}): Promise<GetUsuariosPaginatedResponse> => {
+  const response = await apiClient.get<GetUsuariosPaginatedResponse>(
+    '/v1/users/get_usuarios_paginated',
+    { params }
   );
   return response.data;
 };
