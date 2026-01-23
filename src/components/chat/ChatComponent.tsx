@@ -186,14 +186,26 @@ const ChatComponent = ({
       // Guard: Skip if we're already processing a request
       if (isProcessingContinuousFileRef.current) return;
 
-      if (isContinuousFileModeRef.current && transcript.trim() && submitActionRef.current) {
-        // Set guard immediately to prevent any subsequent transcripts
-        isProcessingContinuousFileRef.current = true;
+      // Handle continuous file mode
+      if (isContinuousFileModeRef.current) {
+        // If no voice detected (empty transcript), just restart recording
+        if (!transcript.trim()) {
+          console.log('[CONTINUOUS-FILE] No voice detected, restarting recording...');
+          // Restart recording immediately
+          startFileRecordingRef.current?.(selectedLanguageRef.current);
+          return;
+        }
 
-        // Recording already stopped (transcription happens after stop)
-        setTimeout(() => {
-          submitActionRef.current?.();
-        }, 50);
+        // Voice detected - submit the transcript
+        if (submitActionRef.current) {
+          // Set guard immediately to prevent any subsequent transcripts
+          isProcessingContinuousFileRef.current = true;
+
+          // Recording already stopped (transcription happens after stop)
+          setTimeout(() => {
+            submitActionRef.current?.();
+          }, 50);
+        }
       }
     },
   });

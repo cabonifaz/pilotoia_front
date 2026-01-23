@@ -47,6 +47,10 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
     const shouldStartRecordingRef = useRef<boolean>(false);
     const stopRecordingRef = useRef<(() => void) | null>(null);
     const recordingLanguageRef = useRef<string>('es');
+    // Track if voice was detected during recording (to avoid sending silence-only files)
+    const voiceDetectedRef = useRef<boolean>(false);
+    // Track if we're in continuous mode
+    const isContinuousModeRef = useRef<boolean>(false);
 
     /**
      * Transcribe an audio file using OpenAI API
@@ -245,6 +249,20 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
                 // Calculate recording duration
                 const recordingDuration = Date.now() - recordingStartTimeRef.current;
 
+                // Check if voice was detected during recording
+                if (!voiceDetectedRef.current) {
+                    // No voice detected - skip transcription silently
+                    console.log('[FILE-TRANSCRIBE] No voice detected, skipping transcription');
+                    audioChunksRef.current = [];
+                    recordingStartTimeRef.current = 0;
+                    setIsRecording(false);
+                    // Call callback with empty string to signal no voice (for continuous mode to restart)
+                    if (onTranscriptionCompleteRef.current) {
+                        onTranscriptionCompleteRef.current('');
+                    }
+                    return;
+                }
+
                 // Validate minimum recording duration (500ms = 0.5 seconds)
                 const MIN_DURATION_MS = 500;
                 if (recordingDuration < MIN_DURATION_MS) {
@@ -322,6 +340,7 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
 
             // Start recording
             recordingStartTimeRef.current = Date.now();
+            voiceDetectedRef.current = false; // Reset voice detection flag
             mediaRecorder.start(100); // Collect data every 100ms
             setIsRecording(true);
 
@@ -357,7 +376,7 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
                 if (average < SILENCE_LEVEL) {
                     if (!silenceTimeoutRef.current) {
                         silenceTimeoutRef.current = setTimeout(() => {
-                            // Stop recording after 5 seconds of silence
+                            // Stop recording after silence threshold
                             // Use ref to always get the latest stopRecording function
                             if (stopRecordingRef.current) {
                                 stopRecordingRef.current();
@@ -365,6 +384,8 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
                         }, SILENCE_THRESHOLD);
                     }
                 } else {
+                    // Voice/sound detected - mark it
+                    voiceDetectedRef.current = true;
                     // Clear timeout if sound detected
                     if (silenceTimeoutRef.current) {
                         clearTimeout(silenceTimeoutRef.current);
