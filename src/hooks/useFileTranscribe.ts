@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { MicVAD } from '@ricky0123/vad-web';
 import { toast } from './use-toast';
 import { fileTranscribeApi } from '../api/fileTranscribeApi';
 import type { FileTranscriptionResult } from '../api/fileTranscribeApi';
@@ -62,8 +63,12 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
     const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const hasDetectedSpeechRef = useRef<boolean>(false);
 
-    // Get silence threshold from env
+    // Pre-warming refs
+    const pendingStreamRequestRef = useRef<Promise<MediaStream> | null>(null);
+
+    // Get silence thresholds from env
     const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '3000', 10);
+    const INITIAL_SPEECH_TIMEOUT = parseInt(import.meta.env.VITE_INITIAL_SPEECH_TIMEOUT || '10000', 10);
 
     /**
      * Transcribe an audio file using OpenAI API
@@ -105,7 +110,6 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
      */
     const processRecordedAudio = useCallback(async () => {
         if (audioChunksRef.current.length === 0) {
-            console.log('[FILE-TRANSCRIBE] No audio chunks to process');
             if (onTranscriptionCompleteRef.current) {
                 onTranscriptionCompleteRef.current('');
             }
@@ -130,10 +134,7 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
         const ext = getExtension(mimeType);
         const audioFile = new File([audioBlob], `recording.${ext}`, { type: mimeType });
 
-        console.log(`[FILE-TRANSCRIBE] Processing audio: ${(audioFile.size / 1024).toFixed(2)}KB`);
-
         if (audioFile.size < 5000) {
-            console.log('[FILE-TRANSCRIBE] Audio file too small, skipping');
             if (onTranscriptionCompleteRef.current) {
                 onTranscriptionCompleteRef.current('');
             }
@@ -148,8 +149,6 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
      */
     const startMediaRecorder = useCallback(() => {
         if (isMediaRecordingRef.current || !streamRef.current) return;
-
-        console.log('[FILE-TRANSCRIBE] Starting MediaRecorder');
 
         const supportedTypes = [
             'audio/webm;codecs=opus',
@@ -183,7 +182,6 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
         };
 
         mediaRecorder.onstop = () => {
-            console.log('[FILE-TRANSCRIBE] MediaRecorder stopped');
             isMediaRecordingRef.current = false;
             processRecordedAudio();
         };
@@ -199,17 +197,45 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
      */
     const stopMediaRecorder = useCallback(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-            console.log('[FILE-TRANSCRIBE] Stopping MediaRecorder');
             mediaRecorderRef.current.stop();
         }
         mediaRecorderRef.current = null;
     }, []);
 
     /**
+     * Handle initial timeout - stop if user never speaks
+     */
+    const handleInitialTimeout = useCallback(() => {
+        if (hasDetectedSpeechRef.current) return; // Speech was detected, ignore
+
+        silenceTimeoutRef.current = null;
+        isActiveRef.current = false;
+
+        if (vadRef.current) {
+            vadRef.current.pause();
+            vadRef.current.destroy();
+            vadRef.current = null;
+        }
+
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+
+        setMediaStream(null);
+        setIsListening(false);
+        setIsSpeaking(false);
+
+        // Call callback with empty string to signal no speech
+        if (onTranscriptionCompleteRef.current) {
+            onTranscriptionCompleteRef.current('');
+        }
+    }, []);
+
+    /**
      * Handle silence timeout - stop everything and transcribe
      */
     const handleSilenceTimeout = useCallback(() => {
-        console.log('[FILE-TRANSCRIBE] Silence threshold reached');
         silenceTimeoutRef.current = null;
 
         // Stop MediaRecorder (this triggers onstop which calls processRecordedAudio)
@@ -240,7 +266,6 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
     const handleSpeechStart = useCallback(() => {
         if (!isActiveRef.current) return;
 
-        console.log('[FILE-TRANSCRIBE] Speech detected');
         setIsSpeaking(true);
 
         // Cancel silence timer
@@ -262,7 +287,6 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
     const handleSpeechEnd = useCallback(() => {
         if (!isActiveRef.current) return;
 
-        console.log('[FILE-TRANSCRIBE] Speech ended, starting silence timer');
         setIsSpeaking(false);
 
         // Clear any existing timeout
@@ -278,7 +302,6 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
      * Stop everything
      */
     const stopRecording = useCallback(() => {
-        console.log('[FILE-TRANSCRIBE] Stop requested');
         isActiveRef.current = false;
 
         // Clear silence timeout
@@ -326,19 +349,22 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
             hasDetectedSpeechRef.current = false;
             audioChunksRef.current = [];
 
-            // Dynamically import vad-web
-            const { MicVAD } = await import('@ricky0123/vad-web');
-
-            // Request microphone
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    channelCount: 1,
-                    sampleRate: 16000,
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true,
-                },
-            });
+            // Use pre-warmed stream if available, otherwise request microphone
+            let stream: MediaStream;
+            if (pendingStreamRequestRef.current) {
+                stream = await pendingStreamRequestRef.current;
+                pendingStreamRequestRef.current = null;
+            } else {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 1,
+                        sampleRate: 16000,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                    },
+                });
+            }
 
             streamRef.current = stream;
             setMediaStream(stream);
@@ -359,7 +385,8 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
             vadRef.current = vad;
             vad.start();
 
-            console.log('[FILE-TRANSCRIBE] VAD started, waiting for speech...');
+            // Start initial timeout - stops if user never speaks
+            silenceTimeoutRef.current = setTimeout(handleInitialTimeout, INITIAL_SPEECH_TIMEOUT);
 
         } catch (error) {
             console.error('[FILE-TRANSCRIBE] Error starting:', error);
@@ -380,7 +407,7 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
                 });
             }
         }
-    }, [isListening, isTranscribing, handleSpeechStart, handleSpeechEnd]);
+    }, [isListening, isTranscribing, handleSpeechStart, handleSpeechEnd, handleInitialTimeout, INITIAL_SPEECH_TIMEOUT]);
 
     /**
      * Clear transcription result
@@ -408,9 +435,48 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
         };
     }, []);
 
-    // No-op functions for backwards compatibility
-    const prepareRecording = useCallback(() => {}, []);
-    const cancelPrepareRecording = useCallback(async () => {}, []);
+    /**
+     * Prepare recording by requesting microphone access early.
+     * This reduces latency when starting recording.
+     */
+    const prepareRecording = useCallback(() => {
+        // Don't prepare if already listening or transcribing
+        if (isListening || isTranscribing) {
+            return;
+        }
+
+        // Don't create duplicate stream requests
+        if (pendingStreamRequestRef.current) {
+            return;
+        }
+
+        // Start requesting microphone access immediately
+        pendingStreamRequestRef.current = navigator.mediaDevices.getUserMedia({
+            audio: {
+                channelCount: 1,
+                sampleRate: 16000,
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+            },
+        });
+    }, [isListening, isTranscribing]);
+
+    /**
+     * Cancel prepared recording if user decides not to record
+     */
+    const cancelPrepareRecording = useCallback(async () => {
+        // If there's a pending stream request, wait for it and clean up
+        if (pendingStreamRequestRef.current) {
+            try {
+                const stream = await pendingStreamRequestRef.current;
+                stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                // Ignore errors (user might have denied permission)
+            }
+            pendingStreamRequestRef.current = null;
+        }
+    }, []);
 
     return {
         isListening,

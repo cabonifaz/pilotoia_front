@@ -15,19 +15,16 @@ export const RecordingWaveform = ({ isListening, isSpeaking, mediaStream }: Reco
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const recordPluginRef = useRef<ReturnType<typeof RecordPlugin.create> | null>(null);
+  const micStreamRef = useRef<{ onDestroy: () => void; onEnd: () => void } | null>(null);
 
   useEffect(() => {
-    if (!isListening || !containerRef.current) {
+    if (!isListening || !containerRef.current || !mediaStream) {
       // Cleanup when not listening
+      if (micStreamRef.current) {
+        micStreamRef.current.onDestroy();
+        micStreamRef.current = null;
+      }
       if (recordPluginRef.current) {
-        try {
-          if (recordPluginRef.current.isRecording()) {
-            recordPluginRef.current.stopRecording();
-          }
-          recordPluginRef.current.stopMic();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
         recordPluginRef.current = null;
       }
       if (wavesurferRef.current) {
@@ -65,27 +62,19 @@ export const RecordingWaveform = ({ isListening, isSpeaking, mediaStream }: Reco
     wavesurferRef.current = wavesurfer;
     recordPluginRef.current = recordPlugin;
 
-    // Start recording visualization
-    recordPlugin.startRecording().catch((err) => {
-      console.error('Failed to start recording visualization:', err);
-    });
+    // Render visualization using the provided mediaStream
+    const micStream = recordPlugin.renderMicStream(mediaStream);
+    micStreamRef.current = micStream;
 
     return () => {
-      if (recordPluginRef.current) {
-        try {
-          if (recordPluginRef.current.isRecording()) {
-            recordPluginRef.current.stopRecording();
-          }
-          recordPluginRef.current.stopMic();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
+      if (micStreamRef.current) {
+        micStreamRef.current.onDestroy();
       }
       if (wavesurferRef.current) {
         wavesurferRef.current.destroy();
       }
     };
-  }, [isListening]);
+  }, [isListening, mediaStream]);
 
   if (!isListening) return null;
 
