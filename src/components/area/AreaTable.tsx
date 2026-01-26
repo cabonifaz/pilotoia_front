@@ -466,15 +466,6 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
     setOriginalAreaName("");
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSaveAreaName();
-    } else if (e.key === "Escape") {
-      handleCancelEdit();
-    }
-  };
-
   // Focus input when editing starts
   useEffect(() => {
     if (editingAreaId !== null && inputRef.current) {
