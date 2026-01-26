@@ -40,3 +40,19 @@ export interface CreateAgentResponse {
     mensaje: string;
   };
 }
+
+export interface PaginationInfo {
+  total_records: number;
+  current_page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface GetAgentesPaginatedResponse {
+  data: Agente[];
+  pagination: PaginationInfo;
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}
