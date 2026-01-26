@@ -171,6 +171,7 @@ export const CompanyTable = ({
   const [orderField, setOrderField] = useState<any>("RAZON_SOCIAL");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("ASC");
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
+  const [rowSelection, setRowSelection] = useState({});
   // 1. Estado para el orden de las columnas
   const [columnOrder, setColumnOrder] = useState<string[]>(() => [
     "select",
@@ -214,8 +215,25 @@ export const CompanyTable = ({
     () => [
       columnHelper.display({
         id: "select",
-        header: () => <Checkbox />,
-        cell: () => <Checkbox />,
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+            aria-label="Seleccionar todos"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Seleccionar fila"
+          />
+        ),
         size: 50,
       }),
       columnHelper.accessor("RUC", {
@@ -315,11 +333,15 @@ export const CompanyTable = ({
     data: data?.data || [],
     columns,
     state: {
-      columnOrder, // 2. Pasar el estado del orden a la tabla
+      columnOrder,
+      rowSelection, // Agregado
     },
     onColumnOrderChange: setColumnOrder,
+    onRowSelectionChange: setRowSelection, // Agregado
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
+    // Opcional: define cómo identificar cada fila (si no, usa el índice)
+    getRowId: (row) => row.ID_EMPRESA.toString(),
   });
 
   // --- HANDLER DE SORTING ---
