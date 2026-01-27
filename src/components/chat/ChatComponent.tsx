@@ -126,11 +126,16 @@ const ChatComponent = ({
   const {
     isRecording,
     isConnecting,
+    isPaused: isAwsPaused,
+    isSpeaking: isAwsSpeaking,
+    mediaStream: awsMediaStream,
     transcript,
     partialTranscript,
     prepareRecording,
     startRecording,
     stopRecording,
+    pauseRecording: pauseAwsRecording,
+    resumeRecording: resumeAwsRecording,
     clearTranscript,
   } = useTranscribe({
     onFinalTranscript: (finalTranscript) => {
@@ -175,25 +180,42 @@ const ChatComponent = ({
   // Get file transcription functions (OpenAI)
   const {
     isRecording: isFileRecording,
+    isSpeaking: isFileSpeaking,
     isTranscribing: isFileTranscribing,
+    isPaused: isFilePaused,
+    mediaStream: fileMediaStream,
     transcriptionResult: fileTranscriptionResult,
     prepareRecording: prepareFileRecording,
     startRecording: startFileRecording,
     stopRecording: stopFileRecording,
+    pauseRecording: pauseFileRecording,
+    resumeRecording: resumeFileRecording,
   } = useFileTranscribe({
     onTranscriptionComplete: (transcript) => {
 
       // Guard: Skip if we're already processing a request
       if (isProcessingContinuousFileRef.current) return;
 
-      if (isContinuousFileModeRef.current && transcript.trim() && submitActionRef.current) {
-        // Set guard immediately to prevent any subsequent transcripts
-        isProcessingContinuousFileRef.current = true;
+      // Handle continuous file mode
+      if (isContinuousFileModeRef.current) {
+        // If no voice detected (empty transcript), just restart recording
+        if (!transcript.trim()) {
+          console.log('[CONTINUOUS-FILE] No voice detected, restarting recording...');
+          // Restart recording immediately
+          startFileRecordingRef.current?.(selectedLanguageRef.current);
+          return;
+        }
 
-        // Recording already stopped (transcription happens after stop)
-        setTimeout(() => {
-          submitActionRef.current?.();
-        }, 50);
+        // Voice detected - submit the transcript
+        if (submitActionRef.current) {
+          // Set guard immediately to prevent any subsequent transcripts
+          isProcessingContinuousFileRef.current = true;
+
+          // Recording already stopped (transcription happens after stop)
+          setTimeout(() => {
+            submitActionRef.current?.();
+          }, 50);
+        }
       }
     },
   });
@@ -356,6 +378,26 @@ const ChatComponent = ({
     setTtsEnabled(enabled);
   };
 
+  // Mute toggle handler - pauses/resumes VAD detection
+  const handleMuteToggle = useCallback(() => {
+    // Handle OpenAI continuous mode
+    if (isContinuousFileMode) {
+      if (isFilePaused) {
+        resumeFileRecording();
+      } else {
+        pauseFileRecording();
+      }
+    }
+    // Handle AWS continuous mode
+    if (isContinuousMode) {
+      if (isAwsPaused) {
+        resumeAwsRecording();
+      } else {
+        pauseAwsRecording();
+      }
+    }
+  }, [isContinuousFileMode, isFilePaused, pauseFileRecording, resumeFileRecording, isContinuousMode, isAwsPaused, pauseAwsRecording, resumeAwsRecording]);
+
   const chatQuery = useCallback(async () => {
     if (!userQuery.trim()) return;
 
@@ -507,15 +549,22 @@ const ChatComponent = ({
         isConnecting={isConnecting && !isContinuousMode}
         onMicrophoneClick={handleMicrophoneClick}
         isFileRecording={isFileRecording && !isContinuousFileMode}
+        isFileSpeaking={isFileSpeaking && !isContinuousFileMode}
         isFileTranscribing={isFileTranscribing}
+        fileMediaStream={transcribeProvider === 'aws' ? awsMediaStream : fileMediaStream}
+        onPrepareRecording={prepareFileRecording}
         onStartRecording={handleStartFileRecording}
         onStopRecording={stopFileRecording}
         isContinuousRecording={isRecording && isContinuousMode}
         isContinuousConnecting={isConnecting && isContinuousMode}
+        isContinuousSpeaking={transcribeProvider === 'aws' ? isAwsSpeaking : isFileSpeaking}
         onContinuousVoiceClick={handleContinuousVoiceClick}
         isContinuousFileRecording={isFileRecording && isContinuousFileMode}
+        isContinuousFileSpeaking={isFileSpeaking && isContinuousFileMode}
         isContinuousFileTranscribing={isFileTranscribing && isContinuousFileMode}
         onContinuousFileClick={handleContinuousFileClick}
+        isMuted={transcribeProvider === 'aws' ? isAwsPaused : isFilePaused}
+        onMuteToggle={handleMuteToggle}
       >
         <div className="h-full flex flex-col">
           {isLoadingMessages ? (
