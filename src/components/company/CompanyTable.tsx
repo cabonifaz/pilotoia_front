@@ -76,6 +76,8 @@ const DraggableTableHeader = ({
   orderField,
   orderDirection,
 }: DraggableTableHeaderProps) => {
+  const columnId = header.column.id;
+  const isDraggable = columnId !== "select" && columnId !== "actions";
   const {
     attributes,
     listeners,
@@ -83,7 +85,10 @@ const DraggableTableHeader = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: header.id });
+  } = useSortable({
+    id: columnId,
+    disabled: !isDraggable, // Deshabilita el hook para columnas estáticas
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -91,9 +96,10 @@ const DraggableTableHeader = ({
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 100 : 1,
     position: "relative" as const,
+    // Añadir esto para evitar que la celda "empuje"
+    touchAction: "none",
   };
 
-  const columnId = header.column.id;
   const isSortable = [
     "RUC",
     "RAZON_SOCIAL",
@@ -102,16 +108,22 @@ const DraggableTableHeader = ({
   ].includes(columnId);
 
   return (
-    <TableHead ref={setNodeRef} style={style} className="bg-white border-b">
+    <TableHead
+      ref={isDraggable ? setNodeRef : null}
+      style={isDraggable ? style : {}}
+      className="bg-white border-b"
+    >
       <div className="flex items-center gap-2">
-        {/* Icono de agarre (Grip) */}
-        <div
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
-        >
-          ::
-        </div>
+        {/* Solo mostrar el grip si es arrastrable */}
+        {isDraggable && (
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
+          >
+            ::
+          </div>
+        )}
 
         <div
           className={`flex items-center gap-1 ${isSortable ? "cursor-pointer select-none" : ""}`}
@@ -202,11 +214,15 @@ export const CompanyTable = ({
   // 4. Manejador del final del arrastre
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+
     if (active && over && active.id !== over.id) {
-      setColumnOrder((columnOrder) => {
-        const oldIndex = columnOrder.indexOf(active.id as string);
-        const newIndex = columnOrder.indexOf(over.id as string);
-        return arrayMove(columnOrder, oldIndex, newIndex);
+      // Evitar soltar sobre 'select' o 'actions'
+      if (over.id === "select" || over.id === "actions") return;
+
+      setColumnOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
+        return arrayMove(items, oldIndex, newIndex);
       });
     }
   }
@@ -391,6 +407,10 @@ export const CompanyTable = ({
         console.error("Error al copiar la URL:", err);
       });
   };
+  const draggableColumns = useMemo(
+    () => columnOrder.filter((id) => id !== "select" && id !== "actions"),
+    [columnOrder],
+  );
   return (
     <Card className="flex-1 flex flex-col min-h-0">
       <CardHeader className="pb-3">
@@ -439,13 +459,13 @@ export const CompanyTable = ({
             >
               {/* Contenedor principal con borde */}
               <div className="border rounded-lg overflow-hidden flex flex-col h-full">
-                <div className="overflow-auto flex-1">
-                  <Table>
+                <div className="overflow-x-auto overflow-y-hidden flex-1 w-full">
+                  <Table className="table-fixed w-full min-w-[800px]">
                     <TableHeader className="sticky top-0 z-20 bg-white shadow-sm">
                       {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
                           <SortableContext
-                            items={columnOrder}
+                            items={draggableColumns}
                             strategy={horizontalListSortingStrategy}
                           >
                             {headerGroup.headers.map((header) => (

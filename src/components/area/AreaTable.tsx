@@ -83,6 +83,7 @@ const DraggableTableHeader = ({
   orderField,
   orderDirection,
 }: DraggableTableHeaderProps) => {
+  const isStatic = ["select", "actions"].includes(header.id);
   const {
     attributes,
     listeners,
@@ -90,7 +91,10 @@ const DraggableTableHeader = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: header.id });
+  } = useSortable({
+    id: header.id,
+    disabled: isStatic, // Desactiva el hook si es estática
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -107,13 +111,15 @@ const DraggableTableHeader = ({
   return (
     <TableHead ref={setNodeRef} style={style} className="bg-white border-b">
       <div className="flex items-center gap-2">
-        <div
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
-        >
-          ::
-        </div>
+        {!isStatic && (
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
+          >
+            ::
+          </div>
+        )}
         <div
           className={`flex items-center gap-1 ${isSortable ? "cursor-pointer select-none" : ""}`}
           onClick={() => isSortable && onSortClick(header.id)}
@@ -191,7 +197,14 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+
     if (active && over && active.id !== over.id) {
+      // Definimos los IDs prohibidos
+      const staticColumns = ["select", "actions"];
+
+      // Si intentamos soltar sobre una columna estática, cancelamos o ajustamos
+      if (staticColumns.includes(over.id as string)) return;
+
       setColumnOrder((items) => {
         const oldIndex = items.indexOf(active.id as string);
         const newIndex = items.indexOf(over.id as string);
@@ -466,15 +479,6 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
     setOriginalAreaName("");
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSaveAreaName();
-    } else if (e.key === "Escape") {
-      handleCancelEdit();
-    }
-  };
-
   // Focus input when editing starts
   useEffect(() => {
     if (editingAreaId !== null && inputRef.current) {
@@ -579,7 +583,10 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
                       {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
                           <SortableContext
-                            items={columnOrder}
+                            // Filtramos los IDs estáticos para que dnd-kit no los considere parte del flujo de ordenamiento
+                            items={columnOrder.filter(
+                              (id) => !["select", "actions"].includes(id),
+                            )}
                             strategy={horizontalListSortingStrategy}
                           >
                             {headerGroup.headers.map((header) => (
