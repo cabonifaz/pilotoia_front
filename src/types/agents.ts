@@ -11,14 +11,6 @@ export interface Agente {
   AREA: string;
 }
 
-export interface GetAgentesResponse {
-  agentes: Agente[];
-  result: {
-    idTipoMensaje: number;
-    mensaje: string;
-  };
-}
-
 export interface CreateAgentRequest {
   numero_telf: string;
   codigo_pais: string;

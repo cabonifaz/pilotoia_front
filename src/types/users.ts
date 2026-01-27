@@ -13,14 +13,6 @@ export interface Usuario {
   ROL: string;
 }
 
-export interface GetUsuariosResponse {
-  usuarios: Usuario[];
-  result: {
-    idTipoMensaje: number;
-    mensaje: string;
-  };
-}
-
 export interface CreateUserRequest {
   nuevo_usuario: string;
   password: string;
