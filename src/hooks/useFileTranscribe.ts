@@ -68,6 +68,7 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
 
     // Silence detection refs
     const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const muteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const hasDetectedSpeechRef = useRef<boolean>(false);
     const wasSpeakingBeforePauseRef = useRef<boolean>(false);
 
@@ -77,6 +78,7 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
     // Get silence thresholds from env
     const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '3000', 10);
     const INITIAL_SPEECH_TIMEOUT = parseInt(import.meta.env.VITE_INITIAL_SPEECH_TIMEOUT || '10000', 10);
+    const MUTE_TIMEOUT = parseInt(import.meta.env.VITE_MUTE_TIMEOUT || '30000', 10);
 
     /**
      * Transcribe an audio file using OpenAI API
@@ -318,6 +320,12 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
             silenceTimeoutRef.current = null;
         }
 
+        // Clear mute timeout
+        if (muteTimeoutRef.current) {
+            clearTimeout(muteTimeoutRef.current);
+            muteTimeoutRef.current = null;
+        }
+
         // Stop MediaRecorder (triggers transcription if recording)
         if (isMediaRecordingRef.current) {
             stopMediaRecorder();
@@ -344,6 +352,53 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
     }, [stopMediaRecorder]);
 
     /**
+     * Abort recording silently - stops everything without triggering callbacks
+     */
+    const abortRecording = useCallback(() => {
+        isActiveRef.current = false;
+
+        // Clear all timeouts
+        if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+        }
+        if (muteTimeoutRef.current) {
+            clearTimeout(muteTimeoutRef.current);
+            muteTimeoutRef.current = null;
+        }
+
+        // Stop MediaRecorder without triggering onstop callback
+        if (mediaRecorderRef.current) {
+            mediaRecorderRef.current.onstop = null; // Remove callback
+            if (mediaRecorderRef.current.state === 'recording') {
+                mediaRecorderRef.current.stop();
+            }
+            mediaRecorderRef.current = null;
+        }
+        isMediaRecordingRef.current = false;
+        audioChunksRef.current = [];
+
+        // Stop VAD
+        if (vadRef.current) {
+            vadRef.current.pause();
+            vadRef.current.destroy();
+            vadRef.current = null;
+        }
+
+        // Stop stream
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+
+        setMediaStream(null);
+        setIsListening(false);
+        setIsSpeaking(false);
+        setIsPaused(false);
+        hasDetectedSpeechRef.current = false;
+    }, []);
+
+    /**
      * Pause VAD detection (mute) - keeps recording session active but pauses detection
      */
     const pauseRecording = useCallback(() => {
@@ -365,13 +420,24 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
 
         setIsPaused(true);
         setIsSpeaking(false);
-    }, [isListening, isPaused, isSpeaking]);
+
+        // Start mute timeout - abort recording if muted too long (no callback triggered)
+        muteTimeoutRef.current = setTimeout(() => {
+            abortRecording();
+        }, MUTE_TIMEOUT);
+    }, [isListening, isPaused, isSpeaking, MUTE_TIMEOUT, abortRecording]);
 
     /**
      * Resume VAD detection (unmute)
      */
     const resumeRecording = useCallback(() => {
         if (!isListening || !isPaused) return;
+
+        // Clear mute timeout since we're resuming
+        if (muteTimeoutRef.current) {
+            clearTimeout(muteTimeoutRef.current);
+            muteTimeoutRef.current = null;
+        }
 
         // Resume VAD
         if (vadRef.current) {
@@ -474,6 +540,9 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
         return () => {
             if (silenceTimeoutRef.current) {
                 clearTimeout(silenceTimeoutRef.current);
+            }
+            if (muteTimeoutRef.current) {
+                clearTimeout(muteTimeoutRef.current);
             }
             if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
                 mediaRecorderRef.current.stop();

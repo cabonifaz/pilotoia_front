@@ -105,6 +105,18 @@ class TranscribeWebSocketClient {
                     if (this.callbacks.onOpen) {
                         this.callbacks.onOpen();
                     }
+                } else if (response.status === 'muted') {
+                    // Server confirmed mute - AWS not being charged
+                    console.log('Server confirmed mute - AWS not charged');
+                } else if (response.status === 'unmuted') {
+                    // Server confirmed unmute - audio resumed
+                    console.log('Server confirmed unmute - audio resumed');
+                } else if (response.status === 'mute_timeout') {
+                    // Muted for too long, stream will close
+                    console.warn('Mute timeout - stream closing');
+                    if (this.callbacks.onError) {
+                        this.callbacks.onError('Muted for too long, stream closed');
+                    }
                 }
 
                 if (this.callbacks.onStatus) {
@@ -217,12 +229,50 @@ class TranscribeWebSocketClient {
     }
 
     /**
+     * Send mute signal (JSON) - pauses audio forwarding to AWS (no charges while muted)
+     */
+    sendMute(): void {
+        if (this.isConnected()) {
+            const muteMessage = { type: 'mute' };
+            try {
+                this.websocket!.send(JSON.stringify(muteMessage));
+            } catch (error) {
+                console.error('Error sending mute message:', error);
+            }
+        }
+    }
+
+    /**
+     * Send unmute signal (JSON) - resumes audio forwarding to AWS
+     */
+    sendUnmute(): void {
+        if (this.isConnected()) {
+            const unmuteMessage = { type: 'unmute' };
+            try {
+                this.websocket!.send(JSON.stringify(unmuteMessage));
+            } catch (error) {
+                console.error('Error sending unmute message:', error);
+            }
+        }
+    }
+
+    /**
      * Disconnect from WebSocket
      */
     disconnect(): void {
         if (this.websocket) {
             this.sendStop();
             this.websocket.close(1000, 'Client disconnecting');
+            this.websocket = null;
+        }
+    }
+
+    /**
+     * Force disconnect without sending stop signal (silent abort)
+     */
+    forceDisconnect(): void {
+        if (this.websocket) {
+            this.websocket.close(1000, 'Client aborting');
             this.websocket = null;
         }
     }

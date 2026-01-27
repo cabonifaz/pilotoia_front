@@ -62,7 +62,9 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
     // VAD refs
     const vadRef = useRef<any>(null);
     const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const muteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const hasDetectedSpeechRef = useRef<boolean>(false);
+    const stopSignalSentRef = useRef<boolean>(false);
 
 
     /**
@@ -73,6 +75,12 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
         if (silenceTimeoutRef.current) {
             clearTimeout(silenceTimeoutRef.current);
             silenceTimeoutRef.current = null;
+        }
+
+        // Clean up mute timeout
+        if (muteTimeoutRef.current) {
+            clearTimeout(muteTimeoutRef.current);
+            muteTimeoutRef.current = null;
         }
 
         if (vadRef.current) {
@@ -131,6 +139,7 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
         pendingStreamRequestRef.current = null;
         shouldStartRecordingRef.current = false;
         hasDetectedSpeechRef.current = false;
+        stopSignalSentRef.current = false;
     }, []);
 
     /**
@@ -178,38 +187,72 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
     }, []);
 
     /**
-     * Pause recording - stops sending audio but keeps connection alive
+     * Pause recording - sends mute to backend, AWS won't charge
+     * VAD keeps running locally, backend just skips forwarding to AWS
      */
     const pauseRecording = useCallback(() => {
         if (isRecording && !isPausedRef.current) {
             isPausedRef.current = true;
             setIsPaused(true);
-            setIsSpeaking(false);
 
-            // Clear VAD timers to prevent auto-stop while muted
+            // Clear any silence timers - we don't want to auto-stop while muted
             if (silenceTimeoutRef.current) {
                 clearTimeout(silenceTimeoutRef.current);
                 silenceTimeoutRef.current = null;
             }
 
-            // Pause VAD (but keep connection alive)
-            if (vadRef.current) {
-                vadRef.current.pause();
+            // Send mute signal to backend - AWS won't charge while muted
+            // Don't pause VAD - let it keep running, backend handles the mute
+            if (transcribeClientRef.current?.isConnected()) {
+                transcribeClientRef.current.sendMute();
             }
+
+            // Start mute timeout - silently abort if muted too long (no callback triggered)
+            const MUTE_TIMEOUT = parseInt(import.meta.env.VITE_MUTE_TIMEOUT || '30000', 10);
+            muteTimeoutRef.current = setTimeout(() => {
+                if (isPausedRef.current) {
+                    // Force disconnect without sending stop - this avoids triggering onComplete callback
+                    if (transcribeClientRef.current) {
+                        transcribeClientRef.current.forceDisconnect();
+                        transcribeClientRef.current = null;
+                    }
+                    // Clean up remaining resources (VAD, audio context, stream)
+                    cleanupAudioResources();
+                }
+            }, MUTE_TIMEOUT);
         }
     }, [isRecording]);
 
     /**
-     * Resume recording - resumes VAD and audio sending
+     * Resume recording - sends unmute to backend to resume AWS processing
      */
     const resumeRecording = useCallback(() => {
         if (isRecording && isPausedRef.current) {
             isPausedRef.current = false;
             setIsPaused(false);
 
-            // Resume VAD
-            if (vadRef.current) {
-                vadRef.current.start();
+            // Clear mute timeout since we're resuming
+            if (muteTimeoutRef.current) {
+                clearTimeout(muteTimeoutRef.current);
+                muteTimeoutRef.current = null;
+            }
+
+            // Send unmute signal to backend
+            if (transcribeClientRef.current?.isConnected()) {
+                transcribeClientRef.current.sendUnmute();
+            }
+
+            // Restart silence timer if user has spoken before and VAD is not currently detecting speech
+            // This ensures we eventually auto-stop even after unmute
+            if (hasDetectedSpeechRef.current && vadRef.current && !stopSignalSentRef.current) {
+                const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '3000', 10);
+                silenceTimeoutRef.current = setTimeout(() => {
+                    // VAD will cancel this timer if speech starts
+                    if (transcribeClientRef.current?.isConnected() && !isPausedRef.current && !stopSignalSentRef.current) {
+                        stopSignalSentRef.current = true;
+                        transcribeClientRef.current.sendStop();
+                    }
+                }, SILENCE_THRESHOLD);
             }
         }
     }, [isRecording]);
@@ -325,12 +368,9 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
                         workletNode.connect(audioContext.destination);
 
                         // Listen to messages from AudioWorklet (PCM audio data)
+                        // Audio is always sent to backend - backend handles mute by skipping AWS forwarding
                         workletNode.port.onmessage = (event) => {
                             if (!client.isConnected()) return;
-                            // Skip sending audio when paused (for continuous mode processing)
-                            if (isPausedRef.current) {
-                                return;
-                            }
 
                             if (event.data.type === 'audio') {
                                 // Send raw PCM bytes as binary (including silence)
@@ -342,7 +382,7 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
                         // Set up VAD for speech detection (in 'click' mode)
                         if (recordMode === 'click') {
                             const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '3000', 10);
-                            let stopSignalSent = false;
+                            stopSignalSentRef.current = false;
 
                             const vad = await MicVAD.new({
                                 stream,
@@ -352,7 +392,10 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
                                 minSpeechFrames: 4,
                                 preSpeechPadFrames: 5,
                                 onSpeechStart: () => {
-                                    if (stopSignalSent) return;
+                                    if (stopSignalSentRef.current) return;
+                                    // Don't update speaking state if paused
+                                    if (isPausedRef.current) return;
+
                                     setIsSpeaking(true);
                                     hasDetectedSpeechRef.current = true;
 
@@ -363,7 +406,10 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
                                     }
                                 },
                                 onSpeechEnd: () => {
-                                    if (stopSignalSent) return;
+                                    if (stopSignalSentRef.current) return;
+                                    // Don't start silence timer if paused - we handle this in pauseRecording
+                                    if (isPausedRef.current) return;
+
                                     setIsSpeaking(false);
 
                                     // Clear any existing timeout
@@ -374,8 +420,9 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
                                     // Start silence timer - only stop if speech was detected
                                     if (hasDetectedSpeechRef.current) {
                                         silenceTimeoutRef.current = setTimeout(() => {
-                                            if (!stopSignalSent) {
-                                                stopSignalSent = true;
+                                            // Double-check we're not paused when timer fires
+                                            if (!stopSignalSentRef.current && !isPausedRef.current) {
+                                                stopSignalSentRef.current = true;
 
                                                 // Send stop signal - server will close connection after processing
                                                 // Don't disconnect worklet here, let onClose handle full cleanup
@@ -392,8 +439,9 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
                             // Start initial timeout - stops if user never speaks
                             const INITIAL_SPEECH_TIMEOUT = parseInt(import.meta.env.VITE_INITIAL_SPEECH_TIMEOUT || '10000', 10);
                             silenceTimeoutRef.current = setTimeout(() => {
-                                if (!stopSignalSent && !hasDetectedSpeechRef.current) {
-                                    stopSignalSent = true;
+                                // Don't stop if paused or if user has spoken
+                                if (!stopSignalSentRef.current && !hasDetectedSpeechRef.current && !isPausedRef.current) {
+                                    stopSignalSentRef.current = true;
                                     // Send stop signal - server will close connection
                                     // Don't disconnect worklet here, let onClose handle full cleanup
                                     client.sendStop();
