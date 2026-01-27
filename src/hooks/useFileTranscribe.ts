@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { MicVAD } from '@ricky0123/vad-web';
 import { toast } from './use-toast';
 import { fileTranscribeApi } from '../api/fileTranscribeApi';
 import type { FileTranscriptionResult } from '../api/fileTranscribeApi';
@@ -12,13 +13,29 @@ interface UseFileTranscribeOptions {
 }
 
 interface UseFileTranscribeReturn {
+    /** VAD is active, waiting for speech */
+    isListening: boolean;
+    /** Speech detected, currently recording */
+    isSpeaking: boolean;
+    /** Alias for isListening (backwards compatibility) */
     isRecording: boolean;
+    /** Audio is being transcribed */
     isTranscribing: boolean;
+    /** VAD is paused (muted) */
+    isPaused: boolean;
+    /** The active MediaStream (for visualization) */
+    mediaStream: MediaStream | null;
     transcriptionResult: TranscriptionResult | null;
+    /** Preload microphone stream and VAD model to eliminate startup delay */
     prepareRecording: () => void;
+    /** Cancel and cleanup preloaded resources */
     cancelPrepareRecording: () => Promise<void>;
     startRecording: (language: string) => Promise<void>;
     stopRecording: () => void;
+    /** Pause VAD detection (mute) */
+    pauseRecording: () => void;
+    /** Resume VAD detection (unmute) */
+    resumeRecording: () => void;
     transcribeFile: (file: File, language: string) => Promise<void>;
     clearResult: () => void;
 }
@@ -30,23 +47,45 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
     useEffect(() => {
         onTranscriptionCompleteRef.current = onTranscriptionComplete;
     }, [onTranscriptionComplete]);
-    const [isRecording, setIsRecording] = useState(false);
-    const [isTranscribing, setIsTranscribing] = useState(false);
-    const [transcriptionResult, setTranscriptionResult] = useState<TranscriptionResult | null>(null);
 
+    const [isListening, setIsListening] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
+    const [transcriptionResult, setTranscriptionResult] = useState<TranscriptionResult | null>(null);
+    const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+
+    // VAD refs
+    const vadRef = useRef<any>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+    const recordingLanguageRef = useRef<string>('es');
+    const isActiveRef = useRef<boolean>(false);
+
+    // MediaRecorder refs
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
-    const audioContextRef = useRef<AudioContext | null>(null);
-    const analyserRef = useRef<AnalyserNode | null>(null);
-    const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+    const isMediaRecordingRef = useRef<boolean>(false);
+
+    // Silence detection refs
     const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const detectionFrameIdRef = useRef<number | null>(null);
-    const streamRef = useRef<MediaStream | null>(null);
-    const recordingStartTimeRef = useRef<number>(0);
+    const muteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const hasDetectedSpeechRef = useRef<boolean>(false);
+    const wasSpeakingBeforePauseRef = useRef<boolean>(false);
+
+    // Callback refs for VAD (allows reusing preloaded VAD without recreating)
+    const speechStartCallbackRef = useRef<(() => void) | null>(null);
+    const speechEndCallbackRef = useRef<(() => void) | null>(null);
+
+    // Pre-warming refs
     const pendingStreamRequestRef = useRef<Promise<MediaStream> | null>(null);
-    const shouldStartRecordingRef = useRef<boolean>(false);
-    const stopRecordingRef = useRef<(() => void) | null>(null);
-    const recordingLanguageRef = useRef<string>('es');
+    const preloadedVadRef = useRef<any>(null);
+    const preloadedStreamRef = useRef<MediaStream | null>(null);
+    const isPreloadingRef = useRef<boolean>(false);
+
+    // Get silence thresholds from env
+    const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '3000', 10);
+    const INITIAL_SPEECH_TIMEOUT = parseInt(import.meta.env.VITE_INITIAL_SPEECH_TIMEOUT || '10000', 10);
+    const MUTE_TIMEOUT = parseInt(import.meta.env.VITE_MUTE_TIMEOUT || '30000', 10);
 
     /**
      * Transcribe an audio file using OpenAI API
@@ -55,7 +94,6 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
         try {
             setIsTranscribing(true);
 
-            // Validate file using API client
             const validation = fileTranscribeApi.validateFile(file);
             if (!validation.valid) {
                 toast({
@@ -66,320 +104,472 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
                 return;
             }
 
-            // Transcribe file using API client
-            // multipartClient automatically handles JWT token from sessionStorage
             const result = await fileTranscribeApi.transcribeFile(file, {
                 language_code: language
             });
 
             setTranscriptionResult(result);
 
-            // Call callback if provided (for auto-submit in continuous mode)
             if (onTranscriptionCompleteRef.current && result.transcript?.trim()) {
                 onTranscriptionCompleteRef.current(result.transcript);
             }
 
         } catch (error) {
             console.error('Error transcribing file:', error);
-
-            // multipartClient already shows toast notifications for errors
-            // Just clear any partial results
             setTranscriptionResult(null);
-
         } finally {
             setIsTranscribing(false);
         }
     }, []);
 
     /**
-     * Prepare recording by requesting microphone access early.
-     * This is called immediately on button press to reduce latency.
+     * Process recorded audio and transcribe
      */
-    const prepareRecording = useCallback(() => {
-        // Don't prepare if already recording or transcribing
-        if (isRecording || isTranscribing) {
-            return;
-        }
-
-        // Don't create duplicate requests
-        if (pendingStreamRequestRef.current) {
-            return;
-        }
-
-        // Start requesting microphone access immediately
-        pendingStreamRequestRef.current = navigator.mediaDevices.getUserMedia({
-            audio: {
-                channelCount: 1,
-                sampleRate: 16000,
-                echoCancellation: true,
-                noiseSuppression: true
+    const processRecordedAudio = useCallback(async () => {
+        if (audioChunksRef.current.length === 0) {
+            if (onTranscriptionCompleteRef.current) {
+                onTranscriptionCompleteRef.current('');
             }
-        });
-    }, [isRecording, isTranscribing]);
+            return;
+        }
+
+        // Detect mime type from MediaRecorder
+        const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        audioChunksRef.current = [];
+
+        // Get file extension
+        const getExtension = (mime: string): string => {
+            if (mime.includes('mp4')) return 'mp4';
+            if (mime.includes('mpeg')) return 'mp3';
+            if (mime.includes('wav')) return 'wav';
+            if (mime.includes('ogg')) return 'ogg';
+            if (mime.includes('webm')) return 'webm';
+            return 'webm';
+        };
+
+        const ext = getExtension(mimeType);
+        const audioFile = new File([audioBlob], `recording.${ext}`, { type: mimeType });
+
+        if (audioFile.size < 5000) {
+            if (onTranscriptionCompleteRef.current) {
+                onTranscriptionCompleteRef.current('');
+            }
+            return;
+        }
+
+        await transcribeFile(audioFile, recordingLanguageRef.current);
+    }, [transcribeFile]);
 
     /**
-     * Cancel prepared recording if user decides not to record
+     * Start MediaRecorder when speech is first detected
      */
-    const cancelPrepareRecording = useCallback(async () => {
-        shouldStartRecordingRef.current = false;
+    const startMediaRecorder = useCallback(() => {
+        if (isMediaRecordingRef.current || !streamRef.current) return;
 
-        // If there's a pending stream request, wait for it and clean up
-        if (pendingStreamRequestRef.current) {
-            try {
-                const stream = await pendingStreamRequestRef.current;
-                stream.getTracks().forEach(track => track.stop());
-            } catch (error) {
-                // Ignore errors (user might have denied permission)
+        const supportedTypes = [
+            'audio/webm;codecs=opus',
+            'audio/webm',
+            'audio/mp4',
+            'audio/ogg;codecs=opus',
+            'audio/ogg',
+        ];
+
+        let selectedMimeType = '';
+        for (const type of supportedTypes) {
+            if (MediaRecorder.isTypeSupported(type)) {
+                selectedMimeType = type;
+                break;
             }
-            pendingStreamRequestRef.current = null;
+        }
+
+        if (!selectedMimeType) {
+            console.error('[FILE-TRANSCRIBE] No supported audio format');
+            return;
+        }
+
+        const mediaRecorder = new MediaRecorder(streamRef.current, {
+            mimeType: selectedMimeType
+        });
+
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunksRef.current.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstop = () => {
+            isMediaRecordingRef.current = false;
+            processRecordedAudio();
+        };
+
+        audioChunksRef.current = [];
+        mediaRecorder.start(100); // Collect data every 100ms
+        mediaRecorderRef.current = mediaRecorder;
+        isMediaRecordingRef.current = true;
+    }, [processRecordedAudio]);
+
+    /**
+     * Stop MediaRecorder
+     */
+    const stopMediaRecorder = useCallback(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+        }
+        mediaRecorderRef.current = null;
+    }, []);
+
+    /**
+     * Handle initial timeout - stop if user never speaks
+     */
+    const handleInitialTimeout = useCallback(() => {
+        if (hasDetectedSpeechRef.current) return; // Speech was detected, ignore
+
+        silenceTimeoutRef.current = null;
+        isActiveRef.current = false;
+
+        if (vadRef.current) {
+            try {
+                vadRef.current.pause();
+                vadRef.current.destroy();
+            } catch (e) {
+                // Ignore if already destroyed
+            }
+            vadRef.current = null;
+        }
+
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+
+        setMediaStream(null);
+        setIsListening(false);
+        setIsSpeaking(false);
+
+        // Call callback with empty string to signal no speech
+        if (onTranscriptionCompleteRef.current) {
+            onTranscriptionCompleteRef.current('');
         }
     }, []);
 
     /**
-     * Start recording from microphone
+     * Handle silence timeout - stop everything and transcribe
+     */
+    const handleSilenceTimeout = useCallback(() => {
+        silenceTimeoutRef.current = null;
+
+        // Stop MediaRecorder (this triggers onstop which calls processRecordedAudio)
+        stopMediaRecorder();
+
+        // Stop VAD and stream
+        isActiveRef.current = false;
+
+        if (vadRef.current) {
+            try {
+                vadRef.current.pause();
+                vadRef.current.destroy();
+            } catch (e) {
+                // Ignore if already destroyed
+            }
+            vadRef.current = null;
+        }
+
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+
+        setMediaStream(null);
+        setIsListening(false);
+        setIsSpeaking(false);
+    }, [stopMediaRecorder]);
+
+    /**
+     * Handle speech start from VAD
+     */
+    const handleSpeechStart = useCallback(() => {
+        if (!isActiveRef.current) return;
+
+        setIsSpeaking(true);
+
+        // Cancel silence timer
+        if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+        }
+
+        // Start MediaRecorder on first speech detection
+        if (!hasDetectedSpeechRef.current) {
+            hasDetectedSpeechRef.current = true;
+            startMediaRecorder();
+        }
+    }, [startMediaRecorder]);
+
+    /**
+     * Handle speech end from VAD - start silence timer
+     */
+    const handleSpeechEnd = useCallback(() => {
+        if (!isActiveRef.current) return;
+
+        setIsSpeaking(false);
+
+        // Clear any existing timeout
+        if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+        }
+
+        // Start silence timer
+        silenceTimeoutRef.current = setTimeout(handleSilenceTimeout, SILENCE_THRESHOLD);
+    }, [SILENCE_THRESHOLD, handleSilenceTimeout]);
+
+    /**
+     * Stop everything
+     */
+    const stopRecording = useCallback(() => {
+        isActiveRef.current = false;
+
+        // Clear callback refs
+        speechStartCallbackRef.current = null;
+        speechEndCallbackRef.current = null;
+
+        // Clear silence timeout
+        if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+        }
+
+        // Clear mute timeout
+        if (muteTimeoutRef.current) {
+            clearTimeout(muteTimeoutRef.current);
+            muteTimeoutRef.current = null;
+        }
+
+        // Stop MediaRecorder (triggers transcription if recording)
+        if (isMediaRecordingRef.current) {
+            stopMediaRecorder();
+        }
+
+        // Stop VAD
+        if (vadRef.current) {
+            try {
+                vadRef.current.pause();
+                vadRef.current.destroy();
+            } catch (e) {
+                // Ignore if already destroyed
+            }
+            vadRef.current = null;
+        }
+
+        // Stop stream
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+
+        setMediaStream(null);
+        setIsListening(false);
+        setIsSpeaking(false);
+        setIsPaused(false);
+        hasDetectedSpeechRef.current = false;
+    }, [stopMediaRecorder]);
+
+    /**
+     * Abort recording silently - stops everything without triggering callbacks
+     */
+    const abortRecording = useCallback(() => {
+        isActiveRef.current = false;
+
+        // Clear callback refs
+        speechStartCallbackRef.current = null;
+        speechEndCallbackRef.current = null;
+
+        // Clear all timeouts
+        if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+        }
+        if (muteTimeoutRef.current) {
+            clearTimeout(muteTimeoutRef.current);
+            muteTimeoutRef.current = null;
+        }
+
+        // Stop MediaRecorder without triggering onstop callback
+        if (mediaRecorderRef.current) {
+            mediaRecorderRef.current.onstop = null; // Remove callback
+            if (mediaRecorderRef.current.state === 'recording') {
+                try {
+                    mediaRecorderRef.current.stop();
+                } catch (e) {
+                    // Ignore
+                }
+            }
+            mediaRecorderRef.current = null;
+        }
+        isMediaRecordingRef.current = false;
+        audioChunksRef.current = [];
+
+        // Stop VAD
+        if (vadRef.current) {
+            try {
+                vadRef.current.pause();
+                vadRef.current.destroy();
+            } catch (e) {
+                // Ignore if already destroyed
+            }
+            vadRef.current = null;
+        }
+
+        // Stop stream
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+
+        setMediaStream(null);
+        setIsListening(false);
+        setIsSpeaking(false);
+        setIsPaused(false);
+        hasDetectedSpeechRef.current = false;
+    }, []);
+
+    /**
+     * Pause VAD detection (mute) - keeps recording session active but pauses detection
+     */
+    const pauseRecording = useCallback(() => {
+        if (!isListening || isPaused) return;
+
+        // Clear any active silence timeout
+        if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+        }
+
+        // Remember if we were speaking before pause
+        wasSpeakingBeforePauseRef.current = isSpeaking;
+
+        // Pause VAD
+        if (vadRef.current) {
+            vadRef.current.pause();
+        }
+
+        setIsPaused(true);
+        setIsSpeaking(false);
+
+        // Start mute timeout - abort recording if muted too long (no callback triggered)
+        muteTimeoutRef.current = setTimeout(() => {
+            abortRecording();
+        }, MUTE_TIMEOUT);
+    }, [isListening, isPaused, isSpeaking, MUTE_TIMEOUT, abortRecording]);
+
+    /**
+     * Resume VAD detection (unmute)
+     */
+    const resumeRecording = useCallback(() => {
+        if (!isListening || !isPaused) return;
+
+        // Clear mute timeout since we're resuming
+        if (muteTimeoutRef.current) {
+            clearTimeout(muteTimeoutRef.current);
+            muteTimeoutRef.current = null;
+        }
+
+        // Resume VAD
+        if (vadRef.current) {
+            vadRef.current.start();
+        }
+
+        setIsPaused(false);
+
+        // If we weren't speaking before pause and haven't detected speech yet,
+        // restart the initial timeout
+        if (!hasDetectedSpeechRef.current) {
+            silenceTimeoutRef.current = setTimeout(handleInitialTimeout, INITIAL_SPEECH_TIMEOUT);
+        }
+    }, [isListening, isPaused, handleInitialTimeout, INITIAL_SPEECH_TIMEOUT]);
+
+    /**
+     * Start listening for voice using VAD
      */
     const startRecording = useCallback(async (language: string) => {
+        if (isListening || isTranscribing) {
+            console.warn('[FILE-TRANSCRIBE] Already listening or transcribing');
+            return;
+        }
+
         try {
-            // Safety check: ensure we're not already recording
-            if (isRecording) {
-                console.warn('Already recording, ignoring start request');
-                return;
-            }
-
-            // Don't start recording while transcribing
-            if (isTranscribing) {
-                console.warn('Cannot start recording while transcribing');
-                return;
-            }
-
-            // Store language for use in onstop handler
             recordingLanguageRef.current = language;
+            isActiveRef.current = true;
+            hasDetectedSpeechRef.current = false;
+            audioChunksRef.current = [];
 
-            // Mark that we want to record
-            shouldStartRecordingRef.current = true;
+            // Set up callback refs (used by preloaded VAD)
+            speechStartCallbackRef.current = handleSpeechStart;
+            speechEndCallbackRef.current = handleSpeechEnd;
 
-            // Use pending stream request if available, otherwise create new one
-            let streamPromise = pendingStreamRequestRef.current;
-            if (!streamPromise) {
-                streamPromise = navigator.mediaDevices.getUserMedia({
+            let stream: MediaStream;
+            let vad: any;
+
+            // Use preloaded VAD and stream if available (instant start)
+            if (preloadedVadRef.current && preloadedStreamRef.current) {
+                stream = preloadedStreamRef.current;
+                vad = preloadedVadRef.current;
+                preloadedStreamRef.current = null;
+                preloadedVadRef.current = null;
+                // Callbacks already set via refs, no need to recreate VAD
+            } else if (pendingStreamRequestRef.current) {
+                // Use pre-warmed stream if available (partial preload)
+                stream = await pendingStreamRequestRef.current;
+                pendingStreamRequestRef.current = null;
+
+                vad = await MicVAD.new({
+                    stream,
+                    positiveSpeechThreshold: 0.5,
+                    negativeSpeechThreshold: 0.35,
+                    redemptionFrames: 8,
+                    minSpeechFrames: 4,
+                    preSpeechPadFrames: 5,
+                    onSpeechStart: () => speechStartCallbackRef.current?.(),
+                    onSpeechEnd: () => speechEndCallbackRef.current?.(),
+                });
+            } else {
+                // No preload available, do full initialization
+                stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         channelCount: 1,
                         sampleRate: 16000,
                         echoCancellation: true,
-                        noiseSuppression: true
-                    }
+                        noiseSuppression: true,
+                        autoGainControl: true,
+                    },
+                });
+
+                vad = await MicVAD.new({
+                    stream,
+                    positiveSpeechThreshold: 0.5,
+                    negativeSpeechThreshold: 0.35,
+                    redemptionFrames: 8,
+                    minSpeechFrames: 4,
+                    preSpeechPadFrames: 5,
+                    onSpeechStart: () => speechStartCallbackRef.current?.(),
+                    onSpeechEnd: () => speechEndCallbackRef.current?.(),
                 });
             }
 
-            // Wait for stream to be ready
-            const stream = await streamPromise;
-
-            // Clear pending request
-            pendingStreamRequestRef.current = null;
-
-            // Check again if we should still record (user might have cancelled)
-            if (!shouldStartRecordingRef.current) {
-                // User cancelled, clean up stream
-                stream.getTracks().forEach(track => track.stop());
-                return;
-            }
-
-
             streamRef.current = stream;
-            audioChunksRef.current = [];
+            setMediaStream(stream);
+            setIsListening(true);
 
-            // Detect best supported audio format
-            // Note: Browser-generated files often have issues with OpenAI
-            // WebM/Opus works well with AWS, let's try it
-            const supportedTypes = [
-                'audio/webm;codecs=opus', // WebM with Opus - works with AWS
-                'audio/webm',          // WebM fallback
-                'audio/wav',           // WAV - most compatible but large
-                'audio/ogg;codecs=opus', // OGG with Opus
-                'audio/ogg',           // OGG fallback
-                'audio/mp4',           // MP4
-                'audio/mpeg'           // MP3
-            ];
+            vadRef.current = vad;
+            vad.start();
 
-            let selectedMimeType = '';
-            for (const type of supportedTypes) {
-                if (MediaRecorder.isTypeSupported(type)) {
-                    selectedMimeType = type;
-                    break;
-                }
-            }
-
-            if (!selectedMimeType) {
-                throw new Error('No supported audio format found');
-            }
-
-            // Create MediaRecorder with supported format
-            const mediaRecorder = new MediaRecorder(stream, {
-                mimeType: selectedMimeType
-            });
-
-            mediaRecorderRef.current = mediaRecorder;
-
-            // Get file extension from mime type
-            const getExtension = (mimeType: string): string => {
-                if (mimeType.includes('mp4')) return 'mp4';
-                if (mimeType.includes('mpeg')) return 'mp3';
-                if (mimeType.includes('wav')) return 'wav';
-                if (mimeType.includes('ogg')) return 'ogg';
-                if (mimeType.includes('webm')) return 'webm';
-                return 'mp4'; // default to mp4
-            };
-
-            const fileExtension = getExtension(selectedMimeType);
-            const actualMimeType = mediaRecorder.mimeType; // Get actual mimeType used
-
-            // Collect audio chunks
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    audioChunksRef.current.push(event.data);
-                }
-            };
-
-            // Handle recording stop - transcribe the audio
-            mediaRecorder.onstop = async () => {
-                // Calculate recording duration
-                const recordingDuration = Date.now() - recordingStartTimeRef.current;
-
-                // Validate minimum recording duration (500ms = 0.5 seconds)
-                const MIN_DURATION_MS = 500;
-                if (recordingDuration < MIN_DURATION_MS) {
-                    // Cleanup on validation failure
-                    audioChunksRef.current = [];
-                    recordingStartTimeRef.current = 0;
-                    setIsRecording(false);
-
-                    toast({
-                        title: "Grabación muy corta",
-                        description: `La grabación debe durar al menos ${MIN_DURATION_MS / 1000} segundos. Duración: ${(recordingDuration / 1000).toFixed(2)}s`,
-                        variant: "destructive"
-                    });
-                    return;
-                }
-
-                // Validate that we have audio chunks
-                if (audioChunksRef.current.length === 0) {
-                    // Cleanup on validation failure
-                    audioChunksRef.current = [];
-                    recordingStartTimeRef.current = 0;
-                    setIsRecording(false);
-
-                    toast({
-                        title: "Sin audio grabado",
-                        description: "No se capturó audio. Por favor intenta nuevamente.",
-                        variant: "destructive"
-                    });
-                    return;
-                }
-
-                // Use the actual mimeType from the recorder
-                const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
-
-                // Validate blob size (minimum ~5KB for meaningful audio)
-                if (audioBlob.size < 5000) {
-                    // Cleanup on validation failure
-                    audioChunksRef.current = [];
-                    recordingStartTimeRef.current = 0;
-                    setIsRecording(false);
-
-                    toast({
-                        title: "Audio insuficiente",
-                        description: `El archivo de audio es muy pequeño (${audioBlob.size} bytes). Por favor graba por más tiempo.`,
-                        variant: "destructive"
-                    });
-                    return;
-                }
-
-                const audioFile = new File([audioBlob], `recording.${fileExtension}`, { type: actualMimeType });
-
-                // Clear audio chunks for next recording
-                audioChunksRef.current = [];
-
-                // Transcribe the recorded file with error handling
-                try {
-                    await transcribeFile(audioFile, recordingLanguageRef.current);
-                } catch (error) {
-                    // Ensure transcription errors don't break future recordings
-                    console.error('Error in onstop handler:', error);
-
-                    // Full cleanup on transcription failure
-                    setIsTranscribing(false);
-                    setIsRecording(false);
-                    audioChunksRef.current = []; // Safety clear
-                    recordingStartTimeRef.current = 0; // Reset timer
-
-                    toast({
-                        title: "Error en transcripción",
-                        description: "No se pudo transcribir el audio. Intenta nuevamente.",
-                        variant: "destructive"
-                    });
-                }
-            };
-
-            // Start recording
-            recordingStartTimeRef.current = Date.now();
-            mediaRecorder.start(100); // Collect data every 100ms
-            setIsRecording(true);
-
-            // Reset the flag since we're now recording
-            shouldStartRecordingRef.current = false;
-
-            // Setup silence detection
-            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const analyser = audioContext.createAnalyser();
-            const source = audioContext.createMediaStreamSource(stream);
-
-            analyser.fftSize = 2048;
-            source.connect(analyser);
-
-            audioContextRef.current = audioContext;
-            analyserRef.current = analyser;
-            sourceRef.current = source;
-
-            const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '3000', 10);
-            const SILENCE_LEVEL = parseInt(import.meta.env.VITE_SILENCE_LEVEL || '15', 10);
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-            const detectSilence = () => {
-                if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') {
-                    return;
-                }
-
-                analyser.getByteFrequencyData(dataArray);
-                const sum = dataArray.reduce((a, b) => a + b, 0);
-                const average = sum / dataArray.length;
-
-                // If average volume is very low, consider it silence
-                if (average < SILENCE_LEVEL) {
-                    if (!silenceTimeoutRef.current) {
-                        silenceTimeoutRef.current = setTimeout(() => {
-                            // Stop recording after 5 seconds of silence
-                            // Use ref to always get the latest stopRecording function
-                            if (stopRecordingRef.current) {
-                                stopRecordingRef.current();
-                            }
-                        }, SILENCE_THRESHOLD);
-                    }
-                } else {
-                    // Clear timeout if sound detected
-                    if (silenceTimeoutRef.current) {
-                        clearTimeout(silenceTimeoutRef.current);
-                        silenceTimeoutRef.current = null;
-                    }
-                }
-
-                detectionFrameIdRef.current = requestAnimationFrame(detectSilence);
-            };
-
-            // Start silence detection
-            detectionFrameIdRef.current = requestAnimationFrame(detectSilence);
+            // Start initial timeout - stops if user never speaks
+            silenceTimeoutRef.current = setTimeout(handleInitialTimeout, INITIAL_SPEECH_TIMEOUT);
 
         } catch (error) {
-            console.error('Error starting recording:', error);
+            console.error('[FILE-TRANSCRIBE] Error starting:', error);
+            isActiveRef.current = false;
+            setIsListening(false);
 
             if (error instanceof DOMException && error.name === 'NotAllowedError') {
                 toast({
@@ -394,72 +584,8 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
                     variant: "destructive"
                 });
             }
-
-            setIsRecording(false);
         }
-    }, [transcribeFile, isRecording, isTranscribing]);
-
-    /**
-     * Stop recording
-     */
-    const stopRecording = useCallback(() => {
-        // Stop silence detection
-        if (detectionFrameIdRef.current !== null) {
-            cancelAnimationFrame(detectionFrameIdRef.current);
-            detectionFrameIdRef.current = null;
-        }
-
-        if (silenceTimeoutRef.current) {
-            clearTimeout(silenceTimeoutRef.current);
-            silenceTimeoutRef.current = null;
-        }
-
-        // Stop MediaRecorder
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-            mediaRecorderRef.current.stop();
-        }
-        // Clear MediaRecorder ref
-        mediaRecorderRef.current = null;
-
-        // Stop media stream
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-        }
-
-        // Clean up audio context
-        if (sourceRef.current) {
-            sourceRef.current.disconnect();
-            sourceRef.current = null;
-        }
-
-        if (analyserRef.current) {
-            analyserRef.current.disconnect();
-            analyserRef.current = null;
-        }
-
-        if (audioContextRef.current) {
-            if (audioContextRef.current.state !== 'closed') {
-                audioContextRef.current.close().catch(() => {
-                    // Ignore errors closing audio context
-                });
-            }
-            audioContextRef.current = null;
-        }
-
-        // Reset recording start time - CRITICAL for subsequent recordings
-        // Note: audioChunksRef is cleared by the onstop handler, not here
-        recordingStartTimeRef.current = 0;
-        shouldStartRecordingRef.current = false;
-        pendingStreamRequestRef.current = null;
-
-        setIsRecording(false);
-    }, []);
-
-    // Update ref whenever stopRecording changes
-    useEffect(() => {
-        stopRecordingRef.current = stopRecording;
-    }, [stopRecording]);
+    }, [isListening, isTranscribing, handleSpeechStart, handleSpeechEnd, handleInitialTimeout, INITIAL_SPEECH_TIMEOUT]);
 
     /**
      * Clear transcription result
@@ -471,18 +597,159 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
     // Cleanup on unmount
     useEffect(() => {
         return () => {
-            stopRecording();
+            if (silenceTimeoutRef.current) {
+                clearTimeout(silenceTimeoutRef.current);
+            }
+            if (muteTimeoutRef.current) {
+                clearTimeout(muteTimeoutRef.current);
+            }
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                try {
+                    mediaRecorderRef.current.stop();
+                } catch (e) {
+                    // Ignore
+                }
+            }
+            if (vadRef.current) {
+                try {
+                    vadRef.current.pause();
+                    vadRef.current.destroy();
+                } catch (e) {
+                    // Ignore if already destroyed
+                }
+            }
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
+            // Cleanup preloaded resources
+            if (preloadedVadRef.current) {
+                try {
+                    preloadedVadRef.current.destroy();
+                } catch (e) {
+                    // Ignore if already destroyed
+                }
+            }
+            if (preloadedStreamRef.current) {
+                preloadedStreamRef.current.getTracks().forEach(track => track.stop());
+            }
         };
-    }, [stopRecording]);
+    }, []);
+
+    /**
+     * Prepare recording by requesting microphone access and preloading VAD model.
+     * This eliminates the 1-2 second delay when starting recording.
+     */
+    const prepareRecording = useCallback(async () => {
+        // Don't prepare if already listening or transcribing
+        if (isListening || isTranscribing) {
+            return;
+        }
+
+        // Don't create duplicate preload requests
+        if (isPreloadingRef.current) {
+            return;
+        }
+
+        // Already preloaded and ready
+        if (preloadedVadRef.current && preloadedStreamRef.current) {
+            return;
+        }
+
+        isPreloadingRef.current = true;
+
+        try {
+            // Request microphone access
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    channelCount: 1,
+                    sampleRate: 16000,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                },
+            });
+
+            preloadedStreamRef.current = stream;
+
+            // Preload VAD with the stream (this loads the ONNX model)
+            // Use refs for callbacks so they can be updated without recreating VAD
+            const vad = await MicVAD.new({
+                stream,
+                positiveSpeechThreshold: 0.5,
+                negativeSpeechThreshold: 0.35,
+                redemptionFrames: 8,
+                minSpeechFrames: 4,
+                preSpeechPadFrames: 5,
+                onSpeechStart: () => {
+                    speechStartCallbackRef.current?.();
+                },
+                onSpeechEnd: () => {
+                    speechEndCallbackRef.current?.();
+                },
+            });
+
+            // Pause VAD immediately - it starts automatically on creation
+            vad.pause();
+            preloadedVadRef.current = vad;
+
+        } catch (error) {
+            console.warn('[FILE-TRANSCRIBE] Preload failed:', error);
+            // Clean up on failure
+            if (preloadedStreamRef.current) {
+                preloadedStreamRef.current.getTracks().forEach(track => track.stop());
+                preloadedStreamRef.current = null;
+            }
+        } finally {
+            isPreloadingRef.current = false;
+        }
+    }, [isListening, isTranscribing]);
+
+    /**
+     * Cancel prepared recording if user decides not to record
+     */
+    const cancelPrepareRecording = useCallback(async () => {
+        // Clean up preloaded VAD
+        if (preloadedVadRef.current) {
+            try {
+                preloadedVadRef.current.destroy();
+            } catch (e) {
+                // Ignore errors if already destroyed
+            }
+            preloadedVadRef.current = null;
+        }
+
+        // Clean up preloaded stream
+        if (preloadedStreamRef.current) {
+            preloadedStreamRef.current.getTracks().forEach(track => track.stop());
+            preloadedStreamRef.current = null;
+        }
+
+        // If there's a pending stream request, wait for it and clean up
+        if (pendingStreamRequestRef.current) {
+            try {
+                const stream = await pendingStreamRequestRef.current;
+                stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                // Ignore errors (user might have denied permission)
+            }
+            pendingStreamRequestRef.current = null;
+        }
+    }, []);
 
     return {
-        isRecording,
+        isListening,
+        isSpeaking,
+        isRecording: isListening,
         isTranscribing,
+        isPaused,
+        mediaStream,
         transcriptionResult,
         prepareRecording,
         cancelPrepareRecording,
         startRecording,
         stopRecording,
+        pauseRecording,
+        resumeRecording,
         transcribeFile,
         clearResult
     };

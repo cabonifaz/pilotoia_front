@@ -14,6 +14,7 @@ import { FileTranscribeButton } from './FileTranscribeButton';
 import { ContinuousVoiceButton } from './ContinuousVoiceButton';
 import { ContinuousFileTranscribeButton } from './ContinuousFileTranscribeButton';
 import { CommandMenu } from './CommandMenu';
+import { RecordingWaveform } from './RecordingWaveform';
 import { useCommand } from '../../contexts/CommandContext';
 import { useTranscription } from '../../contexts/TranscriptionContext';
 import {
@@ -49,15 +50,21 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     isConnecting,
     onMicrophoneClick,
     isFileRecording,
+    isFileSpeaking,
     isFileTranscribing,
+    fileMediaStream,
+    onPrepareRecording,
     onStartRecording,
     onStopRecording,
     isContinuousRecording,
     isContinuousConnecting,
     onContinuousVoiceClick,
     isContinuousFileRecording,
+    isContinuousFileSpeaking,
     isContinuousFileTranscribing,
     onContinuousFileClick,
+    isMuted,
+    onMuteToggle,
   } = useTranscription();
 
   /* ---------------- TEXTAREA AUTO-RESIZE ---------------- */
@@ -102,34 +109,42 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     <div className="p-1">
       <div className="flex flex-col border border-muted-foreground/30 rounded-3xl px-1 pt-2 pb-1">
         {/* TEXTAREA - top */}
-        <Textarea
-          ref={textareaRef}
-          value={userQuery}
-          onChange={handleChange}
-          placeholder={`Escribe tu consulta sobre ${company} • ${area}`}
-          disabled={isLoading}
-          rows={1}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              currentMainActionRef.current();
-            }
-          }}
-          className="
-            resize-none
-            w-full
-            text-xs
-            leading-normal
-            overflow-y-auto
-            border-0
-            focus-visible:ring-0
-            focus-visible:ring-offset-0
-            px-3
-            py-1
-            min-h-[1.5rem]
-            max-h-[3.5rem]
-          "
-        />
+        <div className="relative">
+          <Textarea
+            ref={textareaRef}
+            value={userQuery}
+            onChange={handleChange}
+            placeholder={`Escribe tu consulta sobre ${company} • ${area}`}
+            disabled={isLoading}
+            rows={1}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                currentMainActionRef.current();
+              }
+            }}
+            className="
+              resize-none
+              w-full
+              text-xs
+              leading-normal
+              overflow-y-auto
+              border-0
+              focus-visible:ring-0
+              focus-visible:ring-offset-0
+              px-3
+              py-1
+              min-h-[1.5rem]
+              max-h-[3.5rem]
+            "
+          />
+          <RecordingWaveform
+            isListening={isFileRecording || isContinuousFileRecording}
+            isSpeaking={isFileSpeaking || isContinuousFileSpeaking}
+            isPaused={isMuted}
+            mediaStream={fileMediaStream}
+          />
+        </div>
 
         {/* CONTROLS ROW - bottom */}
         <div className="flex items-center justify-between pt-1">
@@ -184,9 +199,15 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                     <VoiceRecordButton
                       isRecording={isRecording}
                       isConnecting={isConnecting}
-                      isDisabled={isLoading || isContinuousRecording}
+                      isDisabled={isLoading}
                       onClick={() => {
                         onMicrophoneClick();
+                        textareaRef.current?.focus();
+                      }}
+                      isMuteMode={isContinuousRecording}
+                      isMuted={isMuted}
+                      onMuteToggle={() => {
+                        onMuteToggle();
                         textareaRef.current?.focus();
                       }}
                     />
@@ -205,11 +226,18 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                     <FileTranscribeButton
                       isRecording={isFileRecording}
                       isTranscribing={isFileTranscribing}
-                      isDisabled={isLoading || isContinuousFileRecording}
+                      isDisabled={isLoading}
+                      onMouseEnter={onPrepareRecording}
                       onClick={() => {
                         isFileRecording
                           ? onStopRecording()
                           : onStartRecording();
+                        textareaRef.current?.focus();
+                      }}
+                      isMuteMode={isContinuousFileRecording}
+                      isMuted={isMuted}
+                      onMuteToggle={() => {
+                        onMuteToggle();
                         textareaRef.current?.focus();
                       }}
                     />
@@ -217,6 +245,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                       isRecording={isContinuousFileRecording}
                       isTranscribing={isContinuousFileTranscribing}
                       isDisabled={isLoading || isFileRecording}
+                      onMouseEnter={onPrepareRecording}
                       onClick={() => {
                         onContinuousFileClick();
                         textareaRef.current?.focus();
