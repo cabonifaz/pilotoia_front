@@ -21,6 +21,8 @@ interface UseFileTranscribeReturn {
     isRecording: boolean;
     /** Audio is being transcribed */
     isTranscribing: boolean;
+    /** VAD is paused (muted) */
+    isPaused: boolean;
     /** The active MediaStream (for visualization) */
     mediaStream: MediaStream | null;
     transcriptionResult: TranscriptionResult | null;
@@ -30,6 +32,10 @@ interface UseFileTranscribeReturn {
     cancelPrepareRecording: () => Promise<void>;
     startRecording: (language: string) => Promise<void>;
     stopRecording: () => void;
+    /** Pause VAD detection (mute) */
+    pauseRecording: () => void;
+    /** Resume VAD detection (unmute) */
+    resumeRecording: () => void;
     transcribeFile: (file: File, language: string) => Promise<void>;
     clearResult: () => void;
 }
@@ -45,6 +51,7 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
     const [isListening, setIsListening] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
     const [transcriptionResult, setTranscriptionResult] = useState<TranscriptionResult | null>(null);
     const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
 
@@ -62,6 +69,7 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
     // Silence detection refs
     const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const hasDetectedSpeechRef = useRef<boolean>(false);
+    const wasSpeakingBeforePauseRef = useRef<boolean>(false);
 
     // Pre-warming refs
     const pendingStreamRequestRef = useRef<Promise<MediaStream> | null>(null);
@@ -331,8 +339,53 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
         setMediaStream(null);
         setIsListening(false);
         setIsSpeaking(false);
+        setIsPaused(false);
         hasDetectedSpeechRef.current = false;
     }, [stopMediaRecorder]);
+
+    /**
+     * Pause VAD detection (mute) - keeps recording session active but pauses detection
+     */
+    const pauseRecording = useCallback(() => {
+        if (!isListening || isPaused) return;
+
+        // Clear any active silence timeout
+        if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+        }
+
+        // Remember if we were speaking before pause
+        wasSpeakingBeforePauseRef.current = isSpeaking;
+
+        // Pause VAD
+        if (vadRef.current) {
+            vadRef.current.pause();
+        }
+
+        setIsPaused(true);
+        setIsSpeaking(false);
+    }, [isListening, isPaused, isSpeaking]);
+
+    /**
+     * Resume VAD detection (unmute)
+     */
+    const resumeRecording = useCallback(() => {
+        if (!isListening || !isPaused) return;
+
+        // Resume VAD
+        if (vadRef.current) {
+            vadRef.current.start();
+        }
+
+        setIsPaused(false);
+
+        // If we weren't speaking before pause and haven't detected speech yet,
+        // restart the initial timeout
+        if (!hasDetectedSpeechRef.current) {
+            silenceTimeoutRef.current = setTimeout(handleInitialTimeout, INITIAL_SPEECH_TIMEOUT);
+        }
+    }, [isListening, isPaused, handleInitialTimeout, INITIAL_SPEECH_TIMEOUT]);
 
     /**
      * Start listening for voice using VAD
@@ -483,12 +536,15 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
         isSpeaking,
         isRecording: isListening,
         isTranscribing,
+        isPaused,
         mediaStream,
         transcriptionResult,
         prepareRecording,
         cancelPrepareRecording,
         startRecording,
         stopRecording,
+        pauseRecording,
+        resumeRecording,
         transcribeFile,
         clearResult
     };

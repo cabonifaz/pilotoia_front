@@ -30,6 +30,10 @@ interface TranscriptionContextType {
   isContinuousFileSpeaking: boolean;
   isContinuousFileTranscribing: boolean;
   onContinuousFileClick: () => void;
+
+  // Mute state (for continuous modes)
+  isMuted: boolean;
+  onMuteToggle: () => void;
 }
 
 const TranscriptionContext = createContext<TranscriptionContextType | undefined>(undefined);
@@ -65,6 +69,10 @@ interface TranscriptionProviderProps {
   isContinuousFileSpeaking: boolean;
   isContinuousFileTranscribing: boolean;
   onContinuousFileClick: () => void;
+
+  // Mute state (for continuous modes)
+  isMuted: boolean;
+  onMuteToggle: () => void;
 }
 
 export const TranscriptionProvider = ({
@@ -88,6 +96,8 @@ export const TranscriptionProvider = ({
   isContinuousFileSpeaking,
   isContinuousFileTranscribing,
   onContinuousFileClick,
+  isMuted,
+  onMuteToggle,
 }: TranscriptionProviderProps) => {
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<TranscriptionContextType>(
@@ -111,6 +121,8 @@ export const TranscriptionProvider = ({
       isContinuousFileSpeaking,
       isContinuousFileTranscribing,
       onContinuousFileClick,
+      isMuted,
+      onMuteToggle,
     }),
     [
       transcribeProvider,
@@ -132,6 +144,8 @@ export const TranscriptionProvider = ({
       isContinuousFileSpeaking,
       isContinuousFileTranscribing,
       onContinuousFileClick,
+      isMuted,
+      onMuteToggle,
     ]
   );
 

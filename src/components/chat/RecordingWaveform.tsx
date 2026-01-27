@@ -7,11 +7,13 @@ interface RecordingWaveformProps {
   isListening: boolean;
   /** VAD detected speech - user is speaking */
   isSpeaking: boolean;
+  /** VAD is paused (muted) */
+  isPaused?: boolean;
   /** MediaStream from the microphone */
   mediaStream: MediaStream | null;
 }
 
-export const RecordingWaveform = ({ isListening, isSpeaking, mediaStream }: RecordingWaveformProps) => {
+export const RecordingWaveform = ({ isListening, isSpeaking, isPaused = false, mediaStream }: RecordingWaveformProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const recordPluginRef = useRef<ReturnType<typeof RecordPlugin.create> | null>(null);
@@ -76,13 +78,35 @@ export const RecordingWaveform = ({ isListening, isSpeaking, mediaStream }: Reco
     };
   }, [isListening, mediaStream]);
 
+  // Pause/resume waveform visualization when muted/unmuted
+  useEffect(() => {
+    if (!micStreamRef.current || !mediaStream) return;
+
+    // Mute/unmute the audio tracks to stop waveform movement
+    mediaStream.getAudioTracks().forEach(track => {
+      track.enabled = !isPaused;
+    });
+  }, [isPaused, mediaStream]);
+
   if (!isListening) return null;
+
+  const getStatusText = () => {
+    if (isPaused) return 'Silenciado';
+    if (isSpeaking) return 'Grabando...';
+    return 'Escuchando...';
+  };
+
+  const getStatusColor = () => {
+    if (isPaused) return 'text-destructive';
+    if (isSpeaking) return 'text-primary';
+    return 'text-muted-foreground';
+  };
 
   return (
     <div className="absolute inset-0 flex items-center bg-background/95 rounded-lg px-3 gap-2">
-      <div ref={containerRef} className="flex-1 h-8" />
-      <span className={`text-xs whitespace-nowrap ${isSpeaking ? 'text-primary' : 'text-muted-foreground'}`}>
-        {isSpeaking ? 'Grabando...' : 'Escuchando...'}
+      <div ref={containerRef} className={`flex-1 h-8 ${isPaused ? 'opacity-30' : ''}`} />
+      <span className={`text-xs whitespace-nowrap ${getStatusColor()}`}>
+        {getStatusText()}
       </span>
     </div>
   );

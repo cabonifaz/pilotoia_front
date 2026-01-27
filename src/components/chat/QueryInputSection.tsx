@@ -62,6 +62,8 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     isContinuousFileSpeaking,
     isContinuousFileTranscribing,
     onContinuousFileClick,
+    isMuted,
+    onMuteToggle,
   } = useTranscription();
 
   /* ---------------- TEXTAREA AUTO-RESIZE ---------------- */
@@ -138,6 +140,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
           <RecordingWaveform
             isListening={isFileRecording || isContinuousFileRecording}
             isSpeaking={isFileSpeaking || isContinuousFileSpeaking}
+            isPaused={isMuted}
             mediaStream={fileMediaStream}
           />
         </div>
@@ -195,9 +198,15 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                     <VoiceRecordButton
                       isRecording={isRecording}
                       isConnecting={isConnecting}
-                      isDisabled={isLoading || isContinuousRecording}
+                      isDisabled={isLoading}
                       onClick={() => {
                         onMicrophoneClick();
+                        textareaRef.current?.focus();
+                      }}
+                      isMuteMode={isContinuousRecording}
+                      isMuted={isMuted}
+                      onMuteToggle={() => {
+                        onMuteToggle();
                         textareaRef.current?.focus();
                       }}
                     />
@@ -216,11 +225,17 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                     <FileTranscribeButton
                       isRecording={isFileRecording}
                       isTranscribing={isFileTranscribing}
-                      isDisabled={isLoading || isContinuousFileRecording}
+                      isDisabled={isLoading}
                       onClick={() => {
                         isFileRecording
                           ? onStopRecording()
                           : onStartRecording();
+                        textareaRef.current?.focus();
+                      }}
+                      isMuteMode={isContinuousFileRecording}
+                      isMuted={isMuted}
+                      onMuteToggle={() => {
+                        onMuteToggle();
                         textareaRef.current?.focus();
                       }}
                     />

@@ -177,11 +177,14 @@ const ChatComponent = ({
     isRecording: isFileRecording,
     isSpeaking: isFileSpeaking,
     isTranscribing: isFileTranscribing,
+    isPaused: isFilePaused,
     mediaStream: fileMediaStream,
     transcriptionResult: fileTranscriptionResult,
     prepareRecording: prepareFileRecording,
     startRecording: startFileRecording,
     stopRecording: stopFileRecording,
+    pauseRecording: pauseFileRecording,
+    resumeRecording: resumeFileRecording,
   } = useFileTranscribe({
     onTranscriptionComplete: (transcript) => {
 
@@ -370,6 +373,18 @@ const ChatComponent = ({
     setTtsEnabled(enabled);
   };
 
+  // Mute toggle handler - pauses/resumes VAD detection
+  const handleMuteToggle = useCallback(() => {
+    if (isContinuousFileMode) {
+      if (isFilePaused) {
+        resumeFileRecording();
+      } else {
+        pauseFileRecording();
+      }
+    }
+    // For AWS streaming, we could add similar logic if there's pause/resume support
+  }, [isContinuousFileMode, isFilePaused, pauseFileRecording, resumeFileRecording]);
+
   const chatQuery = useCallback(async () => {
     if (!userQuery.trim()) return;
 
@@ -533,6 +548,8 @@ const ChatComponent = ({
         isContinuousFileSpeaking={isFileSpeaking && isContinuousFileMode}
         isContinuousFileTranscribing={isFileTranscribing && isContinuousFileMode}
         onContinuousFileClick={handleContinuousFileClick}
+        isMuted={isFilePaused}
+        onMuteToggle={handleMuteToggle}
       >
         <div className="h-full flex flex-col">
           {isLoadingMessages ? (
