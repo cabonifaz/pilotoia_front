@@ -26,9 +26,9 @@ interface UseFileTranscribeReturn {
     /** The active MediaStream (for visualization) */
     mediaStream: MediaStream | null;
     transcriptionResult: TranscriptionResult | null;
-    /** No-op for backwards compatibility (VAD doesn't need preparation) */
+    /** Preload microphone stream and VAD model to eliminate startup delay */
     prepareRecording: () => void;
-    /** No-op for backwards compatibility */
+    /** Cancel and cleanup preloaded resources */
     cancelPrepareRecording: () => Promise<void>;
     startRecording: (language: string) => Promise<void>;
     stopRecording: () => void;
@@ -72,8 +72,15 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
     const hasDetectedSpeechRef = useRef<boolean>(false);
     const wasSpeakingBeforePauseRef = useRef<boolean>(false);
 
+    // Callback refs for VAD (allows reusing preloaded VAD without recreating)
+    const speechStartCallbackRef = useRef<(() => void) | null>(null);
+    const speechEndCallbackRef = useRef<(() => void) | null>(null);
+
     // Pre-warming refs
     const pendingStreamRequestRef = useRef<Promise<MediaStream> | null>(null);
+    const preloadedVadRef = useRef<any>(null);
+    const preloadedStreamRef = useRef<MediaStream | null>(null);
+    const isPreloadingRef = useRef<boolean>(false);
 
     // Get silence thresholds from env
     const SILENCE_THRESHOLD = parseInt(import.meta.env.VITE_SILENCE_THRESHOLD || '3000', 10);
@@ -222,8 +229,12 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
         isActiveRef.current = false;
 
         if (vadRef.current) {
-            vadRef.current.pause();
-            vadRef.current.destroy();
+            try {
+                vadRef.current.pause();
+                vadRef.current.destroy();
+            } catch (e) {
+                // Ignore if already destroyed
+            }
             vadRef.current = null;
         }
 
@@ -255,8 +266,12 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
         isActiveRef.current = false;
 
         if (vadRef.current) {
-            vadRef.current.pause();
-            vadRef.current.destroy();
+            try {
+                vadRef.current.pause();
+                vadRef.current.destroy();
+            } catch (e) {
+                // Ignore if already destroyed
+            }
             vadRef.current = null;
         }
 
@@ -314,6 +329,10 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
     const stopRecording = useCallback(() => {
         isActiveRef.current = false;
 
+        // Clear callback refs
+        speechStartCallbackRef.current = null;
+        speechEndCallbackRef.current = null;
+
         // Clear silence timeout
         if (silenceTimeoutRef.current) {
             clearTimeout(silenceTimeoutRef.current);
@@ -333,8 +352,12 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
 
         // Stop VAD
         if (vadRef.current) {
-            vadRef.current.pause();
-            vadRef.current.destroy();
+            try {
+                vadRef.current.pause();
+                vadRef.current.destroy();
+            } catch (e) {
+                // Ignore if already destroyed
+            }
             vadRef.current = null;
         }
 
@@ -357,6 +380,10 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
     const abortRecording = useCallback(() => {
         isActiveRef.current = false;
 
+        // Clear callback refs
+        speechStartCallbackRef.current = null;
+        speechEndCallbackRef.current = null;
+
         // Clear all timeouts
         if (silenceTimeoutRef.current) {
             clearTimeout(silenceTimeoutRef.current);
@@ -371,7 +398,11 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
         if (mediaRecorderRef.current) {
             mediaRecorderRef.current.onstop = null; // Remove callback
             if (mediaRecorderRef.current.state === 'recording') {
-                mediaRecorderRef.current.stop();
+                try {
+                    mediaRecorderRef.current.stop();
+                } catch (e) {
+                    // Ignore
+                }
             }
             mediaRecorderRef.current = null;
         }
@@ -380,8 +411,12 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
 
         // Stop VAD
         if (vadRef.current) {
-            vadRef.current.pause();
-            vadRef.current.destroy();
+            try {
+                vadRef.current.pause();
+                vadRef.current.destroy();
+            } catch (e) {
+                // Ignore if already destroyed
+            }
             vadRef.current = null;
         }
 
@@ -468,12 +503,37 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
             hasDetectedSpeechRef.current = false;
             audioChunksRef.current = [];
 
-            // Use pre-warmed stream if available, otherwise request microphone
+            // Set up callback refs (used by preloaded VAD)
+            speechStartCallbackRef.current = handleSpeechStart;
+            speechEndCallbackRef.current = handleSpeechEnd;
+
             let stream: MediaStream;
-            if (pendingStreamRequestRef.current) {
+            let vad: any;
+
+            // Use preloaded VAD and stream if available (instant start)
+            if (preloadedVadRef.current && preloadedStreamRef.current) {
+                stream = preloadedStreamRef.current;
+                vad = preloadedVadRef.current;
+                preloadedStreamRef.current = null;
+                preloadedVadRef.current = null;
+                // Callbacks already set via refs, no need to recreate VAD
+            } else if (pendingStreamRequestRef.current) {
+                // Use pre-warmed stream if available (partial preload)
                 stream = await pendingStreamRequestRef.current;
                 pendingStreamRequestRef.current = null;
+
+                vad = await MicVAD.new({
+                    stream,
+                    positiveSpeechThreshold: 0.5,
+                    negativeSpeechThreshold: 0.35,
+                    redemptionFrames: 8,
+                    minSpeechFrames: 4,
+                    preSpeechPadFrames: 5,
+                    onSpeechStart: () => speechStartCallbackRef.current?.(),
+                    onSpeechEnd: () => speechEndCallbackRef.current?.(),
+                });
             } else {
+                // No preload available, do full initialization
                 stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         channelCount: 1,
@@ -483,23 +543,22 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
                         autoGainControl: true,
                     },
                 });
+
+                vad = await MicVAD.new({
+                    stream,
+                    positiveSpeechThreshold: 0.5,
+                    negativeSpeechThreshold: 0.35,
+                    redemptionFrames: 8,
+                    minSpeechFrames: 4,
+                    preSpeechPadFrames: 5,
+                    onSpeechStart: () => speechStartCallbackRef.current?.(),
+                    onSpeechEnd: () => speechEndCallbackRef.current?.(),
+                });
             }
 
             streamRef.current = stream;
             setMediaStream(stream);
             setIsListening(true);
-
-            // Create VAD instance
-            const vad = await MicVAD.new({
-                stream,
-                positiveSpeechThreshold: 0.5,
-                negativeSpeechThreshold: 0.35,
-                redemptionFrames: 8,
-                minSpeechFrames: 4,
-                preSpeechPadFrames: 5,
-                onSpeechStart: handleSpeechStart,
-                onSpeechEnd: handleSpeechEnd,
-            });
 
             vadRef.current = vad;
             vad.start();
@@ -545,49 +604,126 @@ export const useFileTranscribe = (options: UseFileTranscribeOptions = {}): UseFi
                 clearTimeout(muteTimeoutRef.current);
             }
             if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-                mediaRecorderRef.current.stop();
+                try {
+                    mediaRecorderRef.current.stop();
+                } catch (e) {
+                    // Ignore
+                }
             }
             if (vadRef.current) {
-                vadRef.current.pause();
-                vadRef.current.destroy();
+                try {
+                    vadRef.current.pause();
+                    vadRef.current.destroy();
+                } catch (e) {
+                    // Ignore if already destroyed
+                }
             }
             if (streamRef.current) {
                 streamRef.current.getTracks().forEach(track => track.stop());
+            }
+            // Cleanup preloaded resources
+            if (preloadedVadRef.current) {
+                try {
+                    preloadedVadRef.current.destroy();
+                } catch (e) {
+                    // Ignore if already destroyed
+                }
+            }
+            if (preloadedStreamRef.current) {
+                preloadedStreamRef.current.getTracks().forEach(track => track.stop());
             }
         };
     }, []);
 
     /**
-     * Prepare recording by requesting microphone access early.
-     * This reduces latency when starting recording.
+     * Prepare recording by requesting microphone access and preloading VAD model.
+     * This eliminates the 1-2 second delay when starting recording.
      */
-    const prepareRecording = useCallback(() => {
+    const prepareRecording = useCallback(async () => {
         // Don't prepare if already listening or transcribing
         if (isListening || isTranscribing) {
             return;
         }
 
-        // Don't create duplicate stream requests
-        if (pendingStreamRequestRef.current) {
+        // Don't create duplicate preload requests
+        if (isPreloadingRef.current) {
             return;
         }
 
-        // Start requesting microphone access immediately
-        pendingStreamRequestRef.current = navigator.mediaDevices.getUserMedia({
-            audio: {
-                channelCount: 1,
-                sampleRate: 16000,
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-            },
-        });
+        // Already preloaded and ready
+        if (preloadedVadRef.current && preloadedStreamRef.current) {
+            return;
+        }
+
+        isPreloadingRef.current = true;
+
+        try {
+            // Request microphone access
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    channelCount: 1,
+                    sampleRate: 16000,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                },
+            });
+
+            preloadedStreamRef.current = stream;
+
+            // Preload VAD with the stream (this loads the ONNX model)
+            // Use refs for callbacks so they can be updated without recreating VAD
+            const vad = await MicVAD.new({
+                stream,
+                positiveSpeechThreshold: 0.5,
+                negativeSpeechThreshold: 0.35,
+                redemptionFrames: 8,
+                minSpeechFrames: 4,
+                preSpeechPadFrames: 5,
+                onSpeechStart: () => {
+                    speechStartCallbackRef.current?.();
+                },
+                onSpeechEnd: () => {
+                    speechEndCallbackRef.current?.();
+                },
+            });
+
+            // Pause VAD immediately - it starts automatically on creation
+            vad.pause();
+            preloadedVadRef.current = vad;
+
+        } catch (error) {
+            console.warn('[FILE-TRANSCRIBE] Preload failed:', error);
+            // Clean up on failure
+            if (preloadedStreamRef.current) {
+                preloadedStreamRef.current.getTracks().forEach(track => track.stop());
+                preloadedStreamRef.current = null;
+            }
+        } finally {
+            isPreloadingRef.current = false;
+        }
     }, [isListening, isTranscribing]);
 
     /**
      * Cancel prepared recording if user decides not to record
      */
     const cancelPrepareRecording = useCallback(async () => {
+        // Clean up preloaded VAD
+        if (preloadedVadRef.current) {
+            try {
+                preloadedVadRef.current.destroy();
+            } catch (e) {
+                // Ignore errors if already destroyed
+            }
+            preloadedVadRef.current = null;
+        }
+
+        // Clean up preloaded stream
+        if (preloadedStreamRef.current) {
+            preloadedStreamRef.current.getTracks().forEach(track => track.stop());
+            preloadedStreamRef.current = null;
+        }
+
         // If there's a pending stream request, wait for it and clean up
         if (pendingStreamRequestRef.current) {
             try {

@@ -6,6 +6,7 @@ interface FileTranscribeButtonProps {
   isRecording: boolean;
   isTranscribing: boolean;
   isDisabled?: boolean;
+  onMouseEnter?: () => void;
   onClick: () => void;
   // Mute mode props (when continuous recording is active)
   isMuteMode?: boolean;
@@ -17,6 +18,7 @@ export const FileTranscribeButton = ({
   isRecording,
   isTranscribing,
   isDisabled = false,
+  onMouseEnter,
   onClick,
   isMuteMode = false,
   isMuted = false,
@@ -46,6 +48,7 @@ export const FileTranscribeButton = ({
       <Button
         type="button"
         tabIndex={-1}
+        onMouseEnter={onMouseEnter}
         onClick={onMuteToggle}
         onKeyDown={handleKeyDown}
         onKeyUp={handleKeyUp}
@@ -68,6 +71,7 @@ export const FileTranscribeButton = ({
     <Button
       type="button"
       tabIndex={-1}
+      onMouseEnter={onMouseEnter}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}

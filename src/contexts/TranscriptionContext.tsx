@@ -17,6 +17,7 @@ interface TranscriptionContextType {
   isFileSpeaking: boolean;
   isFileTranscribing: boolean;
   fileMediaStream: MediaStream | null;
+  onPrepareRecording: () => void;
   onStartRecording: () => void | Promise<void>;
   onStopRecording: () => void;
 
@@ -57,6 +58,7 @@ interface TranscriptionProviderProps {
   isFileSpeaking: boolean;
   isFileTranscribing: boolean;
   fileMediaStream: MediaStream | null;
+  onPrepareRecording: () => void;
   onStartRecording: () => void | Promise<void>;
   onStopRecording: () => void;
 
@@ -89,6 +91,7 @@ export const TranscriptionProvider = ({
   isFileSpeaking,
   isFileTranscribing,
   fileMediaStream,
+  onPrepareRecording,
   onStartRecording,
   onStopRecording,
   isContinuousRecording,
@@ -115,6 +118,7 @@ export const TranscriptionProvider = ({
       isFileSpeaking,
       isFileTranscribing,
       fileMediaStream,
+      onPrepareRecording,
       onStartRecording,
       onStopRecording,
       isContinuousRecording,
@@ -139,6 +143,7 @@ export const TranscriptionProvider = ({
       isFileSpeaking,
       isFileTranscribing,
       fileMediaStream,
+      onPrepareRecording,
       onStartRecording,
       onStopRecording,
       isContinuousRecording,

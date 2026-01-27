@@ -552,6 +552,7 @@ const ChatComponent = ({
         isFileSpeaking={isFileSpeaking && !isContinuousFileMode}
         isFileTranscribing={isFileTranscribing}
         fileMediaStream={transcribeProvider === 'aws' ? awsMediaStream : fileMediaStream}
+        onPrepareRecording={prepareFileRecording}
         onStartRecording={handleStartFileRecording}
         onStopRecording={stopFileRecording}
         isContinuousRecording={isRecording && isContinuousMode}
