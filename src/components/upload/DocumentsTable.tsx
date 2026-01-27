@@ -5,7 +5,6 @@ import {
   FileText,
   LoaderCircle,
   Filter,
-  GripVertical,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
 import { Button } from "@/components/shadcn/button";
@@ -34,231 +33,8 @@ import {
   TableRow,
 } from "@/components/shadcn/table";
 import { Loader } from "@/components/loader/Loader";
-import { useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  TouchSensor,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  horizontalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import {  useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
 
-// 1. Definimos la estructura de las columnas
-const INITIAL_COLUMNS = [
-  { id: "selection", label: "" },
-  { id: "NOMBRE_DOCUMENTO", label: "Nombre" },
-  { id: "USUARIO_CARGA", label: "Usuario Carga" },
-  { id: "EMBEDDING_MODEL", label: "Modelo Embedding" },
-  { id: "FCHCRE", label: "Creado el" },
-  { id: "FCH_EXTRACCION", label: "Extracción" },
-  { id: "FCH_SEGMENTACION", label: "Segmentación" },
-  { id: "FCH_VECTORIZACION", label: "Vectorización" },
-  { id: "FCHMOD", label: "Finalizado" },
-  { id: "ID_ESTADO_PROCESO", label: "Estado" },
-  { id: "actions", label: "" },
-];
-const COLUMN_DEFINITIONS = {
-  selection: { label: "Selección", sortable: false },
-  NOMBRE_DOCUMENTO: { label: "Nombre", sortable: true },
-  USUARIO_CARGA: { label: "Usuario Carga", sortable: true },
-  EMBEDDING_MODEL: { label: "Modelo Embedding", sortable: true },
-  FCHCRE: { label: "Creado el", sortable: true },
-  FCH_EXTRACCION: { label: "Extracción", sortable: true },
-  FCH_SEGMENTACION: { label: "Segmentación", sortable: true },
-  FCH_VECTORIZACION: { label: "Vectorización", sortable: true },
-  FCHMOD: { label: "Finalizado", sortable: true },
-  ID_ESTADO_PROCESO: { label: "Estado", sortable: true },
-  actions: { label: "", sortable: false },
-};
-interface SortableHeaderProps {
-  columnId: string;
-  orderField: string;
-  orderDirection: "ASC" | "DESC";
-  handleSort: (field: any) => void;
-  isAllSelected: boolean;
-  handleSelectAll: (checked: boolean) => void;
-  statusFilter: number | null;
-  setStatusFilter: (status: number | null) => void;
-  setCurrentPage: (page: number) => void; // <--- AGREGAR ESTA LÍNEA
-}
-const ESTADOS_PROCESO = [
-  { id: 0, label: "Subiendo" },
-  { id: 1, label: "En cola" },
-  { id: 2, label: "Procesando" },
-  { id: 3, label: "Texto extraído" },
-  { id: 4, label: "Texto segmentado" },
-  { id: 5, label: "Segmentos vectorizados" },
-  { id: 6, label: "Cargado" },
-  { id: 7, label: "Error" },
-  // Agrega aquí cualquier otro que falte en tu base de datos
-];
-// 2. Componente de Celda de Encabezado Arrastrable
-const SortableHeader = ({
-  columnId,
-  orderField,
-  orderDirection,
-  handleSort,
-  isAllSelected,
-  handleSelectAll,
-  statusFilter,
-  setStatusFilter,
-  setCurrentPage,
-}: SortableHeaderProps) => {
-  const isStatic = columnId === "selection" || columnId === "actions";
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: columnId,
-    disabled: isStatic, // <--- ESTO deshabilita el drag para esta celda
-  });
-
-  // Dentro de SortableHeader
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    backgroundColor: isDragging
-      ? "hsl(var(--accent))"
-      : "hsl(var(--background))",
-    zIndex: isDragging ? 20 : 10,
-    touchAction: "none", // <--- AGREGAR ESTO para evitar scroll accidental
-  };
-  // Función para manejar el sort evitando que dnd-kit se entere
-  const onSortClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation(); // <--- IMPORTANTE: Evita que el evento suba al contenedor arrastrable
-    handleSort(columnId);
-  };
-  const config =
-    COLUMN_DEFINITIONS[columnId as keyof typeof COLUMN_DEFINITIONS];
-
-  const getWidth = (id: string) => {
-    switch (id) {
-      case "selection":
-        return "w-[20px] min-w-[20px] max-w-[20px]";
-      case "NOMBRE_DOCUMENTO":
-        return "w-[250px]";
-      case "ID_ESTADO_PROCESO":
-        return "w-[120px]";
-      case "actions":
-        return "w-[20px] min-w-[20px] max-w-[20px]";
-      case "USUARIO_CARGA":
-        return "w-[140px]";
-      case "EMBEDDING_MODEL":
-        return "w-[160px]";
-      default:
-        return "w-[130px]";
-    }
-  };
-  return (
-    <TableHead
-      ref={setNodeRef}
-      style={style}
-      className={`${isStatic ? "px-1 text-center" : "px-3"} ${getWidth(columnId)} overflow-hidden`}
-    >
-      <div className={`flex items-center w-full ${isStatic ? "justify-center" : "gap-1"}`}>
-        {/* ICONO DE ARRASTRE */}
-        {!isStatic && (
-          <div
-            {...attributes}
-            {...listeners}
-            className="cursor-grab active:cursor-grabbing hover:text-primary p-1 flex-shrink-0"
-          >
-            <GripVertical className="h-3 w-3 text-muted-foreground/30" />
-          </div>
-        )}
-
-        {columnId === "selection" ? (
-          <Checkbox
-            checked={isAllSelected}
-            onCheckedChange={(val) => handleSelectAll(val as boolean)}
-          />
-        ) : config?.sortable ? (
-          <button
-            onClick={onSortClick} // <--- Usamos la función con stopPropagation
-            className="flex items-center gap-1 hover:text-foreground font-medium text-[11px] tracking-wider overflow-hidden w-full outline-none"
-          >
-            <span className="truncate text-left flex-1" title={config.label}>
-              {config.label}
-            </span>
-            {orderField === columnId && (
-              <span className="text-primary flex-shrink-0">
-                {orderDirection === "ASC" ? "↑" : "↓"}
-              </span>
-            )}
-          </button>
-        ) : (
-          <span
-            className="font-bold text-[11px]  tracking-wider truncate flex-1"
-            title={config?.label}
-          >
-            {config?.label}
-          </span>
-        )}
-        {/* FILTRO: Solo aparece si la columna es ID_ESTADO_PROCESO */}
-        {columnId === "ID_ESTADO_PROCESO" && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`h-6 w-6 p-0 ${statusFilter !== null ? "text-primary" : "text-muted-foreground"}`}
-              >
-                <Filter className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="max-h-[300px] overflow-y-auto"
-            >
-              <DropdownMenuItem
-                onClick={() => {
-                  setStatusFilter(null);
-                  setCurrentPage(1);
-                }}
-                className={statusFilter === null ? "bg-accent font-bold" : ""}
-              >
-                Todos los estados
-              </DropdownMenuItem>
-
-              {ESTADOS_PROCESO.map((estado) => (
-                <DropdownMenuItem
-                  key={estado.id}
-                  onClick={() => {
-                    setStatusFilter(estado.id);
-                    setCurrentPage(1);
-                  }}
-                  className={
-                    statusFilter === estado.id ? "bg-accent font-bold" : ""
-                  }
-                >
-                  {estado.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-    </TableHead>
-  );
-};
 type BadgeVariant =
   | "success"
   | "gray"
@@ -293,13 +69,12 @@ const getStatusFromStage = (idEstadoProceso: number, estadoProceso: string) => {
     7: "destructive",
   };
 
-  const statusBadge: StatusBadge = { label: estadoProceso };
+  let statusBadge: StatusBadge = { label: estadoProceso };
 
   if (idEstadoProceso < 0) {
     statusBadge.variant = "destructive" as const;
   } else {
-    statusBadge.variant =
-      badgeColorMap[idEstadoProceso] || ("secondary" as const);
+    statusBadge.variant = badgeColorMap[idEstadoProceso] || ("secondary" as const);
   }
 
   return statusBadge || { label: "Desconocido", variant: "secondary" as const };
@@ -331,22 +106,8 @@ export const DocumentsTable = ({
 }: DocumentsTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [columnOrder, setColumnOrder] = useState(
-    INITIAL_COLUMNS.map((c) => c.id),
-  );
-  const [orderField, setOrderField] = useState<
-    | "NOMBRE_DOCUMENTO"
-    | "FCHMOD"
-    | "FCHCRE"
-    | "ID_ESTADO_PROCESO"
-    | "AREA"
-    | "USUARIO_CARGA"
-    | "EMBEDDING_MODEL"
-    | "FCH_EXTRACCION"
-    | "FCH_SEGMENTACION"
-    | "FCH_VECTORIZACION"
-  >("FCHMOD");
-  const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
+  const [orderField, setOrderField] = useState<'NOMBRE_DOCUMENTO' | 'FCHMOD' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'AREA' | 'USUARIO_CARGA' | 'EMBEDDING_MODEL' | 'FCH_EXTRACCION' | 'FCH_SEGMENTACION' | 'FCH_VECTORIZACION'>('FCHMOD');
+  const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('DESC');
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -354,59 +115,28 @@ export const DocumentsTable = ({
   const [previewDocName, setPreviewDocName] = useState<string>("");
   const [loadingPreview, setLoadingPreview] = useState(false);
 
+
   useEffect(() => {
     if (uploadTrigger && uploadTrigger > 0) {
       setCurrentPage(1);
-      setOrderField("FCHCRE");
-      setOrderDirection("DESC");
+      setOrderField('FCHCRE');
+      setOrderDirection('DESC');
     }
   }, [uploadTrigger]);
 
   // Server-side pagination query for the table
-  const { data, isLoading, error } = useProcessingLogsPaginated(
+  const {
+    data,
+    isLoading,
+    error,
+  } = useProcessingLogsPaginated(
     currentPage,
     pageSize,
     searchTerm,
     orderField,
     orderDirection,
-    statusFilter,
+    statusFilter
   );
-  // Sensores para DND
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        // Obliga a mover el mouse 5px antes de considerar que es un arrastre
-        // Esto permite que los "clics rápidos" lleguen al botón de ordenamiento
-        distance: 5,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 250,
-        tolerance: 5,
-      },
-    }),
-  );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      // Definimos qué IDs son intocables
-      const staticIds = ["selection", "actions"];
-
-      if (staticIds.includes(over.id as string)) return;
-
-      setColumnOrder((items) => {
-        const oldIndex = items.indexOf(active.id as string);
-        const newIndex = items.indexOf(over.id as string);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-  };
 
   const handleViewDocument = async (ruta_documento: string, name: string) => {
     try {
@@ -414,15 +144,13 @@ export const DocumentsTable = ({
       setPreviewDocName(name);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/v1/knowledge/document/url?ruta_documento=${encodeURIComponent(ruta_documento)}`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/v1/knowledge/document/url?ruta_documento=${encodeURIComponent(ruta_documento)}`
       );
 
       const responseData = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          responseData?.result?.mensaje || "Error al obtener documento",
-        );
+        throw new Error(responseData?.result?.mensaje || "Error al obtener documento");
       }
 
       setPreviewUrl(responseData.url);
@@ -439,24 +167,12 @@ export const DocumentsTable = ({
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
 
-  const handleSort = (
-    field:
-      | "NOMBRE_DOCUMENTO"
-      | "FCHMOD"
-      | "FCHCRE"
-      | "ID_ESTADO_PROCESO"
-      | "AREA"
-      | "USUARIO_CARGA"
-      | "EMBEDDING_MODEL"
-      | "FCH_EXTRACCION"
-      | "FCH_SEGMENTACION"
-      | "FCH_VECTORIZACION",
-  ) => {
+  const handleSort = (field: 'NOMBRE_DOCUMENTO' | 'FCHMOD' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'AREA' | 'USUARIO_CARGA' | 'EMBEDDING_MODEL' | 'FCH_EXTRACCION' | 'FCH_SEGMENTACION' | 'FCH_VECTORIZACION') => {
     if (orderField === field) {
-      setOrderDirection(orderDirection === "ASC" ? "DESC" : "ASC");
+      setOrderDirection(orderDirection === 'ASC' ? 'DESC' : 'ASC');
     } else {
       setOrderField(field);
-      setOrderDirection("ASC");
+      setOrderDirection('ASC');
     }
     setCurrentPage(1);
   };
@@ -466,33 +182,29 @@ export const DocumentsTable = ({
     setCurrentPage(1);
   };
 
-  const displayedDocuments =
-    data?.registros?.map((upload) => ({
-      id: upload.id,
-      id_usuario: upload.id_usuario,
-      usuario_carga: upload.usuario_carga || "Sistema",
-      id_empresa: upload.id_empresa,
-      empresa: upload.empresa || "Sin empresa",
-      id_area: upload.id_area,
-      area: upload.area || "Sin área",
-      id_estado_proceso: upload.id_estado_proceso,
-      estado_proceso: upload.estado_proceso,
-      embedding_model_provider: upload.embedding_model_provider,
-      embedding_model: upload.embedding_model,
-      name: upload.documento || "Sin nombre",
-      fecha_ultima_actualizacion: upload.fecha_ultima_actualizacion,
-      createdDate: formatDate(upload.fecha_inicio),
-      fecha_extraccion: upload.fecha_extraccion,
-      fecha_segmentacion: upload.fecha_segmentacion,
-      fecha_vectorizacion: upload.fecha_vectorizacion,
-      fecha_finalizado: upload.fecha_finalizado,
-      en_ejecucion: upload.en_ejecucion,
-      ruta_documento: upload.ruta_documento,
-      status: getStatusFromStage(
-        upload.id_estado_proceso,
-        upload.estado_proceso,
-      ),
-    })) || [];
+  const displayedDocuments = data?.registros?.map((upload) => ({
+    id: upload.id,
+    id_usuario: upload.id_usuario,
+    usuario_carga: upload.usuario_carga || "Sistema",
+    id_empresa: upload.id_empresa,
+    empresa: upload.empresa || "Sin empresa",
+    id_area: upload.id_area,
+    area: upload.area || "Sin área",
+    id_estado_proceso: upload.id_estado_proceso,
+    estado_proceso: upload.estado_proceso,
+    embedding_model_provider: upload.embedding_model_provider,
+    embedding_model: upload.embedding_model,
+    name: upload.documento || "Sin nombre",
+    fecha_ultima_actualizacion: upload.fecha_ultima_actualizacion,
+    createdDate: formatDate(upload.fecha_inicio),
+    fecha_extraccion: upload.fecha_extraccion,
+    fecha_segmentacion: upload.fecha_segmentacion,
+    fecha_vectorizacion: upload.fecha_vectorizacion,
+    fecha_finalizado: upload.fecha_finalizado,
+    en_ejecucion: upload.en_ejecucion,
+    ruta_documento: upload.ruta_documento,
+    status: getStatusFromStage(upload.id_estado_proceso, upload.estado_proceso),
+  })) || [];
 
   const totalPages = data?.total_paginas || 0;
   const totalRecords = data?.total_registros || 0;
@@ -518,6 +230,7 @@ export const DocumentsTable = ({
     displayedDocuments.length > 0 &&
     displayedDocuments.every((doc) => selectedRows.includes(doc.id));
 
+
   return (
     <Card className="flex-1 flex flex-col min-h-0">
       <CardHeader className="pb-3">
@@ -532,13 +245,8 @@ export const DocumentsTable = ({
           {/* Page size selector - Top right */}
           {!isLoading && !error && displayedDocuments.length > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                Filas por página:
-              </span>
-              <Select
-                value={pageSize.toString()}
-                onValueChange={handlePageSizeChange}
-              >
+              <span className="text-sm text-muted-foreground">Filas por página:</span>
+              <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
                 <SelectTrigger className="w-[80px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -573,141 +281,305 @@ export const DocumentsTable = ({
               className="flex-1 min-h-0 border rounded-lg"
             >
               <div className="h-full overflow-y-auto">
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <Table className="table-fixed w-full">
-                    <TableHeader>
-                      <TableRow>
-                        <SortableContext
-                          items={columnOrder.filter(
-                            (id) => id !== "selection" && id !== "actions",
-                          )}
-                          strategy={horizontalListSortingStrategy}
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={isAllSelected}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Seleccionar todos"
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('NOMBRE_DOCUMENTO')}
+                          className="flex items-center gap-1 hover:text-foreground"
                         >
-                          {columnOrder.map((columnId) => {
-                            // 1. Buscamos la configuración de la columna
-                            // Nota: Es mejor usar el objeto COLUMN_DEFINITIONS que definimos antes
-                            // pero si usas el array INITIAL_COLUMNS, asegúrate de que exista.
-
-                            return (
-                              <SortableHeader
-                                key={columnId}
-                                columnId={columnId} // El ID único para dnd-kit
-                                orderField={orderField} // Estado de ordenamiento (ej: 'FCHMOD')
-                                orderDirection={orderDirection} // 'ASC' o 'DESC'
-                                handleSort={handleSort} // Tu función original: (field) => { ... }
-                                isAllSelected={isAllSelected} // Booleano para el checkbox global
-                                handleSelectAll={handleSelectAll} // Función para marcar todos
-                                statusFilter={statusFilter} // El estado del filtro de la API
-                                setStatusFilter={setStatusFilter} // Función para cambiar el filtro
-                                setCurrentPage={setCurrentPage} // Función para cambiar la página
-                              />
-                            );
-                          })}
-                        </SortableContext>
+                          Nombre
+                          {orderField === 'NOMBRE_DOCUMENTO' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('USUARIO_CARGA')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Usuario Carga
+                          {orderField === 'USUARIO_CARGA' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('EMBEDDING_MODEL')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Modelo Embedding
+                          {orderField === 'EMBEDDING_MODEL' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('FCHCRE')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Creado el
+                          {orderField === 'FCHCRE' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('FCH_EXTRACCION')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Extracción
+                          {orderField === 'FCH_EXTRACCION' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('FCH_SEGMENTACION')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Segmentación
+                          {orderField === 'FCH_SEGMENTACION' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('FCH_VECTORIZACION')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Vectorización
+                          {orderField === 'FCH_VECTORIZACION' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button
+                          onClick={() => handleSort('FCHMOD')}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Finalizado
+                          {orderField === 'FCHMOD' && (
+                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleSort('ID_ESTADO_PROCESO')}
+                            className="flex items-center gap-1 hover:text-foreground"
+                          >
+                            Estado
+                            {orderField === 'ID_ESTADO_PROCESO' && (
+                              <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
+                            )}
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`h-6 w-6 p-0 ${statusFilter !== null ? 'text-blue-600' : ''}`}
+                              >
+                                <Filter className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(null);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === null ? 'bg-accent' : ''}
+                              >
+                                Todos
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(0);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 0 ? 'bg-accent' : ''}
+                              >
+                                Subiendo
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(1);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 1 ? 'bg-accent' : ''}
+                              >
+                                En cola
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(2);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 2 ? 'bg-accent' : ''}
+                              >
+                                Procesando
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(3);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 3 ? 'bg-accent' : ''}
+                              >
+                                Texto extraído
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(4);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 4 ? 'bg-accent' : ''}
+                              >
+                                Texto segmentado
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(5);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 5 ? 'bg-accent' : ''}
+                              >
+                                Segmentos vectorizados
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(6);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 6 ? 'bg-accent' : ''}
+                              >
+                                Cargado
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setStatusFilter(7);
+                                  setCurrentPage(1);
+                                }}
+                                className={statusFilter === 7 ? 'bg-accent' : ''}
+                              >
+                                Error
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {displayedDocuments.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={12} className="h-24 text-center">
+                          <p className="text-muted-foreground">
+                            {statusFilter !== null
+                              ? `No se encontraron documentos en el estado seleccionado`
+                              : searchTerm
+                                ? `No se encontraron documentos que coincidan con "${searchTerm}"`
+                                : 'No hay documentos registrados'}
+                          </p>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {displayedDocuments.map((doc) => (
+                    ) : (
+                      displayedDocuments.map((doc) => (
                         <TableRow key={doc.id}>
-                          {columnOrder.map((columnId) => {
-                            const isCompactColumn = columnId === "selection" || columnId === "actions";
-                            return (
-                            <TableCell
-                              key={`${doc.id}-${columnId}`}
-                              className={isCompactColumn ? "px-1 w-[20px] min-w-[20px] max-w-[20px]" : "px-3"}
-                            >
-                              {(() => {
-                                switch (columnId) {
-                                  case "selection":
-                                    return (
-                                      <Checkbox
-                                        checked={selectedRows.includes(doc.id)}
-                                        onCheckedChange={(checked) =>
-                                          handleSelectRow(
-                                            doc.id,
-                                            checked as boolean,
-                                          )
-                                        }
-                                      />
-                                    );
-                                  case "NOMBRE_DOCUMENTO":
-                                    return (
-                                      <div className="flex items-center gap-2">
-                                        <FileText className="h-4 w-4 text-blue-500" />
-                                        <span className="font-medium">
-                                          {doc.name}
-                                        </span>
-                                      </div>
-                                    );
-                                  case "USUARIO_CARGA":
-                                    return doc.usuario_carga;
-                                  case "EMBEDDING_MODEL":
-                                    return doc.embedding_model;
-                                  case "FCHCRE":
-                                    return doc.createdDate;
-                                  case "FCH_EXTRACCION":
-                                    return doc.fecha_extraccion
-                                      ? formatDate(doc.fecha_extraccion)
-                                      : "-";
-                                  case "FCH_SEGMENTACION":
-                                    return doc.fecha_segmentacion
-                                      ? formatDate(doc.fecha_segmentacion)
-                                      : "-";
-                                  case "FCH_VECTORIZACION":
-                                    return doc.fecha_vectorizacion
-                                      ? formatDate(doc.fecha_vectorizacion)
-                                      : "-";
-                                  case "FCHMOD":
-                                    return doc.fecha_finalizado
-                                      ? formatDate(doc.fecha_finalizado)
-                                      : "-";
-                                  case "ID_ESTADO_PROCESO":
-                                    return (
-                                      <div className="flex items-center gap-2">
-                                        <Badge variant={doc.status.variant}>
-                                          {doc.status.label}
-                                        </Badge>
-                                        {doc.en_ejecucion === 1 && (
-                                          <LoaderCircle className="h-4 w-4 animate-spin" />
-                                        )}
-                                      </div>
-                                    );
-                                  case "actions":
-                                    return (
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <button className="px-2">⋮</button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                          <DropdownMenuItem
-                                            onClick={() =>
-                                              handleViewDocument(
-                                                doc.ruta_documento,
-                                                doc.name,
-                                              )
-                                            }
-                                          >
-                                            Ver documento
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    );
-                                  default:
-                                    return null;
-                                }
-                              })()}
-                            </TableCell>
-                            );
-                          })}
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedRows.includes(doc.id)}
+                              onCheckedChange={(checked) =>
+                                handleSelectRow(doc.id, checked as boolean)
+                              }
+                              aria-label={`Seleccionar ${doc.name}`}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-blue-500" />
+                              <span>{doc.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{doc.usuario_carga}</TableCell>
+                          <TableCell>{doc.embedding_model}</TableCell>
+                          <TableCell>{doc.createdDate}</TableCell>
+                          <TableCell>
+                            {doc.fecha_extraccion
+                              ? formatDate(doc.fecha_extraccion)
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {doc.fecha_segmentacion
+                              ? formatDate(doc.fecha_segmentacion)
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {doc.fecha_vectorizacion
+                              ? formatDate(doc.fecha_vectorizacion)
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {doc.fecha_finalizado
+                              ? formatDate(doc.fecha_finalizado)
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={doc.status.variant}>
+                                {doc.status.label}
+                              </Badge>
+                              {doc.en_ejecucion === 1 && (
+                                <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="text-muted-foreground hover:text-foreground px-2">
+                                  ⋮
+                                </button>
+                              </DropdownMenuTrigger>
+
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleViewDocument(
+                                      doc.ruta_documento,
+                                      doc.name
+                                    )
+                                  }
+                                >
+                                  Ver documento
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </DndContext>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </div>
 
@@ -732,7 +604,7 @@ export const DocumentsTable = ({
                       let startPage = Math.max(1, currentPage - halfRange);
                       let endPage = Math.min(
                         totalPages,
-                        startPage + maxButtons - 1,
+                        startPage + maxButtons - 1
                       );
 
                       if (endPage - startPage + 1 < maxButtons) {
@@ -782,7 +654,7 @@ export const DocumentsTable = ({
                       let startPage = Math.max(1, currentPage - halfRange);
                       let endPage = Math.min(
                         totalPages,
-                        startPage + maxButtons - 1,
+                        startPage + maxButtons - 1
                       );
 
                       if (endPage - startPage + 1 < maxButtons) {
@@ -820,9 +692,7 @@ export const DocumentsTable = ({
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Mostrando {(currentPage - 1) * pageSize + 1}-
-                  {Math.min(currentPage * pageSize, totalRecords)} de{" "}
-                  {totalRecords} documentos
+                  Mostrando {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalRecords)} de {totalRecords} documentos
                 </p>
               </div>
             )}
