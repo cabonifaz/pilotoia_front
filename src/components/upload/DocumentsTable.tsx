@@ -152,30 +152,28 @@ const SortableHeader = ({
   const getWidth = (id: string) => {
     switch (id) {
       case "selection":
-        return "w-[60px]";
+        return "w-[20px] min-w-[20px] max-w-[20px]";
       case "NOMBRE_DOCUMENTO":
-        return "w-[250px]"; // Más espacio para nombres
+        return "w-[250px]";
       case "ID_ESTADO_PROCESO":
         return "w-[120px]";
       case "actions":
-        return "w-[60px]";
+        return "w-[20px] min-w-[20px] max-w-[20px]";
       case "USUARIO_CARGA":
         return "w-[140px]";
       case "EMBEDDING_MODEL":
         return "w-[160px]";
       default:
-        return "w-[130px]"; // Un estándar para fechas
+        return "w-[130px]";
     }
   };
   return (
     <TableHead
       ref={setNodeRef}
       style={style}
-      // Eliminamos whitespace-nowrap si queremos que quiebre linea,
-      // o lo mantenemos con truncate para que no rompa el diseño.
-      className={`px-2  ${getWidth(columnId)} overflow-hidden`}
+      className={`${isStatic ? "px-1 text-center" : "px-3"} ${getWidth(columnId)} overflow-hidden`}
     >
-      <div className="flex items-center gap-1 w-full">
+      <div className={`flex items-center w-full ${isStatic ? "justify-center" : "gap-1"}`}>
         {/* ICONO DE ARRASTRE */}
         {!isStatic && (
           <div
@@ -615,8 +613,13 @@ export const DocumentsTable = ({
                     <TableBody>
                       {displayedDocuments.map((doc) => (
                         <TableRow key={doc.id}>
-                          {columnOrder.map((columnId) => (
-                            <TableCell key={`${doc.id}-${columnId}`}>
+                          {columnOrder.map((columnId) => {
+                            const isCompactColumn = columnId === "selection" || columnId === "actions";
+                            return (
+                            <TableCell
+                              key={`${doc.id}-${columnId}`}
+                              className={isCompactColumn ? "px-1 w-[20px] min-w-[20px] max-w-[20px]" : "px-3"}
+                            >
                               {(() => {
                                 switch (columnId) {
                                   case "selection":
@@ -698,7 +701,8 @@ export const DocumentsTable = ({
                                 }
                               })()}
                             </TableCell>
-                          ))}
+                            );
+                          })}
                         </TableRow>
                       ))}
                     </TableBody>

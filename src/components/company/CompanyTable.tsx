@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
 import { Button } from "@/components/shadcn/button";
 import { Badge } from "@/components/shadcn/badge";
@@ -77,7 +77,7 @@ const DraggableTableHeader = ({
   orderDirection,
 }: DraggableTableHeaderProps) => {
   const columnId = header.column.id;
-  const isDraggable = columnId !== "select" && columnId !== "actions";
+  const isStatic = columnId === "select" || columnId === "actions";
   const {
     attributes,
     listeners,
@@ -87,8 +87,10 @@ const DraggableTableHeader = ({
     isDragging,
   } = useSortable({
     id: columnId,
-    disabled: !isDraggable, // Deshabilita el hook para columnas estáticas
+    disabled: isStatic,
   });
+
+  const columnSize = header.column.getSize();
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -96,8 +98,9 @@ const DraggableTableHeader = ({
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 100 : 1,
     position: "relative" as const,
-    // Añadir esto para evitar que la celda "empuje"
-    touchAction: "none",
+    width: columnSize,
+    minWidth: columnSize,
+    maxWidth: columnSize,
   };
 
   const isSortable = [
@@ -109,13 +112,12 @@ const DraggableTableHeader = ({
 
   return (
     <TableHead
-      ref={isDraggable ? setNodeRef : null}
-      style={isDraggable ? style : {}}
-      className="bg-white border-b"
+      ref={setNodeRef}
+      style={style}
+      className={`bg-white border-b ${isStatic ? "px-1 text-center" : ""}`}
     >
-      <div className="flex items-center gap-2">
-        {/* Solo mostrar el grip si es arrastrable */}
-        {isDraggable && (
+      <div className={`flex items-center ${isStatic ? "justify-center" : "gap-2"}`}>
+        {!isStatic && (
           <div
             {...attributes}
             {...listeners}
@@ -124,7 +126,6 @@ const DraggableTableHeader = ({
             ::
           </div>
         )}
-
         <div
           className={`flex items-center gap-1 ${isSortable ? "cursor-pointer select-none" : ""}`}
           onClick={() => isSortable && onSortClick(columnId)}
@@ -226,6 +227,55 @@ export const CompanyTable = ({
       });
     }
   }
+
+  // Memoized handler for generating URL
+  const handleGenerateURL = useCallback((secretKey: string) => {
+    const url = `${window.location.origin}/#/?ref=${secretKey}`;
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        toast({
+          title: "URL copiada",
+          description: "La URL de la empresa fue copiada al portapapeles.",
+          variant: "success",
+        });
+      })
+      .catch((err) => {
+        toast({
+          title: "Error",
+          description: "Hubo un problema al copiar la URL.",
+          variant: "destructive",
+        });
+        console.error("Error al copiar la URL:", err);
+      });
+  }, []);
+
+  // Reset row selection when data context changes
+  useEffect(() => {
+    setRowSelection({});
+  }, [currentPage, pageSize, orderField, orderDirection, statusFilter, searchTerm]);
+
+  // Memoized sort handler
+  const handleSortClick = useCallback((field: string) => {
+    setOrderDirection((prev) =>
+      orderField === field && prev === "ASC" ? "DESC" : "ASC"
+    );
+    setOrderField(field);
+    setCurrentPage(1);
+  }, [orderField]);
+
+  // Memoized page size handler
+  const handlePageSizeChange = useCallback((value: string) => {
+    setPageSize(Number(value));
+    setCurrentPage(1);
+  }, []);
+
+  // Memoized status filter handler
+  const handleStatusFilterChange = useCallback((status: number | null) => {
+    setStatusFilter(status);
+    setCurrentPage(1);
+  }, []);
+
   // --- LÓGICA DE COLUMNAS (TANSTACK) ---
   const columns = useMemo(
     () => [
@@ -250,7 +300,9 @@ export const CompanyTable = ({
             aria-label="Seleccionar fila"
           />
         ),
-        size: 50,
+        size: 20,
+        minSize: 20,
+        maxSize: 20,
       }),
       columnHelper.accessor("RUC", {
         header: "RUC",
@@ -286,27 +338,14 @@ export const CompanyTable = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem
-                  onClick={() => {
-                    setStatusFilter(null);
-                    setCurrentPage(1);
-                  }}
+                  onClick={() => handleStatusFilterChange(null)}
                 >
                   Todos
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setStatusFilter(1);
-                    setCurrentPage(1);
-                  }}
-                >
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(1)}>
                   Activo
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setStatusFilter(0);
-                    setCurrentPage(1);
-                  }}
-                >
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(0)}>
                   Inactivo
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -339,11 +378,19 @@ export const CompanyTable = ({
             isPending={updateCompanyStatus.isPending}
           />
         ),
-        size: 50,
+        size: 20,
+        minSize: 20,
+        maxSize: 20,
       }),
     ],
-    [statusFilter, updateCompanyStatus.isPending],
-  ); // Re-renderizar si cambia el filtro o el estado de carga
+    [
+      statusFilter,
+      updateCompanyStatus,
+      onUpdateLogo,
+      handleGenerateURL,
+      handleStatusFilterChange,
+    ],
+  );
 
   const table = useReactTable({
     data: data?.data || [],
@@ -360,14 +407,6 @@ export const CompanyTable = ({
     getRowId: (row) => row.ID_EMPRESA.toString(),
   });
 
-  // --- HANDLER DE SORTING ---
-  const handleSortClick = (field: string) => {
-    const isSameField = orderField === field;
-    setOrderDirection(isSameField && orderDirection === "ASC" ? "DESC" : "ASC");
-    setOrderField(field);
-    setCurrentPage(1);
-  };
-
   const companies = data?.data || [];
   const pagination = data?.pagination || {
     total_records: 0,
@@ -382,31 +421,7 @@ export const CompanyTable = ({
     pagination.current_page * pagination.page_size,
     pagination.total_records,
   );
-  const handlePageSizeChange = (value: string) => {
-    setPageSize(Number(value));
-    setCurrentPage(1);
-  };
 
-  const handleGenerateURL = (secretKey: string) => {
-    const url = `${window.location.origin}/#/?ref=${secretKey}`;
-    navigator.clipboard
-      .writeText(url)
-      .then(() => {
-        toast({
-          title: "URL copiada",
-          description: "La URL de la empresa fue copiada al portapapeles.",
-          variant: "success",
-        });
-      })
-      .catch((err) => {
-        toast({
-          title: "Error",
-          description: "Hubo un problema al copiar la URL.",
-          variant: "destructive", // Cambiado a destructive para errores
-        });
-        console.error("Error al copiar la URL:", err);
-      });
-  };
   const draggableColumns = useMemo(
     () => columnOrder.filter((id) => id !== "select" && id !== "actions"),
     [columnOrder],
@@ -457,10 +472,9 @@ export const CompanyTable = ({
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              {/* Contenedor principal con borde */}
-              <div className="border rounded-lg overflow-hidden flex flex-col h-full">
-                <div className="overflow-x-auto overflow-y-hidden flex-1 w-full">
-                  <Table className="table-fixed w-full min-w-[800px]">
+              <div className="flex-1 min-h-0 border rounded-lg">
+                <div className="h-full overflow-y-auto">
+                  <Table>
                     <TableHeader className="sticky top-0 z-20 bg-white shadow-sm">
                       {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
@@ -494,14 +508,25 @@ export const CompanyTable = ({
                       ) : (
                         table.getRowModel().rows.map((row) => (
                           <TableRow key={row.id}>
-                            {row.getVisibleCells().map((cell) => (
-                              <TableCell key={cell.id}>
-                                {flexRender(
-                                  cell.column.columnDef.cell,
-                                  cell.getContext(),
-                                )}
-                              </TableCell>
-                            ))}
+                            {row.getVisibleCells().map((cell) => {
+                              const isCompactColumn = ["select", "actions"].includes(cell.column.id);
+                              return (
+                                <TableCell
+                                  key={cell.id}
+                                  style={{
+                                    width: cell.column.getSize(),
+                                    minWidth: cell.column.getSize(),
+                                    maxWidth: cell.column.getSize(),
+                                  }}
+                                  className={isCompactColumn ? "px-1 text-center" : undefined}
+                                >
+                                  {flexRender(
+                                    cell.column.columnDef.cell,
+                                    cell.getContext(),
+                                  )}
+                                </TableCell>
+                              );
+                            })}
                           </TableRow>
                         ))
                       )}
