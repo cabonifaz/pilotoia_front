@@ -126,11 +126,16 @@ const ChatComponent = ({
   const {
     isRecording,
     isConnecting,
+    isPaused: isAwsPaused,
+    isSpeaking: isAwsSpeaking,
+    mediaStream: awsMediaStream,
     transcript,
     partialTranscript,
     prepareRecording,
     startRecording,
     stopRecording,
+    pauseRecording: pauseAwsRecording,
+    resumeRecording: resumeAwsRecording,
     clearTranscript,
   } = useTranscribe({
     onFinalTranscript: (finalTranscript) => {
@@ -375,6 +380,7 @@ const ChatComponent = ({
 
   // Mute toggle handler - pauses/resumes VAD detection
   const handleMuteToggle = useCallback(() => {
+    // Handle OpenAI continuous mode
     if (isContinuousFileMode) {
       if (isFilePaused) {
         resumeFileRecording();
@@ -382,8 +388,15 @@ const ChatComponent = ({
         pauseFileRecording();
       }
     }
-    // For AWS streaming, we could add similar logic if there's pause/resume support
-  }, [isContinuousFileMode, isFilePaused, pauseFileRecording, resumeFileRecording]);
+    // Handle AWS continuous mode
+    if (isContinuousMode) {
+      if (isAwsPaused) {
+        resumeAwsRecording();
+      } else {
+        pauseAwsRecording();
+      }
+    }
+  }, [isContinuousFileMode, isFilePaused, pauseFileRecording, resumeFileRecording, isContinuousMode, isAwsPaused, pauseAwsRecording, resumeAwsRecording]);
 
   const chatQuery = useCallback(async () => {
     if (!userQuery.trim()) return;
@@ -538,17 +551,18 @@ const ChatComponent = ({
         isFileRecording={isFileRecording && !isContinuousFileMode}
         isFileSpeaking={isFileSpeaking && !isContinuousFileMode}
         isFileTranscribing={isFileTranscribing}
-        fileMediaStream={fileMediaStream}
+        fileMediaStream={transcribeProvider === 'aws' ? awsMediaStream : fileMediaStream}
         onStartRecording={handleStartFileRecording}
         onStopRecording={stopFileRecording}
         isContinuousRecording={isRecording && isContinuousMode}
         isContinuousConnecting={isConnecting && isContinuousMode}
+        isContinuousSpeaking={transcribeProvider === 'aws' ? isAwsSpeaking : isFileSpeaking}
         onContinuousVoiceClick={handleContinuousVoiceClick}
         isContinuousFileRecording={isFileRecording && isContinuousFileMode}
         isContinuousFileSpeaking={isFileSpeaking && isContinuousFileMode}
         isContinuousFileTranscribing={isFileTranscribing && isContinuousFileMode}
         onContinuousFileClick={handleContinuousFileClick}
-        isMuted={isFilePaused}
+        isMuted={transcribeProvider === 'aws' ? isAwsPaused : isFilePaused}
         onMuteToggle={handleMuteToggle}
       >
         <div className="h-full flex flex-col">

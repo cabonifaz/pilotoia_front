@@ -23,6 +23,7 @@ interface TranscriptionContextType {
   // Continuous voice mode - AWS (hands-free)
   isContinuousRecording: boolean;
   isContinuousConnecting: boolean;
+  isContinuousSpeaking: boolean;
   onContinuousVoiceClick: () => void;
 
   // Continuous file mode - OpenAI (hands-free)
@@ -62,6 +63,7 @@ interface TranscriptionProviderProps {
   // Continuous voice mode - AWS (hands-free)
   isContinuousRecording: boolean;
   isContinuousConnecting: boolean;
+  isContinuousSpeaking: boolean;
   onContinuousVoiceClick: () => void;
 
   // Continuous file mode - OpenAI (hands-free)
@@ -91,6 +93,7 @@ export const TranscriptionProvider = ({
   onStopRecording,
   isContinuousRecording,
   isContinuousConnecting,
+  isContinuousSpeaking,
   onContinuousVoiceClick,
   isContinuousFileRecording,
   isContinuousFileSpeaking,
@@ -116,6 +119,7 @@ export const TranscriptionProvider = ({
       onStopRecording,
       isContinuousRecording,
       isContinuousConnecting,
+      isContinuousSpeaking,
       onContinuousVoiceClick,
       isContinuousFileRecording,
       isContinuousFileSpeaking,
@@ -139,6 +143,7 @@ export const TranscriptionProvider = ({
       onStopRecording,
       isContinuousRecording,
       isContinuousConnecting,
+      isContinuousSpeaking,
       onContinuousVoiceClick,
       isContinuousFileRecording,
       isContinuousFileSpeaking,

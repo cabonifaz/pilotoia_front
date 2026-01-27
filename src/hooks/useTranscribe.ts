@@ -64,6 +64,7 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
     const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const hasDetectedSpeechRef = useRef<boolean>(false);
 
+
     /**
      * Cleanup audio resources
      */
@@ -177,23 +178,39 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
     }, []);
 
     /**
-     * Pause recording (stops sending audio but keeps connection alive)
-     * Useful for continuous mode when processing a request
+     * Pause recording - stops sending audio but keeps connection alive
      */
     const pauseRecording = useCallback(() => {
         if (isRecording && !isPausedRef.current) {
             isPausedRef.current = true;
             setIsPaused(true);
+            setIsSpeaking(false);
+
+            // Clear VAD timers to prevent auto-stop while muted
+            if (silenceTimeoutRef.current) {
+                clearTimeout(silenceTimeoutRef.current);
+                silenceTimeoutRef.current = null;
+            }
+
+            // Pause VAD (but keep connection alive)
+            if (vadRef.current) {
+                vadRef.current.pause();
+            }
         }
     }, [isRecording]);
 
     /**
-     * Resume recording after pause
+     * Resume recording - resumes VAD and audio sending
      */
     const resumeRecording = useCallback(() => {
         if (isRecording && isPausedRef.current) {
             isPausedRef.current = false;
             setIsPaused(false);
+
+            // Resume VAD
+            if (vadRef.current) {
+                vadRef.current.start();
+            }
         }
     }, [isRecording]);
 
@@ -433,7 +450,7 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
                         }
                     },
                     onClose: () => {
-                        // In click mode, always cleanup on close
+                        // Full cleanup on close
                         cleanupAudioResources();
                     }
                 }
@@ -469,6 +486,9 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
         // Prevent multiple simultaneous stops
         if (isStoppingRef.current) return;
         isStoppingRef.current = true;
+        // Reset pause state
+        isPausedRef.current = false;
+        setIsPaused(false);
         // In 'click' mode, cleanup is handled by silence detection or the onClose event
         cleanupAudioResources();
     }, [recordMode, cleanupAudioResources]);
@@ -480,6 +500,9 @@ export const useTranscribe = (options: UseTranscribeOptions = {}): UseTranscribe
         transcriptBufferRef.current = [];
         setTranscript('');
         setPartialTranscript('');
+        // Also reset pause state when clearing
+        isPausedRef.current = false;
+        setIsPaused(false);
     }, []);
 
     // Cleanup on unmount
