@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -83,6 +83,7 @@ const DraggableTableHeader = ({
   orderField,
   orderDirection,
 }: DraggableTableHeaderProps) => {
+  const isStatic = ["select", "actions"].includes(header.id);
   const {
     attributes,
     listeners,
@@ -90,7 +91,10 @@ const DraggableTableHeader = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: header.id });
+  } = useSortable({
+    id: header.id,
+    disabled: isStatic, // Desactiva el hook si es estática
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -104,16 +108,30 @@ const DraggableTableHeader = ({
     header.id,
   );
 
+  const columnSize = header.column.getSize();
+  const headerStyle = {
+    ...style,
+    width: columnSize,
+    minWidth: columnSize,
+    maxWidth: columnSize,
+  };
+
   return (
-    <TableHead ref={setNodeRef} style={style} className="bg-white border-b">
-      <div className="flex items-center gap-2">
-        <div
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
-        >
-          ::
-        </div>
+    <TableHead
+      ref={setNodeRef}
+      style={headerStyle}
+      className={`bg-white border-b ${isStatic ? "px-1 text-center" : ""}`}
+    >
+      <div className={`flex items-center ${isStatic ? "justify-center" : "gap-2"}`}>
+        {!isStatic && (
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
+          >
+            ::
+          </div>
+        )}
         <div
           className={`flex items-center gap-1 ${isSortable ? "cursor-pointer select-none" : ""}`}
           onClick={() => isSortable && onSortClick(header.id)}
@@ -141,6 +159,78 @@ const formatDate = (isoDate: string): string => {
   });
 };
 const columnHelper = createColumnHelper<Area>();
+
+// --- EDITABLE AREA CELL (extracted to prevent recreation on parent re-render) ---
+interface EditableAreaCellProps {
+  initialValue: string;
+  onSave: (name: string) => void;
+  onCancel: () => void;
+  isPending: boolean;
+}
+
+const EditableAreaCell = memo(function EditableAreaCell({
+  initialValue,
+  onSave,
+  onCancel,
+  isPending,
+}: EditableAreaCellProps) {
+  const [value, setValue] = useState(initialValue);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") onSave(value);
+    if (e.key === "Escape") onCancel();
+  };
+
+  return (
+    <div
+      className="flex items-center gap-2"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <FolderOpen className="h-4 w-4 text-amber-500 flex-shrink-0" />
+      <Input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        className="h-8 text-sm min-w-[150px]"
+        disabled={isPending}
+      />
+      <div className="flex items-center gap-1">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 w-6 p-0"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            onSave(value);
+          }}
+          disabled={isPending}
+        >
+          <Check className="h-4 w-4 text-green-600" />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 w-6 p-0"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            onCancel();
+          }}
+          disabled={isPending}
+        >
+          <X className="h-4 w-4 text-red-600" />
+        </Button>
+      </div>
+    </div>
+  );
+});
+
 interface AreaTableProps {
   searchTerm: string;
   onConfigureAi?: (areaId: number, idEmpresa: number, areaName: string) => void;
@@ -149,15 +239,11 @@ interface AreaTableProps {
 export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [orderField, setOrderField] = useState<
-    "AREA" | "FCHCRE" | "ID_ESTADO_REGISTRO"
-  >("AREA");
+  const [orderField, setOrderField] = useState<"AREA" | "FCHCRE" | "ID_ESTADO_REGISTRO">("AREA");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("ASC");
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
   const [editingAreaId, setEditingAreaId] = useState<number | null>(null);
-  const [editingAreaName, setEditingAreaName] = useState<string>("");
   const [originalAreaName, setOriginalAreaName] = useState<string>("");
-  const inputRef = useRef<HTMLInputElement>(null);
   const [columnOrder, setColumnOrder] = useState<string[]>([
     "select",
     "AREA",
@@ -191,7 +277,14 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+
     if (active && over && active.id !== over.id) {
+      // Definimos los IDs prohibidos
+      const staticColumns = ["select", "actions"];
+
+      // Si intentamos soltar sobre una columna estática, cancelamos o ajustamos
+      if (staticColumns.includes(over.id as string)) return;
+
       setColumnOrder((items) => {
         const oldIndex = items.indexOf(active.id as string);
         const newIndex = items.indexOf(over.id as string);
@@ -200,7 +293,74 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
     }
   };
 
-  // ... dentro de AreaTable
+  // Reset editing and selection state when pagination, filters, or sorting change
+  useEffect(() => {
+    setEditingAreaId(null);
+    setOriginalAreaName("");
+    setRowSelection({});
+  }, [currentPage, pageSize, orderField, orderDirection, statusFilter]);
+
+  const handleSaveAreaName = useCallback(
+    async (newName: string) => {
+      const nameToSave = newName.trim();
+
+      if (!editingAreaId || !id_empresa || nameToSave === "") {
+        setEditingAreaId(null);
+        return;
+      }
+
+      if (nameToSave === originalAreaName) {
+        setEditingAreaId(null);
+        return;
+      }
+
+      try {
+        await updateAreaName.mutateAsync({
+          id_empresa,
+          id_area: editingAreaId,
+          area: nameToSave,
+        });
+
+        setEditingAreaId(null);
+        setOriginalAreaName("");
+      } catch (error) {
+        setEditingAreaId(null);
+      }
+    },
+    [editingAreaId, id_empresa, originalAreaName, updateAreaName]
+  );
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingAreaId(null);
+    setOriginalAreaName("");
+  }, []);
+
+  // Flag to block interactions while editing
+  const isEditing = editingAreaId !== null;
+
+  // Memoized sort handler
+  const handleSortClick = useCallback(
+    (field: "AREA" | "FCHCRE" | "ID_ESTADO_REGISTRO") => {
+      if (isEditing) return;
+      setOrderDirection((prev) =>
+        orderField === field && prev === "ASC" ? "DESC" : "ASC"
+      );
+      setOrderField(field);
+      setCurrentPage(1);
+    },
+    [isEditing, orderField]
+  );
+
+  // Memoized status filter handler
+  const handleStatusFilterChange = useCallback(
+    (status: number | null) => {
+      if (isEditing) return;
+      setStatusFilter(status);
+      setCurrentPage(1);
+    },
+    [isEditing]
+  );
+
   const columns = useMemo(
     () => [
       columnHelper.display({
@@ -215,6 +375,7 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
               table.toggleAllPageRowsSelected(!!value)
             }
             aria-label="Seleccionar todos"
+            disabled={isEditing}
           />
         ),
         cell: ({ row }) => (
@@ -222,9 +383,12 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
             aria-label="Seleccionar fila"
+            disabled={isEditing}
           />
         ),
-        size: 50,
+        size: 20,
+        minSize: 20,
+        maxSize: 20,
       }),
       columnHelper.accessor("AREA", {
         id: "AREA",
@@ -236,9 +400,9 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
           if (isEditing) {
             return (
               <EditableAreaCell
-                initialValue={editingAreaName} // Solo se usa al montar
+                initialValue={area.AREA}
                 isPending={updateAreaName.isPending}
-                onSave={(newName) => handleSaveAreaName(newName)} // Pasamos el nuevo nombre aquí
+                onSave={handleSaveAreaName}
                 onCancel={handleCancelEdit}
               />
             );
@@ -268,34 +432,20 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
                   variant="ghost"
                   size="sm"
                   className={`h-6 w-6 p-0 ${statusFilter !== null ? "text-blue-600" : ""}`}
-                  onClick={(e) => e.stopPropagation()} // Importante para que no dispare el sort
+                  onClick={(e) => e.stopPropagation()}
+                  disabled={isEditing}
                 >
                   <Filter className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  onClick={() => {
-                    setStatusFilter(null);
-                    setCurrentPage(1);
-                  }}
-                >
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(null)}>
                   Todos
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setStatusFilter(1);
-                    setCurrentPage(1);
-                  }}
-                >
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(1)}>
                   Activo
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setStatusFilter(0);
-                    setCurrentPage(1);
-                  }}
-                >
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(0)}>
                   Inactivo
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -310,106 +460,61 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
       }),
       columnHelper.display({
         id: "actions",
-        cell: (info) => (
-          <AreaRowActions
-            areaId={info.row.original.ID_AREA}
-            areaName={info.row.original.AREA}
-            status={info.row.original.ID_ESTADO_REGISTRO}
-            onEdit={() => {
-              setEditingAreaId(info.row.original.ID_AREA);
-              setEditingAreaName(info.row.original.AREA);
-              setOriginalAreaName(info.row.original.AREA);
-            }}
-            onDelete={(id) =>
-              updateAreaStatus.mutate({ id_empresa, id_area: id, status: 0 })
-            }
-            onReactivate={(id) =>
-              updateAreaStatus.mutate({ id_empresa, id_area: id, status: 1 })
-            }
-            onConfigureAi={
-              onConfigureAi
-                ? () =>
-                    onConfigureAi(
-                      info.row.original.ID_AREA,
-                      id_empresa,
-                      info.row.original.AREA,
-                    )
-                : undefined
-            }
-          />
-        ),
-        size: 50,
+        cell: (info) => {
+          const rowIsBeingEdited = editingAreaId === info.row.original.ID_AREA;
+          const disableOtherRows = isEditing && !rowIsBeingEdited;
+          return (
+            <AreaRowActions
+              areaId={info.row.original.ID_AREA}
+              areaName={info.row.original.AREA}
+              status={info.row.original.ID_ESTADO_REGISTRO}
+              onEdit={() => {
+                if (disableOtherRows) return;
+                setEditingAreaId(info.row.original.ID_AREA);
+                setOriginalAreaName(info.row.original.AREA);
+              }}
+              onDelete={(id) => {
+                if (isEditing) return;
+                updateAreaStatus.mutate({ id_empresa, id_area: id, status: 0 });
+              }}
+              onReactivate={(id) => {
+                if (isEditing) return;
+                updateAreaStatus.mutate({ id_empresa, id_area: id, status: 1 });
+              }}
+              onConfigureAi={
+                onConfigureAi
+                  ? () => {
+                      if (isEditing) return;
+                      onConfigureAi(
+                        info.row.original.ID_AREA,
+                        id_empresa,
+                        info.row.original.AREA,
+                      );
+                    }
+                  : undefined
+              }
+            />
+          );
+        },
+        size: 20,
+        minSize: 20,
+        maxSize: 20,
       }),
     ],
-    [editingAreaId, id_empresa, statusFilter], // Añadido statusFilter a las dependencias
+    [
+      editingAreaId,
+      id_empresa,
+      isEditing,
+      statusFilter,
+      updateAreaName.isPending,
+      updateAreaStatus,
+      handleSaveAreaName,
+      handleCancelEdit,
+      handleStatusFilterChange,
+      onConfigureAi,
+    ],
   );
-  const EditableAreaCell = ({
-    initialValue,
-    onSave,
-    onCancel,
-    isPending,
-  }: {
-    initialValue: string;
-    onSave: (name: string) => void;
-    onCancel: () => void;
-    isPending: boolean;
-  }) => {
-    const [value, setValue] = useState(initialValue);
-    const inputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }, []);
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === "Enter") onSave(value);
-      if (e.key === "Escape") onCancel();
-    };
-
-    return (
-      <div
-        className="flex items-center gap-2"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <FolderOpen className="h-4 w-4 text-amber-500 flex-shrink-0" />
-        <Input
-          ref={inputRef}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="h-8 text-sm min-w-[150px]"
-          disabled={isPending}
-        />
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              onSave(value);
-            }}
-            disabled={isPending}
-          >
-            <Check className="h-4 w-4 text-green-600" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              onCancel();
-            }}
-            disabled={isPending}
-          >
-            <X className="h-4 w-4 text-red-600" />
-          </Button>
-        </div>
-      </div>
-    );
-  };
   const table = useReactTable({
     data: data?.areas || [],
     columns,
@@ -423,56 +528,6 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
     manualPagination: true,
     getRowId: (row) => row.ID_AREA.toString(), // Recomendado: usar el ID real
   });
-  // Cambia esto:
-  const handleSaveAreaName = async (newName?: string) => {
-    // Usa el valor pasado por parámetro o, en su defecto, el del estado
-    const nameToSave = (
-      typeof newName === "string" ? newName : editingAreaName
-    ).trim();
-
-    if (!editingAreaId || !id_empresa || nameToSave === "") {
-      setEditingAreaId(null);
-      return;
-    }
-
-    if (nameToSave === originalAreaName) {
-      setEditingAreaId(null);
-      return;
-    }
-
-    try {
-      const result = await updateAreaName.mutateAsync({
-        id_empresa,
-        id_area: editingAreaId,
-        area: nameToSave, // Usamos el nombre procesado
-      });
-
-      if (result.results?.[0]?.ID_TIPO_MENSAJE === 1) {
-        setEditingAreaName(originalAreaName);
-      }
-
-      setEditingAreaId(null);
-      setEditingAreaName("");
-      setOriginalAreaName("");
-    } catch (error) {
-      setEditingAreaName(originalAreaName);
-      setEditingAreaId(null);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingAreaName(originalAreaName);
-    setEditingAreaId(null);
-    setOriginalAreaName("");
-  };
-
-  // Focus input when editing starts
-  useEffect(() => {
-    if (editingAreaId !== null && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editingAreaId]);
 
   // Reset to first page when search term or status filter changes
   useEffect(() => {
@@ -480,10 +535,14 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
   }, [searchTerm, statusFilter]);
 
   // Handle page size change
-  const handlePageSizeChange = (value: string) => {
-    setPageSize(Number(value));
-    setCurrentPage(1); // Reset to first page when changing page size
-  };
+  const handlePageSizeChange = useCallback(
+    (value: string) => {
+      if (isEditing) return;
+      setPageSize(Number(value));
+      setCurrentPage(1);
+    },
+    [isEditing]
+  );
 
   const areas = data?.areas || [];
   const totalPages = data?.total_paginas || 0;
@@ -529,6 +588,7 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
               <Select
                 value={pageSize.toString()}
                 onValueChange={handlePageSizeChange}
+                disabled={isEditing}
               >
                 <SelectTrigger className="w-[80px]">
                   <SelectValue />
@@ -570,23 +630,17 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
                       {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
                           <SortableContext
-                            items={columnOrder}
+                            // Filtramos los IDs estáticos para que dnd-kit no los considere parte del flujo de ordenamiento
+                            items={columnOrder.filter(
+                              (id) => !["select", "actions"].includes(id),
+                            )}
                             strategy={horizontalListSortingStrategy}
                           >
                             {headerGroup.headers.map((header) => (
                               <DraggableTableHeader
                                 key={header.id}
                                 header={header}
-                                onSortClick={(id) => {
-                                  setOrderDirection(
-                                    orderField === id &&
-                                      orderDirection === "ASC"
-                                      ? "DESC"
-                                      : "ASC",
-                                  );
-                                  setOrderField(id);
-                                  setCurrentPage(1);
-                                }}
+                                onSortClick={handleSortClick}
                                 orderField={orderField}
                                 orderDirection={orderDirection}
                               />
@@ -596,32 +650,29 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
                       ))}
                     </TableHeader>
                     <TableBody>
-                      {areas.map((area) => {
-                        // Buscamos la fila correspondiente en la instancia de tanstack
-                        const row = table
-                          .getRowModel()
-                          .rows.find(
-                            (r) => r.original.ID_AREA === area.ID_AREA,
-                          );
-
-                        if (!row) return null;
-
-                        return (
-                          <TableRow key={row.id}>
-                            {row.getVisibleCells().map((cell) => (
+                      {table.getRowModel().rows.map((row) => (
+                        <TableRow key={row.id}>
+                          {row.getVisibleCells().map((cell) => {
+                            const isCompactColumn = ["select", "actions"].includes(cell.column.id);
+                            return (
                               <TableCell
                                 key={cell.id}
-                                style={{ width: cell.column.getSize() }}
+                                style={{
+                                  width: cell.column.getSize(),
+                                  minWidth: cell.column.getSize(),
+                                  maxWidth: cell.column.getSize(),
+                                }}
+                                className={isCompactColumn ? "px-1 text-center" : undefined}
                               >
                                 {flexRender(
                                   cell.column.columnDef.cell,
                                   cell.getContext(),
                                 )}
                               </TableCell>
-                            ))}
-                          </TableRow>
-                        );
-                      })}
+                            );
+                          })}
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </div>
@@ -639,7 +690,7 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
                         onClick={() =>
                           setCurrentPage(Math.max(1, currentPage - 1))
                         }
-                        disabled={currentPage === 1}
+                        disabled={currentPage === 1 || isEditing}
                       >
                         <ChevronLeft className="h-4 w-4" />
                         <span className="hidden md:inline">Anterior</span>
@@ -689,7 +740,7 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
                               onClick={() =>
                                 typeof page === "number" && setCurrentPage(page)
                               }
-                              disabled={page === "..."}
+                              disabled={page === "..." || isEditing}
                             >
                               {page}
                             </Button>
@@ -724,6 +775,7 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
                               }
                               size="sm"
                               onClick={() => setCurrentPage(page)}
+                              disabled={isEditing}
                             >
                               {page}
                             </Button>
@@ -737,7 +789,7 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
                         onClick={() =>
                           setCurrentPage(Math.min(totalPages, currentPage + 1))
                         }
-                        disabled={currentPage === totalPages}
+                        disabled={currentPage === totalPages || isEditing}
                       >
                         <span className="hidden md:inline">Siguiente</span>
                         <ChevronRight className="h-4 w-4" />
