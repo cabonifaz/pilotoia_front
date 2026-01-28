@@ -210,10 +210,9 @@ export const AgentsSidebar = ({
                 type="tel"
                 placeholder="Ingrese el número de teléfono"
                 value={numeroTelf}
-                onChange={(e) => setNumeroTelf(e.target.value)}
+                onChange={(e) => setNumeroTelf(e.target.value.replace(/[^0-9]/g, ''))}
                 disabled={isPending}
-                pattern="[0-9\-\+\(\)\s]*"
-                maxLength={20}
+                maxLength={12}
                 className="h-9 text-sm"
               />
             </div>

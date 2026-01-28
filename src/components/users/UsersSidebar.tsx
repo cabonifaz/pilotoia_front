@@ -275,8 +275,9 @@ export const UsersSidebar = ({
               <Label className="text-xs">Código</Label>
               <Select value={codigoPais} onValueChange={setCodigoPais} disabled={isPending}>
                 <SelectTrigger className="w-28 h-9">
-                  {codigoPais && phoneCodesData?.phone_codes && (() => {
-                    const selectedCode = phoneCodesData.phone_codes.find(
+                  {codigoPais && (() => {
+                    const [codigoNumerico, codigoIso] = codigoPais.split('-');
+                    const selectedCode = phoneCodesData?.phone_codes?.find(
                       c => `${c.CODIGO_NUMERICO}-${c.CODIGO_ISO}` === codigoPais
                     );
                     return selectedCode ? (
@@ -288,7 +289,16 @@ export const UsersSidebar = ({
                         />
                         <span>{selectedCode.PREFIJO_TELEFONICO}</span>
                       </div>
-                    ) : <SelectValue />;
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={`https://flagcdn.com/w20/${codigoIso.toLowerCase()}.png`}
+                          alt={codigoIso}
+                          className="w-5 h-3 object-cover"
+                        />
+                        <span>+{codigoNumerico}</span>
+                      </div>
+                    );
                   })()}
                 </SelectTrigger>
                 <SelectContent className="text-sm">
@@ -317,10 +327,9 @@ export const UsersSidebar = ({
                 type="tel"
                 placeholder="Ingrese el número de teléfono"
                 value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
+                onChange={(e) => setTelefono(e.target.value.replace(/[^0-9]/g, ''))}
                 disabled={isPending}
-                pattern="[0-9\-\+\(\)\s]*"
-                maxLength={20}
+                maxLength={12}
                 className="h-9 text-sm"
               />
             </div>
