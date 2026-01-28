@@ -66,7 +66,7 @@ export const getCompaniesPaginated = async (
   search?: string,
   order_field: 'ID_EMPRESA' | 'RUC' | 'RAZON_SOCIAL' | 'FCHCRE' | 'ID_ESTADO_REGISTRO' = 'RAZON_SOCIAL',
   order_direction: 'ASC' | 'DESC' = 'ASC',
-  status_filter: number | null = null  
+  status_filter: number | null = null
 ): Promise<GetCompaniesPaginatedResponse> => {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -79,7 +79,7 @@ export const getCompaniesPaginated = async (
     params.append('search', search);
   }
 
-  if (status_filter !== null) {  // ✅ Solo agregar si no es null
+  if (status_filter !== null) {
     params.append('status_filter', status_filter.toString());
   }
 

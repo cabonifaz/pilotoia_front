@@ -48,18 +48,28 @@ export const getCompanyUploadsPaginated = async (
   dirOrden?: string,
   filtroEstado?: number
 ): Promise<PaginatedKnowledgeResponse> => {
-  const response = await apiClient.post<PaginatedKnowledgeResponse>(
-    '/v1/knowledge/get_knowledge_paginated',
-    {
-      id_empresa: companyId,
-      id_area: areaId,
-      num_pagina: numPagina,
-      tam_pagina: tamPagina,
-      term_busqueda: termBusqueda || null,
-      campo_orden: campoOrden || 'FCHMOD',
-      dir_orden: dirOrden || 'DESC',
-      filtro_estado: filtroEstado !== undefined ? filtroEstado : null,
-    }
+  const params = new URLSearchParams({
+    id_empresa: companyId.toString(),
+    num_pagina: numPagina.toString(),
+    tam_pagina: tamPagina.toString(),
+    campo_orden: campoOrden || 'FCHMOD',
+    dir_orden: dirOrden || 'DESC',
+  });
+
+  if (areaId !== undefined) {
+    params.append('id_area', areaId.toString());
+  }
+
+  if (termBusqueda) {
+    params.append('term_busqueda', termBusqueda);
+  }
+
+  if (filtroEstado !== undefined) {
+    params.append('filtro_estado', filtroEstado.toString());
+  }
+
+  const response = await apiClient.get<PaginatedKnowledgeResponse>(
+    `/v1/knowledge/get_knowledge_paginated?${params.toString()}`
   );
   return response.data;
 };
