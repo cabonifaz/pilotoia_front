@@ -42,6 +42,12 @@ export const UsersSidebarUpdate = ({
   const { mutate: updateUsuario, isPending } = useUpdateUsuario(id_empresa);
   const { data: phoneCodesData } = useGetPhoneCodes();
 
+  // Strip country code prefix from stored phone number
+  const stripCodigoNumerico = (cp: string, tel: string) => {
+    const codigoNumerico = cp.split('-')[0];
+    return tel.startsWith(codigoNumerico) ? tel.slice(codigoNumerico.length) : tel;
+  };
+
   // Initialize form with user data when sidebar opens
   useEffect(() => {
     if (isOpen && selectedUser) {
@@ -49,10 +55,8 @@ export const UsersSidebarUpdate = ({
       setNombres(selectedUser.NOMBRES);
       setApellidos(selectedUser.APELLIDOS);
       const cp = selectedUser.CODIGO_PAIS || '51-PE';
-      const codigoNumerico = cp.split('-')[0];
-      const tel = selectedUser.TELEFONO || '';
       setCodigoPais(cp);
-      setTelefono(tel.startsWith(codigoNumerico) ? tel.slice(codigoNumerico.length) : tel);
+      setTelefono(stripCodigoNumerico(cp, selectedUser.TELEFONO));
     }
   }, [isOpen, selectedUser]);
 
@@ -69,15 +73,12 @@ export const UsersSidebarUpdate = ({
 
   const hasChanges = selectedUser && (() => {
     const cp = selectedUser.CODIGO_PAIS || '51-PE';
-    const codigoNumerico = cp.split('-')[0];
-    const tel = selectedUser.TELEFONO || '';
-    const originalTelefono = tel.startsWith(codigoNumerico) ? tel.slice(codigoNumerico.length) : tel;
     return (
       usuario !== selectedUser.USUARIO ||
       nombres !== selectedUser.NOMBRES ||
       apellidos !== selectedUser.APELLIDOS ||
       codigoPais !== cp ||
-      telefono !== originalTelefono
+      telefono !== stripCodigoNumerico(cp, selectedUser.TELEFONO)
     );
   })();
 
@@ -86,7 +87,6 @@ export const UsersSidebarUpdate = ({
       return;
     }
 
-    // Extract CODIGO_NUMERICO from composite value (e.g., '51' from '51-PE')
     const codigoNumerico = codigoPais.split('-')[0];
 
     updateUsuario(
@@ -123,7 +123,13 @@ export const UsersSidebarUpdate = ({
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <CardTitle className="text-xs">Actualizar usuario</CardTitle>
-              <CardDescription className="text-xs">Actualice un usuario.</CardDescription>
+              <CardDescription className="text-xs">
+                {(user as any)?.actual_company_area?.EMPRESA && (
+                  <span className="font-semibold">{(user as any)?.actual_company_area?.EMPRESA}</span>
+                )}
+                {(user as any)?.actual_company_area?.EMPRESA && ' - '}
+                {selectedUser ? `${selectedUser.NOMBRES} ${selectedUser.APELLIDOS}` : 'Actualice un usuario.'}
+              </CardDescription>
             </div>
             <Button
               variant="ghost"
