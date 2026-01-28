@@ -18,7 +18,8 @@ export interface CreateUserRequest {
   password: string;
   nombres: string;
   apellidos: string;
-  telefono?: string | null;
+  codigo_pais: string;
+  telefono: string;
   nuevo_rol: number;
   id_empresa: number;
   areas_string: string;

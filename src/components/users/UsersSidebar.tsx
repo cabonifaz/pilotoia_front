@@ -14,7 +14,9 @@ import {
 } from '@/components/shadcn/select';
 import { useCreateUsuario } from '@/hooks/useUsersQueries';
 import { useGetAreas } from '@/hooks/useAreaQueries';
+import { useGetPhoneCodes } from '@/hooks/usePhoneCodesQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
+import type { PhoneCode } from '@/types/phoneCodes';
 
 interface UsersSidebarProps {
   isOpen: boolean;
@@ -36,6 +38,7 @@ export const UsersSidebar = ({
   const [showPassword, setShowPassword] = useState(false);
   const [nombres, setNombres] = useState('');
   const [apellidos, setApellidos] = useState('');
+  const [codigoPais, setCodigoPais] = useState('51-PE');
   const [telefono, setTelefono] = useState('');
   const [idTipoRol, setIdTipoRol] = useState('3');
   const [selectedAreas, setSelectedAreas] = useState<number[]>([]);
@@ -43,6 +46,7 @@ export const UsersSidebar = ({
 
   const { mutate: createUsuario, isPending } = useCreateUsuario(id_empresa);
   const { data: areasData } = useGetAreas(id_empresa);
+  const { data: phoneCodesData } = useGetPhoneCodes();
 
   // Get General area ID for Administrador role
   const generalAreaId = areasData?.areas?.find((area) => area.AREA === 'General')?.ID_AREA;
@@ -63,6 +67,7 @@ export const UsersSidebar = ({
       setPassword('');
       setNombres('');
       setApellidos('');
+      setCodigoPais('51-PE');
       setTelefono('');
       setIdTipoRol('3');
       setSelectedAreas([]);
@@ -75,6 +80,8 @@ export const UsersSidebar = ({
       return;
     }
 
+    // Extract CODIGO_NUMERICO from composite value (e.g., '51' from '51-PE')
+    const codigoNumerico = codigoPais.split('-')[0];
     const areasString = selectedAreas.join(',');
 
     createUsuario(
@@ -83,7 +90,8 @@ export const UsersSidebar = ({
         password: password.trim(),
         nombres: nombres.trim(),
         apellidos: apellidos.trim(),
-        telefono: telefono.trim() || null,
+        codigo_pais: codigoPais,
+        telefono: telefono.trim() ? codigoNumerico + telefono.trim() : "",
         nuevo_rol: parseInt(idTipoRol),
         id_empresa,
         areas_string: areasString,
@@ -94,6 +102,7 @@ export const UsersSidebar = ({
           setPassword('');
           setNombres('');
           setApellidos('');
+          setCodigoPais('51-PE');
           setTelefono('');
           setIdTipoRol('3');
           setSelectedAreas([]);
@@ -261,17 +270,60 @@ export const UsersSidebar = ({
           </div>
 
           {/* Telefono Input */}
-          <div className="space-y-2">
-            <Label htmlFor="telefono" className="text-xs">Teléfono (Opcional)</Label>
-            <Input
-              id="telefono"
-              type="tel"
-              placeholder="Ingrese el teléfono"
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-              disabled={true}
-              pattern="[0-9\-\+\(\)\s]*"
-            />
+          <div className="flex gap-2">
+            <div className="space-y-2">
+              <Label className="text-xs">Código</Label>
+              <Select value={codigoPais} onValueChange={setCodigoPais} disabled={isPending}>
+                <SelectTrigger className="w-28 h-9">
+                  {codigoPais && phoneCodesData?.phone_codes && (() => {
+                    const selectedCode = phoneCodesData.phone_codes.find(
+                      c => `${c.CODIGO_NUMERICO}-${c.CODIGO_ISO}` === codigoPais
+                    );
+                    return selectedCode ? (
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={`https://flagcdn.com/w20/${selectedCode.CODIGO_ISO.toLowerCase()}.png`}
+                          alt={selectedCode.NOMBRE_PAIS}
+                          className="w-5 h-3 object-cover"
+                        />
+                        <span>{selectedCode.PREFIJO_TELEFONICO}</span>
+                      </div>
+                    ) : <SelectValue />;
+                  })()}
+                </SelectTrigger>
+                <SelectContent className="text-sm">
+                  {phoneCodesData?.phone_codes?.map((code: PhoneCode) => (
+                    <SelectItem
+                      key={`${code.CODIGO_NUMERICO}-${code.CODIGO_ISO}`}
+                      value={`${code.CODIGO_NUMERICO}-${code.CODIGO_ISO}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={`https://flagcdn.com/w20/${code.CODIGO_ISO.toLowerCase()}.png`}
+                          alt={code.NOMBRE_PAIS}
+                          className="w-5 h-3 object-cover"
+                        />
+                        <span>{code.NOMBRE_PAIS}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="telefono" className="text-xs">Teléfono</Label>
+              <Input
+                id="telefono"
+                type="tel"
+                placeholder="Ingrese el número de teléfono"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                disabled={isPending}
+                pattern="[0-9\-\+\(\)\s]*"
+                maxLength={20}
+                className="h-9 text-sm"
+              />
+            </div>
           </div>
 
           {/* Rol Select */}
