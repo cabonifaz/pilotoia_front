@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   ChevronLeft,
   ChevronRight,
   FileText,
   LoaderCircle,
   Filter,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
 import { Button } from "@/components/shadcn/button";
@@ -23,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/shadcn/select";
-import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import {
   Table,
   TableBody,
@@ -33,7 +34,38 @@ import {
   TableRow,
 } from "@/components/shadcn/table";
 import { Loader } from "@/components/loader/Loader";
-import {  useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
+import { DocumentPreviewModal } from "./DocumentPreviewModal";
+import { useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
+import { toast } from "@/hooks/use-toast"; // Asumo que tienes esto basado en el anterior
+
+// --- TANSTACK & DND IMPORTS ---
+import {
+  useReactTable,
+  getCoreRowModel,
+  flexRender,
+  createColumnHelper,
+  type Header,
+  type RowSelectionState,
+} from "@tanstack/react-table";
+import {
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+// --- TIPOS Y AYUDAS ---
 
 type BadgeVariant =
   | "success"
@@ -74,13 +106,15 @@ const getStatusFromStage = (idEstadoProceso: number, estadoProceso: string) => {
   if (idEstadoProceso < 0) {
     statusBadge.variant = "destructive" as const;
   } else {
-    statusBadge.variant = badgeColorMap[idEstadoProceso] || ("secondary" as const);
+    statusBadge.variant =
+      badgeColorMap[idEstadoProceso] || ("secondary" as const);
   }
 
   return statusBadge || { label: "Desconocido", variant: "secondary" as const };
 };
 
 const formatDate = (isoDate: string): string => {
+  if (!isoDate) return "-";
   const date = new Date(isoDate);
   return date.toLocaleDateString("es-ES", {
     day: "2-digit",
@@ -91,52 +125,250 @@ const formatDate = (isoDate: string): string => {
   });
 };
 
+interface DocumentData {
+  id: string;
+  id_usuario: number;
+  usuario_carga: string;
+  id_empresa: number;
+  empresa: string;
+  id_area: number;
+  area: string;
+  id_estado_proceso: number;
+  estado_proceso: string;
+  embedding_model_provider: string;
+  embedding_model: string;
+  name: string; // Mapped from 'documento'
+  fecha_ultima_actualizacion: string;
+  createdDate: string; // Formatted
+  fecha_extraccion: string;
+  fecha_segmentacion: string;
+  fecha_vectorizacion: string;
+  fecha_finalizado: string;
+  en_ejecucion: number;
+  ruta_documento: string;
+  status: StatusBadge; // Calculated
+}
+
+// --- COMPONENTE DE CABECERA ARRASTRABLE ---
+interface DraggableTableHeaderProps {
+  header: Header<DocumentData, unknown>;
+  onSortClick: (field: string) => void;
+  orderField: string | null;
+  orderDirection: "ASC" | "DESC";
+}
+
+const DraggableTableHeader = ({
+  header,
+  onSortClick,
+  orderField,
+  orderDirection,
+}: DraggableTableHeaderProps) => {
+  const columnId = header.column.id;
+  const isStatic = columnId === "select" || columnId === "actions";
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: columnId,
+    disabled: isStatic,
+  });
+
+  const columnSize = header.column.getSize();
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 100 : 1,
+    position: "relative" as const,
+    width: columnSize,
+    minWidth: columnSize,
+    maxWidth: columnSize,
+  };
+
+  // Campos que permiten ordenamiento en el backend
+  const isSortable = [
+    "NOMBRE_DOCUMENTO",
+    "FCHMOD",
+    "FCHCRE",
+    "ID_ESTADO_PROCESO",
+    "AREA",
+    "USUARIO_CARGA",
+    "EMBEDDING_MODEL",
+    "FCH_EXTRACCION",
+    "FCH_SEGMENTACION",
+    "FCH_VECTORIZACION",
+  ].includes(columnId);
+
+  return (
+    <TableHead
+      ref={setNodeRef}
+      style={style}
+      className={`bg-white border-b ${isStatic ? "px-1 text-center" : ""}`}
+    >
+      <div
+        className={`flex items-center ${isStatic ? "justify-center" : "gap-2"}`}
+      >
+        {!isStatic && (
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
+          >
+            ::
+          </div>
+        )}
+        <div
+          className={`flex items-center gap-1 ${isSortable ? "cursor-pointer select-none" : ""}`}
+          onClick={() => isSortable && onSortClick(columnId)}
+        >
+          {flexRender(header.column.columnDef.header, header.getContext())}
+          {isSortable &&
+            orderField === columnId &&
+            (orderDirection === "ASC" ? (
+              <ArrowUp className="h-3 w-3" />
+            ) : (
+              <ArrowDown className="h-3 w-3" />
+            ))}
+        </div>
+      </div>
+    </TableHead>
+  );
+};
+
+// --- COMPONENTE PRINCIPAL ---
+
 interface DocumentsTableProps {
   searchTerm: string;
-  selectedRows?: string[];
+  selectedRows?: string[]; // Ids externos
   onSelectionChange?: (selectedIds: string[]) => void;
   uploadTrigger?: number;
 }
 
+const columnHelper = createColumnHelper<DocumentData>();
+
 export const DocumentsTable = ({
   searchTerm,
-  selectedRows = [],
   onSelectionChange,
   uploadTrigger,
 }: DocumentsTableProps) => {
+  // 1. Estados de Paginación y Filtros
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [orderField, setOrderField] = useState<'NOMBRE_DOCUMENTO' | 'FCHMOD' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'AREA' | 'USUARIO_CARGA' | 'EMBEDDING_MODEL' | 'FCH_EXTRACCION' | 'FCH_SEGMENTACION' | 'FCH_VECTORIZACION'>('FCHMOD');
-  const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('DESC');
+  const [orderField, setOrderField] = useState<string>("FCHMOD");
+  const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
-  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // 2. Estados de Vista Previa (Modal)
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewDocName, setPreviewDocName] = useState<string>("");
   const [loadingPreview, setLoadingPreview] = useState(false);
 
+  // 3. Estados de la Tabla (Orden Columnas y Selección)
+  const [columnOrder, setColumnOrder] = useState<string[]>([
+    "select",
+    "NOMBRE_DOCUMENTO",
+    "USUARIO_CARGA",
+    "EMBEDDING_MODEL",
+    "FCHCRE",
+    "FCH_EXTRACCION",
+    "FCH_SEGMENTACION",
+    "FCH_VECTORIZACION",
+    "FCHMOD",
+    "ID_ESTADO_PROCESO",
+    "actions",
+  ]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
+  // 4. Reset y Effects
   useEffect(() => {
     if (uploadTrigger && uploadTrigger > 0) {
       setCurrentPage(1);
-      setOrderField('FCHCRE');
-      setOrderDirection('DESC');
+      setOrderField("FCHCRE");
+      setOrderDirection("DESC");
     }
   }, [uploadTrigger]);
 
-  // Server-side pagination query for the table
-  const {
-    data,
-    isLoading,
-    error,
-  } = useProcessingLogsPaginated(
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  // Query de Datos
+  const { data, isLoading, error } = useProcessingLogsPaginated(
     currentPage,
     pageSize,
     searchTerm,
-    orderField,
+    orderField as any,
     orderDirection,
-    statusFilter
+    statusFilter,
   );
+
+  // Transformación de datos para la tabla (Mapeo)
+  const tableData: DocumentData[] = useMemo(() => {
+    return (
+      data?.registros?.map((upload) => ({
+        id: upload.id,
+        id_usuario: upload.id_usuario,
+        usuario_carga: upload.usuario_carga || "Sistema",
+        id_empresa: upload.id_empresa,
+        empresa: upload.empresa || "Sin empresa",
+        id_area: upload.id_area,
+        area: upload.area || "Sin área",
+        id_estado_proceso: upload.id_estado_proceso,
+        estado_proceso: upload.estado_proceso,
+        embedding_model_provider: upload.embedding_model_provider,
+        embedding_model: upload.embedding_model,
+        name: upload.documento || "Sin nombre",
+        fecha_ultima_actualizacion: upload.fecha_ultima_actualizacion,
+        createdDate: formatDate(upload.fecha_inicio),
+        fecha_extraccion: upload.fecha_extraccion,
+        fecha_segmentacion: upload.fecha_segmentacion,
+        fecha_vectorizacion: upload.fecha_vectorizacion,
+        fecha_finalizado: upload.fecha_finalizado,
+        en_ejecucion: upload.en_ejecucion,
+        ruta_documento: upload.ruta_documento,
+        status: getStatusFromStage(
+          upload.id_estado_proceso,
+          upload.estado_proceso,
+        ),
+      })) || []
+    );
+  }, [data]);
+
+  // Sincronizar selección de TanStack con props externos
+  useEffect(() => {
+    if (onSelectionChange) {
+      const selectedIds = Object.keys(rowSelection);
+      onSelectionChange(selectedIds);
+    }
+  }, [rowSelection, onSelectionChange]);
+
+  // Handlers
+  const handleSortClick = useCallback(
+    (field: string) => {
+      setOrderDirection((prev) =>
+        orderField === field && prev === "ASC" ? "DESC" : "ASC",
+      );
+      setOrderField(field);
+      setCurrentPage(1);
+    },
+    [orderField],
+  );
+
+  const handlePageSizeChange = useCallback((value: string) => {
+    setPageSize(Number(value));
+    setCurrentPage(1);
+  }, []);
+
+  const handleStatusFilterChange = useCallback((status: number | null) => {
+    setStatusFilter(status);
+    setCurrentPage(1);
+  }, []);
 
   const handleViewDocument = async (ruta_documento: string, name: string) => {
     try {
@@ -144,92 +376,273 @@ export const DocumentsTable = ({
       setPreviewDocName(name);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/v1/knowledge/document/url?ruta_documento=${encodeURIComponent(ruta_documento)}`
+        `${import.meta.env.VITE_API_BASE_URL}/api/v1/knowledge/document/url?ruta_documento=${encodeURIComponent(ruta_documento)}`,
       );
-
       const responseData = await response.json();
 
       if (!response.ok) {
-        throw new Error(responseData?.result?.mensaje || "Error al obtener documento");
+        throw new Error(
+          responseData?.result?.mensaje || "Error al obtener documento",
+        );
       }
 
       setPreviewUrl(responseData.url);
       setPreviewOpen(true);
     } catch (err) {
       console.error(err);
-      alert("No se pudo cargar el documento");
+      toast({
+        title: "Error",
+        description: "No se pudo cargar el documento.",
+        variant: "destructive",
+      });
     } finally {
       setLoadingPreview(false);
     }
   };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, statusFilter]);
+  // --- DND SETUP ---
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor),
+    useSensor(KeyboardSensor),
+  );
 
-  const handleSort = (field: 'NOMBRE_DOCUMENTO' | 'FCHMOD' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'AREA' | 'USUARIO_CARGA' | 'EMBEDDING_MODEL' | 'FCH_EXTRACCION' | 'FCH_SEGMENTACION' | 'FCH_VECTORIZACION') => {
-    if (orderField === field) {
-      setOrderDirection(orderDirection === 'ASC' ? 'DESC' : 'ASC');
-    } else {
-      setOrderField(field);
-      setOrderDirection('ASC');
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (active && over && active.id !== over.id) {
+      if (over.id === "select" || over.id === "actions") return;
+      setColumnOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
+        return arrayMove(items, oldIndex, newIndex);
+      });
     }
-    setCurrentPage(1);
-  };
+  }
+  useEffect(() => {
+    setRowSelection({});
+  }, [
+    currentPage,
+    pageSize,
+    searchTerm,
+    statusFilter,
+    orderField,
+    orderDirection,
+  ]);
+  // --- DEFINICIÓN DE COLUMNAS ---
+  const columns = useMemo(
+    () => [
+      columnHelper.display({
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+            aria-label="Seleccionar todos"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Seleccionar fila"
+          />
+        ),
+        size: 40,
+        minSize: 40,
+        maxSize: 40,
+      }),
+      columnHelper.accessor("name", {
+        id: "NOMBRE_DOCUMENTO",
+        header: "Nombre",
+        cell: (info) => (
+          // Usamos items-start para que el icono se quede arriba si hay varias líneas
+          <div className="flex items-start gap-2">
+            {/* shrink-0 evita que el icono se aplaste */}
+            <FileText className="h-4 w-4 text-blue-500 mt-1 shrink-0 self-center" />
+            {/* Quitamos 'truncate' y 'max-w'. Ponemos break-words */}
+            <span className="whitespace-normal break-words">
+              {info.getValue()}
+            </span>
+          </div>
+        ),
+        // Puedes aumentar el tamaño mínimo si quieres
+        minSize: 200,
+      }),
+      columnHelper.accessor("usuario_carga", {
+        id: "USUARIO_CARGA",
+        header: "Usuario Carga",
+      }),
+      columnHelper.accessor("embedding_model", {
+        id: "EMBEDDING_MODEL",
+        header: "Modelo Embedding",
+      }),
+      columnHelper.accessor("createdDate", {
+        id: "FCHCRE",
+        header: "Creado el",
+      }),
+      columnHelper.accessor("fecha_extraccion", {
+        id: "FCH_EXTRACCION",
+        header: "Extracción",
+        cell: (info) => formatDate(info.getValue()),
+      }),
+      columnHelper.accessor("fecha_segmentacion", {
+        id: "FCH_SEGMENTACION",
+        header: "Segmentación",
+        cell: (info) => formatDate(info.getValue()),
+      }),
+      columnHelper.accessor("fecha_vectorizacion", {
+        id: "FCH_VECTORIZACION",
+        header: "Vectorización",
+        cell: (info) => formatDate(info.getValue()),
+      }),
+      columnHelper.accessor("fecha_finalizado", {
+        id: "FCHMOD",
+        header: "Finalizado",
+        cell: (info) => formatDate(info.getValue()),
+      }),
+      columnHelper.accessor("status", {
+        id: "ID_ESTADO_PROCESO",
+        header: () => (
+          <div className="flex items-center gap-2">
+            <span>Estado</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-6 w-6 p-0 ${statusFilter !== null ? "text-blue-600" : ""}`}
+                >
+                  <Filter className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  onClick={() => handleStatusFilterChange(null)}
+                  className={statusFilter === null ? "bg-accent" : ""}
+                >
+                  Todos
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleStatusFilterChange(0)}
+                  className={statusFilter === 0 ? "bg-accent" : ""}
+                >
+                  Subiendo
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleStatusFilterChange(1)}
+                  className={statusFilter === 1 ? "bg-accent" : ""}
+                >
+                  En cola
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleStatusFilterChange(2)}
+                  className={statusFilter === 2 ? "bg-accent" : ""}
+                >
+                  Procesando
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleStatusFilterChange(3)}
+                  className={statusFilter === 3 ? "bg-accent" : ""}
+                >
+                  Texto extraído
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleStatusFilterChange(4)}
+                  className={statusFilter === 4 ? "bg-accent" : ""}
+                >
+                  Texto segmentado
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleStatusFilterChange(5)}
+                  className={statusFilter === 5 ? "bg-accent" : ""}
+                >
+                  Segmentos vectorizados
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleStatusFilterChange(6)}
+                  className={statusFilter === 6 ? "bg-accent" : ""}
+                >
+                  Cargado
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleStatusFilterChange(7)}
+                  className={statusFilter === 7 ? "bg-accent" : ""}
+                >
+                  Error
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ),
+        cell: (info) => (
+          <div className="flex items-center gap-2">
+            <Badge variant={info.getValue().variant}>
+              {info.getValue().label}
+            </Badge>
+            {info.row.original.en_ejecucion === 1 && (
+              <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+        ),
+      }),
+      columnHelper.display({
+        id: "actions",
+        cell: (info) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="text-muted-foreground hover:text-foreground px-2">
+                ⋮
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() =>
+                  handleViewDocument(
+                    info.row.original.ruta_documento,
+                    info.row.original.name,
+                  )
+                }
+              >
+                Ver documento
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+        size: 40,
+      }),
+    ],
+    [statusFilter, handleStatusFilterChange],
+  );
 
-  const handlePageSizeChange = (value: string) => {
-    setPageSize(Number(value));
-    setCurrentPage(1);
-  };
+  // --- TABLA INSTANCIA ---
+  const table = useReactTable({
+    data: tableData,
+    columns,
+    state: {
+      columnOrder,
+      rowSelection,
+    },
+    onColumnOrderChange: setColumnOrder,
+    onRowSelectionChange: setRowSelection,
+    getCoreRowModel: getCoreRowModel(),
+    manualPagination: true,
+    getRowId: (row) => row.id, // Importante para la selección correcta
+  });
 
-  const displayedDocuments = data?.registros?.map((upload) => ({
-    id: upload.id,
-    id_usuario: upload.id_usuario,
-    usuario_carga: upload.usuario_carga || "Sistema",
-    id_empresa: upload.id_empresa,
-    empresa: upload.empresa || "Sin empresa",
-    id_area: upload.id_area,
-    area: upload.area || "Sin área",
-    id_estado_proceso: upload.id_estado_proceso,
-    estado_proceso: upload.estado_proceso,
-    embedding_model_provider: upload.embedding_model_provider,
-    embedding_model: upload.embedding_model,
-    name: upload.documento || "Sin nombre",
-    fecha_ultima_actualizacion: upload.fecha_ultima_actualizacion,
-    createdDate: formatDate(upload.fecha_inicio),
-    fecha_extraccion: upload.fecha_extraccion,
-    fecha_segmentacion: upload.fecha_segmentacion,
-    fecha_vectorizacion: upload.fecha_vectorizacion,
-    fecha_finalizado: upload.fecha_finalizado,
-    en_ejecucion: upload.en_ejecucion,
-    ruta_documento: upload.ruta_documento,
-    status: getStatusFromStage(upload.id_estado_proceso, upload.estado_proceso),
-  })) || [];
+  const draggableColumns = useMemo(
+    () => columnOrder.filter((id) => id !== "select" && id !== "actions"),
+    [columnOrder],
+  );
 
   const totalPages = data?.total_paginas || 0;
   const totalRecords = data?.total_registros || 0;
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      const allIds = displayedDocuments.map((doc) => doc.id);
-      onSelectionChange?.(allIds);
-    } else {
-      onSelectionChange?.([]);
-    }
-  };
-
-  const handleSelectRow = (docId: string, checked: boolean) => {
-    if (checked) {
-      onSelectionChange?.([...selectedRows, docId]);
-    } else {
-      onSelectionChange?.(selectedRows.filter((id) => id !== docId));
-    }
-  };
-
-  const isAllSelected =
-    displayedDocuments.length > 0 &&
-    displayedDocuments.every((doc) => selectedRows.includes(doc.id));
-
+  const startIndex = (currentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(currentPage * pageSize, totalRecords);
 
   return (
     <Card className="flex-1 flex flex-col min-h-0">
@@ -242,11 +655,15 @@ export const DocumentsTable = ({
             </p>
           </div>
 
-          {/* Page size selector - Top right */}
-          {!isLoading && !error && displayedDocuments.length > 0 && (
+          {!isLoading && !error && tableData.length > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Filas por página:</span>
-              <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+              <span className="text-sm text-muted-foreground hidden md:inline">
+                Filas por página:
+              </span>
+              <Select
+                value={pageSize.toString()}
+                onValueChange={handlePageSizeChange}
+              >
                 <SelectTrigger className="w-[80px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -263,328 +680,100 @@ export const DocumentsTable = ({
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
-        {/* Loading State */}
         {isLoading && <Loader text="Cargando documentos..." />}
 
-        {/* Error State */}
         {error && (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-red-500">Error: {error.message}</p>
           </div>
         )}
 
-        {/* Table - Always show when not loading/error */}
         {!isLoading && !error && (
           <>
-            <div
-              ref={tableContainerRef}
-              className="flex-1 min-h-0 border rounded-lg"
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
             >
-              <div className="h-full overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">
-                        <Checkbox
-                          checked={isAllSelected}
-                          onCheckedChange={handleSelectAll}
-                          aria-label="Seleccionar todos"
-                        />
-                      </TableHead>
-                      <TableHead>
-                        <button
-                          onClick={() => handleSort('NOMBRE_DOCUMENTO')}
-                          className="flex items-center gap-1 hover:text-foreground"
-                        >
-                          Nombre
-                          {orderField === 'NOMBRE_DOCUMENTO' && (
-                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                          )}
-                        </button>
-                      </TableHead>
-                      <TableHead>
-                        <button
-                          onClick={() => handleSort('USUARIO_CARGA')}
-                          className="flex items-center gap-1 hover:text-foreground"
-                        >
-                          Usuario Carga
-                          {orderField === 'USUARIO_CARGA' && (
-                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                          )}
-                        </button>
-                      </TableHead>
-                      <TableHead>
-                        <button
-                          onClick={() => handleSort('EMBEDDING_MODEL')}
-                          className="flex items-center gap-1 hover:text-foreground"
-                        >
-                          Modelo Embedding
-                          {orderField === 'EMBEDDING_MODEL' && (
-                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                          )}
-                        </button>
-                      </TableHead>
-                      <TableHead>
-                        <button
-                          onClick={() => handleSort('FCHCRE')}
-                          className="flex items-center gap-1 hover:text-foreground"
-                        >
-                          Creado el
-                          {orderField === 'FCHCRE' && (
-                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                          )}
-                        </button>
-                      </TableHead>
-                      <TableHead>
-                        <button
-                          onClick={() => handleSort('FCH_EXTRACCION')}
-                          className="flex items-center gap-1 hover:text-foreground"
-                        >
-                          Extracción
-                          {orderField === 'FCH_EXTRACCION' && (
-                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                          )}
-                        </button>
-                      </TableHead>
-                      <TableHead>
-                        <button
-                          onClick={() => handleSort('FCH_SEGMENTACION')}
-                          className="flex items-center gap-1 hover:text-foreground"
-                        >
-                          Segmentación
-                          {orderField === 'FCH_SEGMENTACION' && (
-                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                          )}
-                        </button>
-                      </TableHead>
-                      <TableHead>
-                        <button
-                          onClick={() => handleSort('FCH_VECTORIZACION')}
-                          className="flex items-center gap-1 hover:text-foreground"
-                        >
-                          Vectorización
-                          {orderField === 'FCH_VECTORIZACION' && (
-                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                          )}
-                        </button>
-                      </TableHead>
-                      <TableHead>
-                        <button
-                          onClick={() => handleSort('FCHMOD')}
-                          className="flex items-center gap-1 hover:text-foreground"
-                        >
-                          Finalizado
-                          {orderField === 'FCHMOD' && (
-                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                          )}
-                        </button>
-                      </TableHead>
-                      <TableHead>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleSort('ID_ESTADO_PROCESO')}
-                            className="flex items-center gap-1 hover:text-foreground"
+              <div className="flex-1 min-h-0 border rounded-lg">
+                <div className="h-full overflow-y-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 z-20 bg-white shadow-sm">
+                      {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id}>
+                          <SortableContext
+                            items={draggableColumns}
+                            strategy={horizontalListSortingStrategy}
                           >
-                            Estado
-                            {orderField === 'ID_ESTADO_PROCESO' && (
-                              <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                            )}
-                          </button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={`h-6 w-6 p-0 ${statusFilter !== null ? 'text-blue-600' : ''}`}
-                              >
-                                <Filter className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setStatusFilter(null);
-                                  setCurrentPage(1);
-                                }}
-                                className={statusFilter === null ? 'bg-accent' : ''}
-                              >
-                                Todos
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setStatusFilter(0);
-                                  setCurrentPage(1);
-                                }}
-                                className={statusFilter === 0 ? 'bg-accent' : ''}
-                              >
-                                Subiendo
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setStatusFilter(1);
-                                  setCurrentPage(1);
-                                }}
-                                className={statusFilter === 1 ? 'bg-accent' : ''}
-                              >
-                                En cola
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setStatusFilter(2);
-                                  setCurrentPage(1);
-                                }}
-                                className={statusFilter === 2 ? 'bg-accent' : ''}
-                              >
-                                Procesando
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setStatusFilter(3);
-                                  setCurrentPage(1);
-                                }}
-                                className={statusFilter === 3 ? 'bg-accent' : ''}
-                              >
-                                Texto extraído
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setStatusFilter(4);
-                                  setCurrentPage(1);
-                                }}
-                                className={statusFilter === 4 ? 'bg-accent' : ''}
-                              >
-                                Texto segmentado
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setStatusFilter(5);
-                                  setCurrentPage(1);
-                                }}
-                                className={statusFilter === 5 ? 'bg-accent' : ''}
-                              >
-                                Segmentos vectorizados
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setStatusFilter(6);
-                                  setCurrentPage(1);
-                                }}
-                                className={statusFilter === 6 ? 'bg-accent' : ''}
-                              >
-                                Cargado
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setStatusFilter(7);
-                                  setCurrentPage(1);
-                                }}
-                                className={statusFilter === 7 ? 'bg-accent' : ''}
-                              >
-                                Error
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableHead>
-                      <TableHead className="w-12"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {displayedDocuments.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={12} className="h-24 text-center">
-                          <p className="text-muted-foreground">
-                            {statusFilter !== null
-                              ? `No se encontraron documentos en el estado seleccionado`
-                              : searchTerm
-                                ? `No se encontraron documentos que coincidan con "${searchTerm}"`
-                                : 'No hay documentos registrados'}
-                          </p>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      displayedDocuments.map((doc) => (
-                        <TableRow key={doc.id}>
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedRows.includes(doc.id)}
-                              onCheckedChange={(checked) =>
-                                handleSelectRow(doc.id, checked as boolean)
-                              }
-                              aria-label={`Seleccionar ${doc.name}`}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-blue-500" />
-                              <span>{doc.name}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>{doc.usuario_carga}</TableCell>
-                          <TableCell>{doc.embedding_model}</TableCell>
-                          <TableCell>{doc.createdDate}</TableCell>
-                          <TableCell>
-                            {doc.fecha_extraccion
-                              ? formatDate(doc.fecha_extraccion)
-                              : "-"}
-                          </TableCell>
-                          <TableCell>
-                            {doc.fecha_segmentacion
-                              ? formatDate(doc.fecha_segmentacion)
-                              : "-"}
-                          </TableCell>
-                          <TableCell>
-                            {doc.fecha_vectorizacion
-                              ? formatDate(doc.fecha_vectorizacion)
-                              : "-"}
-                          </TableCell>
-                          <TableCell>
-                            {doc.fecha_finalizado
-                              ? formatDate(doc.fecha_finalizado)
-                              : "-"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={doc.status.variant}>
-                                {doc.status.label}
-                              </Badge>
-                              {doc.en_ejecucion === 1 && (
-                                <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button className="text-muted-foreground hover:text-foreground px-2">
-                                  ⋮
-                                </button>
-                              </DropdownMenuTrigger>
-
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleViewDocument(
-                                      doc.ruta_documento,
-                                      doc.name
-                                    )
-                                  }
-                                >
-                                  Ver documento
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            {headerGroup.headers.map((header) => (
+                              <DraggableTableHeader
+                                key={header.id}
+                                header={header}
+                                onSortClick={handleSortClick}
+                                orderField={orderField}
+                                orderDirection={orderDirection}
+                              />
+                            ))}
+                          </SortableContext>
+                        </TableRow>
+                      ))}
+                    </TableHeader>
+                    <TableBody>
+                      {table.getRowModel().rows.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={columns.length}
+                            className="h-24 text-center"
+                          >
+                            <p className="text-muted-foreground">
+                              {statusFilter !== null
+                                ? `No se encontraron documentos en el estado seleccionado`
+                                : searchTerm
+                                  ? `No se encontraron documentos que coincidan con "${searchTerm}"`
+                                  : "No hay documentos registrados"}
+                            </p>
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                      ) : (
+                        table.getRowModel().rows.map((row) => (
+                          <TableRow key={row.id}>
+                            {row.getVisibleCells().map((cell) => {
+                              const isCompactColumn = [
+                                "select",
+                                "actions",
+                              ].includes(cell.column.id);
+                              return (
+                                <TableCell
+                                  key={cell.id}
+                                  style={{
+                                    width: cell.column.getSize(),
+                                    minWidth: cell.column.getSize(),
+                                    maxWidth: cell.column.getSize(),
+                                  }}
+                                  className={
+                                    isCompactColumn
+                                      ? "px-1 text-center"
+                                      : undefined
+                                  }
+                                >
+                                  {flexRender(
+                                    cell.column.columnDef.cell,
+                                    cell.getContext(),
+                                  )}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
-            </div>
+            </DndContext>
 
-            {/* Pagination - Only show when there's data */}
-            {displayedDocuments.length > 0 && (
+            {/* Paginación */}
+            {tableData.length > 0 && (
               <div className="flex flex-col items-center gap-2 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Button
@@ -602,9 +791,9 @@ export const DocumentsTable = ({
                       const maxButtons = 5;
                       const halfRange = Math.floor(maxButtons / 2);
                       let startPage = Math.max(1, currentPage - halfRange);
-                      let endPage = Math.min(
+                      const endPage = Math.min(
                         totalPages,
-                        startPage + maxButtons - 1
+                        startPage + maxButtons - 1,
                       );
 
                       if (endPage - startPage + 1 < maxButtons) {
@@ -612,22 +801,15 @@ export const DocumentsTable = ({
                       }
 
                       const pages = [];
-
                       if (startPage > 1) {
                         pages.push(1);
-                        if (startPage > 2) {
-                          pages.push("...");
-                        }
+                        if (startPage > 2) pages.push("...");
                       }
-
                       for (let i = startPage; i <= endPage; i++) {
                         pages.push(i);
                       }
-
                       if (endPage < totalPages) {
-                        if (endPage < totalPages - 1) {
-                          pages.push("...");
-                        }
+                        if (endPage < totalPages - 1) pages.push("...");
                         pages.push(totalPages);
                       }
 
@@ -640,38 +822,6 @@ export const DocumentsTable = ({
                             typeof page === "number" && setCurrentPage(page)
                           }
                           disabled={page === "..."}
-                        >
-                          {page}
-                        </Button>
-                      ));
-                    })()}
-                  </div>
-
-                  <div className="flex md:hidden gap-1">
-                    {(() => {
-                      const maxButtons = 4;
-                      const halfRange = Math.floor(maxButtons / 2);
-                      let startPage = Math.max(1, currentPage - halfRange);
-                      let endPage = Math.min(
-                        totalPages,
-                        startPage + maxButtons - 1
-                      );
-
-                      if (endPage - startPage + 1 < maxButtons) {
-                        startPage = Math.max(1, endPage - maxButtons + 1);
-                      }
-
-                      const pages = [];
-                      for (let i = startPage; i <= endPage; i++) {
-                        pages.push(i);
-                      }
-
-                      return pages.map((page) => (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(page)}
                         >
                           {page}
                         </Button>
@@ -692,13 +842,14 @@ export const DocumentsTable = ({
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Mostrando {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalRecords)} de {totalRecords} documentos
+                  Mostrando {startIndex}-{endIndex} de {totalRecords} documentos
                 </p>
               </div>
             )}
           </>
         )}
       </CardContent>
+
       <DocumentPreviewModal
         open={previewOpen}
         onOpenChange={setPreviewOpen}

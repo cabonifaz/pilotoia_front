@@ -4,7 +4,8 @@ export interface Usuario {
   USUARIO: string;
   NOMBRES: string;
   APELLIDOS: string;
-  TELEFONO?: string | null;
+  CODIGO_PAIS: string;
+  TELEFONO: string;
   ID_ESTADO_REGISTRO: number;
   ID_EMPRESA: number;
   ID_AREA: number;
@@ -13,20 +14,13 @@ export interface Usuario {
   ROL: string;
 }
 
-export interface GetUsuariosResponse {
-  usuarios: Usuario[];
-  result: {
-    idTipoMensaje: number;
-    mensaje: string;
-  };
-}
-
 export interface CreateUserRequest {
   nuevo_usuario: string;
   password: string;
   nombres: string;
   apellidos: string;
-  telefono?: string | null;
+  codigo_pais: string;
+  telefono: string;
   nuevo_rol: number;
   id_empresa: number;
   areas_string: string;
@@ -37,7 +31,8 @@ export interface UpdateUserRequest {
   usuario: string;
   nombres: string;
   apellidos: string;
-  telefono?: string | null;
+  codigo_pais: string;
+  telefono: string;
 }
 
 export interface CreateUserResult {

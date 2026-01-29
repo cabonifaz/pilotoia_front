@@ -1,12 +1,5 @@
 import apiClient from './apiClient';
-import type { GetAgentesResponse, CreateAgentRequest, CreateAgentResponse, GetAgentesPaginatedResponse } from '@/types/agents';
-
-export const getAgentes = async (id_empresa: number): Promise<GetAgentesResponse> => {
-  const response = await apiClient.get<GetAgentesResponse>(
-    `/v1/agents/get_agentes/${id_empresa}`
-  );
-  return response.data;
-};
+import type { CreateAgentRequest, CreateAgentResponse, GetAgentesPaginatedResponse } from '@/types/agents';
 
 export const createAgente = async (
   request: CreateAgentRequest

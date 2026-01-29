@@ -4,9 +4,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@/components/shadcn/select';
 import { useUpdateUsuario } from '@/hooks/useUsersQueries';
+import { useGetPhoneCodes } from '@/hooks/usePhoneCodesQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 import type { Usuario } from '@/types/users';
+import type { PhoneCode } from '@/types/phoneCodes';
 
 interface UsersSidebarUpdateProps {
   isOpen: boolean;
@@ -28,9 +36,17 @@ export const UsersSidebarUpdate = ({
   const [usuario, setUsuario] = useState('');
   const [nombres, setNombres] = useState('');
   const [apellidos, setApellidos] = useState('');
+  const [codigoPais, setCodigoPais] = useState('51-PE');
   const [telefono, setTelefono] = useState('');
 
   const { mutate: updateUsuario, isPending } = useUpdateUsuario(id_empresa);
+  const { data: phoneCodesData } = useGetPhoneCodes();
+
+  // Strip country code prefix from stored phone number
+  const stripCodigoNumerico = (cp: string, tel: string) => {
+    const codigoNumerico = cp.split('-')[0];
+    return tel.startsWith(codigoNumerico) ? tel.slice(codigoNumerico.length) : tel;
+  };
 
   // Initialize form with user data when sidebar opens
   useEffect(() => {
@@ -38,7 +54,9 @@ export const UsersSidebarUpdate = ({
       setUsuario(selectedUser.USUARIO);
       setNombres(selectedUser.NOMBRES);
       setApellidos(selectedUser.APELLIDOS);
-      setTelefono(selectedUser.TELEFONO || '');
+      const cp = selectedUser.CODIGO_PAIS || '51-PE';
+      setCodigoPais(cp);
+      setTelefono(stripCodigoNumerico(cp, selectedUser.TELEFONO));
     }
   }, [isOpen, selectedUser]);
 
@@ -48,21 +66,28 @@ export const UsersSidebarUpdate = ({
       setUsuario('');
       setNombres('');
       setApellidos('');
+      setCodigoPais('51-PE');
       setTelefono('');
     }
   }, [isOpen]);
 
-  const hasChanges = selectedUser && (
-    usuario !== selectedUser.USUARIO ||
-    nombres !== selectedUser.NOMBRES ||
-    apellidos !== selectedUser.APELLIDOS ||
-    telefono !== (selectedUser.TELEFONO || '')
-  );
+  const hasChanges = selectedUser && (() => {
+    const cp = selectedUser.CODIGO_PAIS || '51-PE';
+    return (
+      usuario !== selectedUser.USUARIO ||
+      nombres !== selectedUser.NOMBRES ||
+      apellidos !== selectedUser.APELLIDOS ||
+      codigoPais !== cp ||
+      telefono !== stripCodigoNumerico(cp, selectedUser.TELEFONO)
+    );
+  })();
 
   const handleSubmit = () => {
     if (!selectedUser || !usuario.trim() || !nombres.trim() || !apellidos.trim() || !hasChanges) {
       return;
     }
+
+    const codigoNumerico = codigoPais.split('-')[0];
 
     updateUsuario(
       {
@@ -70,13 +95,15 @@ export const UsersSidebarUpdate = ({
         usuario: usuario.trim(),
         nombres: nombres.trim(),
         apellidos: apellidos.trim(),
-        telefono: telefono.trim(),
+        codigo_pais: codigoPais,
+        telefono: telefono.trim() ? codigoNumerico + telefono.trim() : "",
       },
       {
         onSuccess: () => {
           setUsuario('');
           setNombres('');
           setApellidos('');
+          setCodigoPais('51-PE');
           setTelefono('');
           onClose();
         },
@@ -96,7 +123,13 @@ export const UsersSidebarUpdate = ({
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <CardTitle className="text-xs">Actualizar usuario</CardTitle>
-              <CardDescription className="text-xs">Actualice un usuario.</CardDescription>
+              <CardDescription className="text-xs">
+                {(user as any)?.actual_company_area?.EMPRESA && (
+                  <span className="font-semibold">{(user as any)?.actual_company_area?.EMPRESA}</span>
+                )}
+                {(user as any)?.actual_company_area?.EMPRESA && ' - '}
+                {selectedUser ? `${selectedUser.NOMBRES} ${selectedUser.APELLIDOS}` : 'Actualice un usuario.'}
+              </CardDescription>
             </div>
             <Button
               variant="ghost"
@@ -150,17 +183,69 @@ export const UsersSidebarUpdate = ({
           </div>
 
           {/* Telefono Input */}
-          <div className="space-y-2">
-            <Label htmlFor="telefono" className="text-xs">Teléfono (Opcional)</Label>
-            <Input
-              id="telefono"
-              type="tel"
-              placeholder="Ingrese el teléfono"
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-              disabled={true}
-              pattern="[0-9\-\+\(\)\s]*"
-            />
+          <div className="flex gap-2">
+            <div className="space-y-2">
+              <Label className="text-xs">Código</Label>
+              <Select value={codigoPais} onValueChange={setCodigoPais} disabled={isPending}>
+                <SelectTrigger className="w-28 h-9">
+                  {codigoPais && (() => {
+                    const [codigoNumerico, codigoIso] = codigoPais.split('-');
+                    const selectedCode = phoneCodesData?.phone_codes?.find(
+                      c => `${c.CODIGO_NUMERICO}-${c.CODIGO_ISO}` === codigoPais
+                    );
+                    return selectedCode ? (
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={`https://flagcdn.com/w20/${selectedCode.CODIGO_ISO.toLowerCase()}.png`}
+                          alt={selectedCode.NOMBRE_PAIS}
+                          className="w-5 h-3 object-cover"
+                        />
+                        <span>{selectedCode.PREFIJO_TELEFONICO}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={`https://flagcdn.com/w20/${codigoIso.toLowerCase()}.png`}
+                          alt={codigoIso}
+                          className="w-5 h-3 object-cover"
+                        />
+                        <span>+{codigoNumerico}</span>
+                      </div>
+                    );
+                  })()}
+                </SelectTrigger>
+                <SelectContent className="text-sm">
+                  {phoneCodesData?.phone_codes?.map((code: PhoneCode) => (
+                    <SelectItem
+                      key={`${code.CODIGO_NUMERICO}-${code.CODIGO_ISO}`}
+                      value={`${code.CODIGO_NUMERICO}-${code.CODIGO_ISO}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={`https://flagcdn.com/w20/${code.CODIGO_ISO.toLowerCase()}.png`}
+                          alt={code.NOMBRE_PAIS}
+                          className="w-5 h-3 object-cover"
+                        />
+                        <span>{code.NOMBRE_PAIS}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="telefono" className="text-xs">Teléfono</Label>
+              <Input
+                id="telefono"
+                type="tel"
+                placeholder="Ingrese el número de teléfono"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value.replace(/[^0-9]/g, ''))}
+                disabled={isPending}
+                maxLength={12}
+                className="h-9 text-sm"
+              />
+            </div>
           </div>
         </CardContent>
 

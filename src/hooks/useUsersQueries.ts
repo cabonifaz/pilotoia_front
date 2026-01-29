@@ -1,19 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getUsuarios, createUsuario, updateUsuario, updateUsuarioStatus, updateUsuarioPassword, updateUsuarioAccess, getUsuariosPaginated } from '../api/usersApi';
+import { createUsuario, updateUsuario, updateUsuarioStatus, updateUsuarioPassword, updateUsuarioAccess, getUsuariosPaginated } from '../api/usersApi';
 import type { CreateUserRequest, UpdateUserRequest, UpdateUserStatusRequest, UpdateUserPasswordRequest, UpdateUserAccessRequest } from '@/types/users';
 import { toast } from './use-toast';
-
-export const useGetUsuarios = (id_empresa: number) => {
-  return useQuery({
-    queryKey: ['usuarios', id_empresa],
-    queryFn: async () => {
-      return await getUsuarios(id_empresa);
-    },
-    enabled: !!id_empresa && id_empresa > 0, // Only run when we have a valid company ID
-    retry: false,
-  });
-};
-
 
 export const useGetUsuariosPaginated = (
   id_empresa: number,

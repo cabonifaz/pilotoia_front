@@ -1,18 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getAgentes, createAgente, getAgentesPaginated } from '../api/agentsApi';
+import { createAgente, getAgentesPaginated } from '../api/agentsApi';
 import type { CreateAgentRequest } from '@/types/agents';
 import { toast } from './use-toast';
-
-export const useGetAgentes = (id_empresa: number) => {
-  return useQuery({
-    queryKey: ['agentes', id_empresa],
-    queryFn: async () => {
-      return await getAgentes(id_empresa);
-    },
-    enabled: !!id_empresa && id_empresa > 0, // Only run when we have a valid company ID
-    retry: false,
-  });
-};
 
 export const useGetAgentesPaginated = (
   id_empresa: number,

@@ -1,12 +1,5 @@
 import apiClient from './apiClient';
-import type { GetUsuariosResponse, CreateUserRequest, CreateUserResponse, UpdateUserRequest, UpdateUserResponse, UpdateUserStatusRequest, UpdateUserStatusResponse, UpdateUserPasswordRequest, UpdateUserPasswordResponse, UpdateUserAccessRequest, UpdateUserAccessResponse, GetUsuariosPaginatedResponse  } from '@/types/users';
-
-export const getUsuarios = async (id_empresa: number): Promise<GetUsuariosResponse> => {
-  const response = await apiClient.get<GetUsuariosResponse>(
-    `/v1/users/get_usuarios/${id_empresa}`
-  );
-  return response.data;
-};
+import type { CreateUserRequest, CreateUserResponse, UpdateUserRequest, UpdateUserResponse, UpdateUserStatusRequest, UpdateUserStatusResponse, UpdateUserPasswordRequest, UpdateUserPasswordResponse, UpdateUserAccessRequest, UpdateUserAccessResponse, GetUsuariosPaginatedResponse  } from '@/types/users';
 
 export const createUsuario = async (
   request: CreateUserRequest
