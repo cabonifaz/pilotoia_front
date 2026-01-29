@@ -1,32 +1,218 @@
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Phone, Filter } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '@/components/shadcn/card';
-import { Button } from '@/components/shadcn/button';
-import { Badge } from '@/components/shadcn/badge';
-import { Checkbox } from '@/components/shadcn/checkbox';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/table';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/shadcn/dropdown-menu';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/select';
-import { Loader } from '@/components/loader/Loader';
-import { useGetAgentesPaginated } from '@/hooks/useAgentsQueries';
-import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
+import { Button } from "@/components/shadcn/button";
+import { Badge } from "@/components/shadcn/badge";
+import { Checkbox } from "@/components/shadcn/checkbox";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/shadcn/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/shadcn/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/shadcn/dropdown-menu";
+import {
+  useReactTable,
+  getCoreRowModel,
+  flexRender,
+  createColumnHelper,
+  type Header,
+} from "@tanstack/react-table";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Phone,
+  Filter,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
+import { Loader } from "@/components/loader/Loader";
+import { useGetAgentesPaginated } from "@/hooks/useAgentsQueries";
+import { useQueryAuthContext } from "@/contexts/QueryAuthContext";
+import {
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  closestCenter,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+// --- TIPOS DE DATOS ---
+interface AgentRow {
+  ID_AGENTE: number;
+  NUMERO_TELF?: string | null; // Change this to allow null/undefined
+  ID_TIPO_AGENTE: number;
+  AREA: string;
+  ACCESO_GENERAL: number;
+  ESTADO_OPERATIVO: number;
+  ID_ESTADO_REGISTRO: number;
+  ID_AGENTE_EMPR_AREA: number;
+}
+
+interface AgentGrouped extends AgentRow {
+  AREAS_LIST: string[];
+}
+
+// --- COMPONENTE DE CABECERA ARRASTRABLE ---
+interface DraggableTableHeaderProps {
+  header: Header<AgentGrouped, unknown>;
+  onSortClick: (field: string) => void;
+  orderField: string | null;
+  orderDirection: "ASC" | "DESC";
+}
+
+const DraggableTableHeader = ({
+  header,
+  onSortClick,
+  orderField,
+  orderDirection,
+}: DraggableTableHeaderProps) => {
+  const columnId = header.column.id;
+  const isStatic = columnId === "select" || columnId === "actions";
+
+  // Identificar columnas que deben estar centradas
+  const isCentered = [
+    "ID_TIPO_AGENTE",
+    "ACCESO_GENERAL",
+    "ESTADO_OPERATIVO",
+    "ID_ESTADO_REGISTRO",
+    "select",
+    "actions",
+  ].includes(columnId);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: columnId,
+    disabled: isStatic,
+  });
+
+  const columnSize = header.column.getSize();
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 100 : 1,
+    position: "relative" as const,
+    width: columnSize,
+    minWidth: columnSize,
+    maxWidth: columnSize,
+  };
+
+  const isSortable = [
+    "NUMERO_TELF",
+    "ID_TIPO_AGENTE",
+    "AREA",
+    "ACCESO_GENERAL",
+    "ESTADO_OPERATIVO",
+    "ID_ESTADO_REGISTRO",
+  ].includes(columnId);
+
+  return (
+    <TableHead
+      ref={setNodeRef}
+      style={style}
+      // CORRECCIÓN AQUÍ:
+      // Si es estático (select/actions), usamos px-1 para igualar al TableBody.
+      // Si no, dejamos el padding por defecto o px-4.
+      className={`bg-white border-b ${isStatic ? "px-1" : ""} ${
+        isCentered ? "text-center" : "text-left"
+      }`}
+    >
+      <div
+        className={`flex items-center h-full ${
+          isCentered ? "justify-center" : "justify-start gap-2"
+        }`}
+      >
+        {!isStatic && (
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing text-muted-foreground/50 mr-1"
+          >
+            ::
+          </div>
+        )}
+        <div
+          className={`flex items-center gap-1 ${
+            isSortable ? "cursor-pointer select-none" : ""
+          }`}
+          onClick={() => isSortable && onSortClick(columnId)}
+        >
+          {flexRender(header.column.columnDef.header, header.getContext())}
+          {isSortable &&
+            orderField === columnId &&
+            (orderDirection === "ASC" ? (
+              <ArrowUp className="h-3 w-3" />
+            ) : (
+              <ArrowDown className="h-3 w-3" />
+            ))}
+        </div>
+      </div>
+    </TableHead>
+  );
+};
 
 interface AgentsTableProps {
   searchTerm: string;
 }
 
+const columnHelper = createColumnHelper<AgentGrouped>();
+
 export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
+  // --- ESTADOS ---
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [orderField, setOrderField] = useState<'NUMERO_TELF' | 'ID_TIPO_AGENTE' | 'ACCESO_GENERAL' | 'ESTADO_OPERATIVO' | 'AREA' | 'ID_ESTADO_REGISTRO'>('NUMERO_TELF');
-  const [orderDirection, setOrderDirection] = useState<'ASC' | 'DESC'>('ASC');
+  const [orderField, setOrderField] = useState<any>("NUMERO_TELF");
+  const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("ASC");
+
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
   const [operativeFilter, setOperativeFilter] = useState<number | null>(null);
+
+  const [rowSelection, setRowSelection] = useState({});
+
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => [
+    "select",
+    "NUMERO_TELF",
+    "ID_TIPO_AGENTE",
+    "AREA",
+    "ACCESO_GENERAL",
+    "ESTADO_OPERATIVO",
+    "ID_ESTADO_REGISTRO",
+  ]);
 
   const { user } = useQueryAuthContext();
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
-  // Server-side pagination query
   const { data, isLoading, error } = useGetAgentesPaginated(
     id_empresa || 0,
     currentPage,
@@ -35,61 +221,308 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
     orderField,
     orderDirection,
     statusFilter,
-    operativeFilter
+    operativeFilter,
   );
 
-  // Reset to first page when search term or filters change
+  // --- SENSORES DND ---
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor),
+    useSensor(KeyboardSensor),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (active && over && active.id !== over.id) {
+      if (over.id === "select" || over.id === "actions") return;
+      setColumnOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  }
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, operativeFilter]);
+    setRowSelection({});
+  }, [
+    searchTerm,
+    statusFilter,
+    operativeFilter,
+    pageSize,
+    orderField,
+    orderDirection,
+  ]);
 
-  // Handle column sort
-  const handleSort = (field: 'NUMERO_TELF' | 'ID_TIPO_AGENTE' | 'ACCESO_GENERAL' | 'ESTADO_OPERATIVO' | 'AREA' | 'ID_ESTADO_REGISTRO') => {
-    if (orderField === field) {
-      // Toggle direction if same field
-      setOrderDirection(orderDirection === 'ASC' ? 'DESC' : 'ASC');
-    } else {
-      // New field, set to ASC
+  // Handlers
+  const handleSortClick = useCallback(
+    (field: string) => {
+      setOrderDirection((prev) =>
+        orderField === field && prev === "ASC" ? "DESC" : "ASC",
+      );
       setOrderField(field);
-      setOrderDirection('ASC');
-    }
-    setCurrentPage(1);
-  };
+      setCurrentPage(1);
+    },
+    [orderField],
+  );
 
-  // Handle page size change
-  const handlePageSizeChange = (value: string) => {
+  const handlePageSizeChange = useCallback((value: string) => {
     setPageSize(Number(value));
     setCurrentPage(1);
+  }, []);
+
+  const handleStatusFilterChange = useCallback((status: number | null) => {
+    setStatusFilter(status);
+    setCurrentPage(1);
+  }, []);
+
+  const handleOperativeFilterChange = useCallback((status: number | null) => {
+    setOperativeFilter(status);
+    setCurrentPage(1);
+  }, []);
+
+  // --- DATA PROCESSING ---
+  const tableData = useMemo(() => {
+    // If useGetAgentesPaginated returns Agente[], and Agente matches AgentRow,
+    // you might need a type assertion if the names are slightly different.
+    const rawData = (data?.data as AgentRow[]) || [];
+    const groupedMap = new Map<number, AgentGrouped>();
+
+    rawData.forEach((item) => {
+      if (!groupedMap.has(item.ID_AGENTE)) {
+        groupedMap.set(item.ID_AGENTE, {
+          ...item,
+          AREAS_LIST: [item.AREA],
+        });
+      } else {
+        const existing = groupedMap.get(item.ID_AGENTE)!;
+        existing.AREAS_LIST.push(item.AREA);
+      }
+    });
+
+    return Array.from(groupedMap.values());
+  }, [data]);
+
+  // --- COLUMNAS ---
+  const columns = useMemo(
+    () => [
+      columnHelper.display({
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+            aria-label="Seleccionar todos"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Seleccionar fila"
+          />
+        ),
+        // AUMENTADO: De 30 a 45 para más espacio
+        size: 45,
+        minSize: 45,
+        maxSize: 45,
+      }),
+      columnHelper.accessor("NUMERO_TELF", {
+        header: "Teléfono",
+        cell: (info) => (
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-blue-500" />
+            <span>{info.getValue() || "N/A"}</span>
+          </div>
+        ),
+      }),
+      columnHelper.accessor("ID_TIPO_AGENTE", {
+        header: "Tipo de Agente",
+        cell: (info) => (
+          // Centrado vertical y horizontal
+          <div className="flex justify-center">
+            <Badge variant={info.getValue() === 1 ? "success" : "default"}>
+              {info.getValue() === 1 ? "WhatsApp" : `Tipo ${info.getValue()}`}
+            </Badge>
+          </div>
+        ),
+      }),
+      columnHelper.accessor("AREA", {
+        header: "Áreas con Acceso",
+        cell: (info) => {
+          const accessGeneral = info.row.original.ACCESO_GENERAL;
+          const areas = info.row.original.AREAS_LIST;
+
+          if (accessGeneral === 1) {
+            return (
+              <strong className="text-xs text-muted-foreground">Todas</strong>
+            );
+          }
+          return (
+            <div className="flex flex-col gap-1 items-start">
+              {areas.map((area, idx) => (
+                // Fuente reducida a text-xs
+                <span
+                  key={`${info.row.id}-${idx}`}
+                  className="text-xs text-muted-foreground font-medium bg-secondary/30 px-1.5 py-0.5 rounded"
+                >
+                  {area}
+                </span>
+              ))}
+            </div>
+          );
+        },
+      }),
+      columnHelper.accessor("ACCESO_GENERAL", {
+        header: "Acceso General",
+        cell: (info) => (
+          <div className="flex justify-center">
+            <Badge variant={info.getValue() === 1 ? "success" : "outline"}>
+              {info.getValue() === 1 ? "Sí" : "No"}
+            </Badge>
+          </div>
+        ),
+      }),
+      columnHelper.accessor("ESTADO_OPERATIVO", {
+        id: "ESTADO_OPERATIVO",
+        header: () => (
+          <div className="flex items-center justify-center gap-2">
+            <span>Estado Operativo</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-6 w-6 p-0 ${operativeFilter !== null ? "text-blue-600" : ""}`}
+                >
+                  <Filter className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  onClick={() => handleOperativeFilterChange(null)}
+                >
+                  Todos
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleOperativeFilterChange(1)}
+                >
+                  Operativo
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleOperativeFilterChange(0)}
+                >
+                  Inoperativo
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ),
+        cell: (info) => (
+          <div className="flex justify-center">
+            <Badge variant={info.getValue() === 1 ? "success" : "destructive"}>
+              {info.getValue() === 1 ? "Operativo" : "Inoperativo"}
+            </Badge>
+          </div>
+        ),
+      }),
+      columnHelper.accessor("ID_ESTADO_REGISTRO", {
+        id: "ID_ESTADO_REGISTRO",
+        header: () => (
+          <div className="flex items-center justify-center gap-2">
+            <span>Estado</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-6 w-6 p-0 ${statusFilter !== null ? "text-blue-600" : ""}`}
+                >
+                  <Filter className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  onClick={() => handleStatusFilterChange(null)}
+                >
+                  Todos
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(1)}>
+                  Activo
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(0)}>
+                  Inactivo
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ),
+        cell: (info) => (
+          <div className="flex justify-center">
+            <Badge variant={info.getValue() === 1 ? "success" : "destructive"}>
+              {info.getValue() === 1 ? "Activo" : "Inactivo"}
+            </Badge>
+          </div>
+        ),
+      }),
+    ],
+    [
+      statusFilter,
+      operativeFilter,
+      handleStatusFilterChange,
+      handleOperativeFilterChange,
+    ],
+  );
+
+  const table = useReactTable({
+    data: tableData,
+    columns,
+    state: {
+      columnOrder,
+      rowSelection,
+    },
+    onColumnOrderChange: setColumnOrder,
+    onRowSelectionChange: setRowSelection,
+    getCoreRowModel: getCoreRowModel(),
+    manualPagination: true,
+    getRowId: (row) => row.ID_AGENTE.toString(),
+  });
+
+  const pagination = data?.pagination || {
+    total_records: 0,
+    current_page: 1,
+    page_size: 10,
+    total_pages: 0,
   };
 
-  const agentes = data?.data || [];
-  const totalPages = data?.pagination?.total_pages || 0;
-  const totalRecords = data?.pagination?.total_records || 0;
+  const totalPages = pagination.total_pages;
+  const startIndex = (pagination.current_page - 1) * pagination.page_size + 1;
+  const endIndex = Math.min(
+    pagination.current_page * pagination.page_size,
+    pagination.total_records,
+  );
 
-  // Group agentes by ID_AGENTE (same agent can have multiple areas)
-  const groupedAgentes = agentes.reduce((acc, agente) => {
-    const existing = acc.find(group => group[0].ID_AGENTE === agente.ID_AGENTE);
-    if (existing) {
-      existing.push(agente);
-    } else {
-      acc.push([agente]);
-    }
-    return acc;
-  }, [] as typeof agentes[]);
+  const draggableColumns = useMemo(
+    () => columnOrder.filter((id) => id !== "select" && id !== "actions"),
+    [columnOrder],
+  );
 
   if (!id_empresa) {
     return (
       <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader className="pb-3">
-          <div className="flex flex-col items-start gap-1">
-            <h1 className="text-2xl font-bold text-foreground">Agentes</h1>
-            <p className="text-xs text-muted-foreground">
-              Gestiona los agentes de la empresa.
-            </p>
-          </div>
+          <h1 className="text-2xl font-bold text-foreground">Agentes</h1>
         </CardHeader>
-        <CardContent className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground">No se pudo cargar la información de la empresa</p>
+        <CardContent>
+          <p className="text-muted-foreground">
+            No se pudo cargar la información de la empresa
+          </p>
         </CardContent>
       </Card>
     );
@@ -98,7 +531,7 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
   return (
     <Card className="flex-1 flex flex-col min-h-0">
       <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
+        <div className="flex items-center justify-between">
           <div className="flex flex-col items-start gap-1">
             <h1 className="text-2xl font-bold text-foreground">Agentes</h1>
             <p className="text-xs text-muted-foreground">
@@ -106,11 +539,15 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
             </p>
           </div>
 
-          {/* Page size selector - Top right */}
-          {!isLoading && !error && groupedAgentes.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Filas por página:</span>
-              <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+          {!isLoading && !error && tableData.length > 0 && (
+            <div className="hidden md:flex items-center gap-2">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                Filas por página:
+              </span>
+              <Select
+                value={pageSize.toString()}
+                onValueChange={handlePageSizeChange}
+              >
                 <SelectTrigger className="w-[80px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -126,261 +563,89 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
-        {/* Loading State */}
-        {isLoading && (
-          <Loader text="Cargando agentes..." />
-        )}
+        {isLoading && <Loader text="Cargando agentes..." />}
+        {error && <p className="text-red-500">Error: {error.message}</p>}
 
-        {/* Error State */}
-        {error && (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-red-500">Error: {error.message}</p>
-          </div>
-        )}
-
-        {/* Table - Always show when not loading/error */}
         {!isLoading && !error && (
           <>
-            <div className="flex-1 min-h-0 border rounded-lg">
-              <div className="h-full overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12"></TableHead>
-                      <TableHead>
-                        <button
-                          onClick={() => handleSort('NUMERO_TELF')}
-                          className="flex items-center gap-1 hover:text-foreground"
-                        >
-                          Teléfono
-                          {orderField === 'NUMERO_TELF' && (
-                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                          )}
-                        </button>
-                      </TableHead>
-                      <TableHead>
-                        <button
-                          onClick={() => handleSort('ID_TIPO_AGENTE')}
-                          className="flex items-center gap-1 hover:text-foreground"
-                        >
-                          Tipo de Agente
-                          {orderField === 'ID_TIPO_AGENTE' && (
-                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                          )}
-                        </button>
-                      </TableHead>
-                      <TableHead>
-                        <button
-                          onClick={() => handleSort('AREA')}
-                          className="flex items-center gap-1 hover:text-foreground"
-                        >
-                          Áreas con Acceso
-                          {orderField === 'AREA' && (
-                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                          )}
-                        </button>
-                      </TableHead>
-                      <TableHead>
-                        <button
-                          onClick={() => handleSort('ACCESO_GENERAL')}
-                          className="flex items-center gap-1 hover:text-foreground"
-                        >
-                          Acceso General
-                          {orderField === 'ACCESO_GENERAL' && (
-                            <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                          )}
-                        </button>
-                      </TableHead>
-                      <TableHead>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleSort('ESTADO_OPERATIVO')}
-                            className="flex items-center gap-1 hover:text-foreground"
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="flex-1 min-h-0 border rounded-lg">
+                <div className="h-full overflow-y-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 z-20 bg-white shadow-sm">
+                      {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id}>
+                          <SortableContext
+                            items={draggableColumns}
+                            strategy={horizontalListSortingStrategy}
                           >
-                            Estado Operativo
-                            {orderField === 'ESTADO_OPERATIVO' && (
-                              <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                            )}
-                          </button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={`h-6 w-6 p-0 ${operativeFilter !== null ? 'text-blue-600' : ''}`}
-                              >
-                                <Filter className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setOperativeFilter(null);
-                                  setCurrentPage(1);
-                                }}
-                                className={operativeFilter === null ? 'bg-accent' : ''}
-                              >
-                                Todos
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setOperativeFilter(1);
-                                  setCurrentPage(1);
-                                }}
-                                className={operativeFilter === 1 ? 'bg-accent' : ''}
-                              >
-                                Operativo
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setOperativeFilter(0);
-                                  setCurrentPage(1);
-                                }}
-                                className={operativeFilter === 0 ? 'bg-accent' : ''}
-                              >
-                                Inoperativo
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableHead>
-                      <TableHead>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleSort('ID_ESTADO_REGISTRO')}
-                            className="flex items-center gap-1 hover:text-foreground"
+                            {headerGroup.headers.map((header) => (
+                              <DraggableTableHeader
+                                key={header.id}
+                                header={header}
+                                onSortClick={handleSortClick}
+                                orderField={orderField}
+                                orderDirection={orderDirection}
+                              />
+                            ))}
+                          </SortableContext>
+                        </TableRow>
+                      ))}
+                    </TableHeader>
+                    <TableBody>
+                      {table.getRowModel().rows.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={columns.length}
+                            className="h-24 text-center"
                           >
-                            Estado
-                            {orderField === 'ID_ESTADO_REGISTRO' && (
-                              <span>{orderDirection === 'ASC' ? '↑' : '↓'}</span>
-                            )}
-                          </button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={`h-6 w-6 p-0 ${statusFilter !== null ? 'text-blue-600' : ''}`}
-                              >
-                                <Filter className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setStatusFilter(null);
-                                  setCurrentPage(1);
-                                }}
-                                className={statusFilter === null ? 'bg-accent' : ''}
-                              >
-                                Todos
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setStatusFilter(1);
-                                  setCurrentPage(1);
-                                }}
-                                className={statusFilter === 1 ? 'bg-accent' : ''}
-                              >
-                                Activo
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setStatusFilter(0);
-                                  setCurrentPage(1);
-                                }}
-                                className={statusFilter === 0 ? 'bg-accent' : ''}
-                              >
-                                Inactivo
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableHead>
-                      <TableHead className="w-12"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {groupedAgentes.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          <p className="text-muted-foreground">
-                            {statusFilter === 1 && operativeFilter === 1
-                              ? 'No se encontraron agentes activos y operativos'
-                              : statusFilter === 0 && operativeFilter === 0
-                                ? 'No se encontraron agentes inactivos e inoperativos'
-                                : statusFilter === 1
-                                  ? 'No se encontraron agentes activos'
-                                  : statusFilter === 0
-                                    ? 'No se encontraron agentes inactivos'
-                                    : operativeFilter === 1
-                                      ? 'No se encontraron agentes operativos'
-                                      : operativeFilter === 0
-                                        ? 'No se encontraron agentes inoperativos'
-                                        : searchTerm
-                                          ? `No se encontraron agentes que coincidan con "${searchTerm}"`
-                                          : 'No hay agentes registrados'}
-                          </p>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      groupedAgentes.map((agenteGroup) => (
-                        <TableRow key={agenteGroup[0].ID_AGENTE}>
-                          <TableCell>
-                            <Checkbox />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-4 w-4 text-blue-500" />
-                              <span>{agenteGroup[0].NUMERO_TELF || 'N/A'}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={agenteGroup[0].ID_TIPO_AGENTE === 1 ? 'success' : 'default'}>
-                              {agenteGroup[0].ID_TIPO_AGENTE === 1 ? 'WhatsApp' : `Tipo ${agenteGroup[0].ID_TIPO_AGENTE}`}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-1">
-                              {agenteGroup[0].ACCESO_GENERAL === 1 ? (
-                                <strong>Todas</strong>
-                              ) : (
-                                agenteGroup.map((agente) => (
-                                  <span key={agente.ID_AGENTE_EMPR_AREA}>
-                                    {agente.AREA}
-                                  </span>
-                                ))
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={agenteGroup[0].ACCESO_GENERAL === 1 ? 'success' : 'outline'}>
-                              {agenteGroup[0].ACCESO_GENERAL === 1 ? 'Sí' : 'No'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={agenteGroup[0].ESTADO_OPERATIVO === 1 ? 'success' : 'destructive'}>
-                              {agenteGroup[0].ESTADO_OPERATIVO === 1 ? 'Operativo' : 'Inoperativo'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={agenteGroup[0].ID_ESTADO_REGISTRO === 1 ? 'success' : 'destructive'}>
-                              {agenteGroup[0].ID_ESTADO_REGISTRO === 1 ? 'Activo' : 'Inactivo'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {/* Add actions here if needed */}
+                            No se encontraron resultados.
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                      ) : (
+                        table.getRowModel().rows.map((row) => (
+                          <TableRow key={row.id}>
+                            {row.getVisibleCells().map((cell) => {
+                              const isCompactColumn = [
+                                "select",
+                                "actions",
+                              ].includes(cell.column.id);
+                              return (
+                                <TableCell
+                                  key={cell.id}
+                                  style={{
+                                    width: cell.column.getSize(),
+                                    minWidth: cell.column.getSize(),
+                                    maxWidth: cell.column.getSize(),
+                                  }}
+                                  className={
+                                    isCompactColumn
+                                      ? "px-1 text-center"
+                                      : undefined
+                                  }
+                                >
+                                  {flexRender(
+                                    cell.column.columnDef.cell,
+                                    cell.getContext(),
+                                  )}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
-            </div>
+            </DndContext>
 
-            {/* Pagination - Only show when there's data */}
-            {groupedAgentes.length > 0 && (
+            {/* Pagination */}
+            {tableData.length > 0 && (
               <div className="flex flex-col items-center gap-2 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Button
@@ -398,39 +663,37 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
                       const maxButtons = 5;
                       const halfRange = Math.floor(maxButtons / 2);
                       let startPage = Math.max(1, currentPage - halfRange);
-                      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+                      const endPage = Math.min(
+                        totalPages,
+                        startPage + maxButtons - 1,
+                      );
 
                       if (endPage - startPage + 1 < maxButtons) {
                         startPage = Math.max(1, endPage - maxButtons + 1);
                       }
 
                       const pages = [];
-
                       if (startPage > 1) {
                         pages.push(1);
-                        if (startPage > 2) {
-                          pages.push('...');
-                        }
+                        if (startPage > 2) pages.push("...");
                       }
-
                       for (let i = startPage; i <= endPage; i++) {
                         pages.push(i);
                       }
-
                       if (endPage < totalPages) {
-                        if (endPage < totalPages - 1) {
-                          pages.push('...');
-                        }
+                        if (endPage < totalPages - 1) pages.push("...");
                         pages.push(totalPages);
                       }
 
                       return pages.map((page, idx) => (
                         <Button
                           key={`${page}-${idx}`}
-                          variant={currentPage === page ? 'default' : 'outline'}
+                          variant={currentPage === page ? "default" : "outline"}
                           size="sm"
-                          onClick={() => typeof page === 'number' && setCurrentPage(page)}
-                          disabled={page === '...'}
+                          onClick={() =>
+                            typeof page === "number" && setCurrentPage(page)
+                          }
+                          disabled={page === "..."}
                         >
                           {page}
                         </Button>
@@ -439,38 +702,17 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
                   </div>
 
                   <div className="flex md:hidden gap-1">
-                    {(() => {
-                      const maxButtons = 4;
-                      const halfRange = Math.floor(maxButtons / 2);
-                      let startPage = Math.max(1, currentPage - halfRange);
-                      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-
-                      if (endPage - startPage + 1 < maxButtons) {
-                        startPage = Math.max(1, endPage - maxButtons + 1);
-                      }
-
-                      const pages = [];
-                      for (let i = startPage; i <= endPage; i++) {
-                        pages.push(i);
-                      }
-
-                      return pages.map((page) => (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setCurrentPage(page)}
-                        >
-                          {page}
-                        </Button>
-                      ));
-                    })()}
+                    <Button variant="outline" size="sm" disabled>
+                      {currentPage} / {totalPages}
+                    </Button>
                   </div>
 
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    onClick={() =>
+                      setCurrentPage(Math.min(totalPages, currentPage + 1))
+                    }
                     disabled={currentPage === totalPages}
                   >
                     <span className="hidden md:inline">Siguiente</span>
@@ -478,7 +720,8 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Mostrando {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalRecords)} de {totalRecords} agentes
+                  Mostrando {startIndex}-{endIndex} de{" "}
+                  {pagination.total_records} agentes
                 </p>
               </div>
             )}
