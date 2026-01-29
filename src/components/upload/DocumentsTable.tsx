@@ -253,7 +253,6 @@ const columnHelper = createColumnHelper<DocumentData>();
 
 export const DocumentsTable = ({
   searchTerm,
-  selectedRows = [],
   onSelectionChange,
   uploadTrigger,
 }: DocumentsTableProps) => {
