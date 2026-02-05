@@ -47,8 +47,9 @@ export const LoginCard = ({
   const [showPassword, setShowPassword] = useState(false);
 
   // Cámbiala temporalmente por esto:
-  const { data: companiesLogin = [] } = useGetCompaniesLogin() as any;
-  const isLoadingCompanies = true; // Forzamos el estado de carga
+  const { data: companiesLogin = [], isLoading: isLoadingCompanies } =
+    useGetCompaniesLogin();
+  // Forzamos el estado de carga
 
   const handleFormSubmit = async (data: LoginFormData) => {
     const trimmedData = {
@@ -101,32 +102,36 @@ export const LoginCard = ({
             <Select
               value={selectedCompany}
               onValueChange={onCompanySelect}
-              disabled={isLoading || isCompanySelectDisabled}
+              disabled={
+                isLoading || isCompanySelectDisabled || isLoadingCompanies
+              } // También deshabilitamos mientras carga
             >
               <SelectTrigger className="h-11 text-xs">
-                <SelectValue placeholder="Selecciona una empresa">
-                  {/* Prioridad 1: Mostrar loader si está cargando */}
-                  {isLoadingCompanies ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Cargando empresas...</span>
-                    </div>
-                  ) : (
-                    /* Prioridad 2: Si hay algo seleccionado lo muestra, 
-               si no, al devolver null el Select usa el placeholder */
-                    selectedCompany || null
-                  )}
-                </SelectValue>
+                {isLoadingCompanies ? (
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Cargando empresas...</span>
+                  </div>
+                ) : (
+                  <SelectValue placeholder="Selecciona una empresa" />
+                )}
               </SelectTrigger>
+
               <SelectContent className="max-h-48">
-                {companiesLogin.map((company: CompanyLogin) => (
-                  <SelectItem
-                    key={company.RAZON_SOCIAL}
-                    value={company.RAZON_SOCIAL}
-                  >
-                    {company.RAZON_SOCIAL}
-                  </SelectItem>
-                ))}
+                {companiesLogin.length > 0 ? (
+                  companiesLogin.map((company: CompanyLogin) => (
+                    <SelectItem
+                      key={company.RAZON_SOCIAL}
+                      value={company.RAZON_SOCIAL}
+                    >
+                      {company.RAZON_SOCIAL}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="p-2 text-xs text-center text-slate-500">
+                    No hay empresas disponibles
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </div>
