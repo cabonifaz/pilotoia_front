@@ -44,6 +44,8 @@ export const useGetAgentesPaginated = (
     },
     enabled: !!id_empresa && id_empresa > 0,
     staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
     retry: false,
   });
 };
