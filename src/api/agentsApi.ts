@@ -1,11 +1,71 @@
 import apiClient from './apiClient';
-import type { CreateAgentRequest, CreateAgentResponse, GetAgentesPaginatedResponse } from '@/types/agents';
+import type {
+  CreateAgentRequest,
+  CreateAgentResponse,
+  GetAgentesPaginatedResponse,
+  UpdateAgentRequest,
+  UpdateAgentStatusRequest,
+  UpdateAgentOperativoRequest,
+  UpdateAgentSecretKeyRequest,
+  UpdateAgentAccessRequest,
+  UpdateAgentResponse,
+} from '@/types/agents';
 
 export const createAgente = async (
   request: CreateAgentRequest
 ): Promise<CreateAgentResponse> => {
   const response = await apiClient.post<CreateAgentResponse>(
     '/v1/agents/create_agente',
+    request
+  );
+  return response.data;
+};
+
+export const updateDatosAgente = async (
+  request: UpdateAgentRequest
+): Promise<UpdateAgentResponse> => {
+  const response = await apiClient.put<UpdateAgentResponse>(
+    '/v1/agents/update_datos_agente',
+    request
+  );
+  return response.data;
+};
+
+export const updateAgenteStatus = async (
+  request: UpdateAgentStatusRequest
+): Promise<UpdateAgentResponse> => {
+  const response = await apiClient.put<UpdateAgentResponse>(
+    '/v1/agents/update_agente_status',
+    request
+  );
+  return response.data;
+};
+
+export const updateAgenteOperativo = async (
+  request: UpdateAgentOperativoRequest
+): Promise<UpdateAgentResponse> => {
+  const response = await apiClient.put<UpdateAgentResponse>(
+    '/v1/agents/update_agente_operativo',
+    request
+  );
+  return response.data;
+};
+
+export const updateAgenteSecretKey = async (
+  request: UpdateAgentSecretKeyRequest
+): Promise<UpdateAgentResponse> => {
+  const response = await apiClient.put<UpdateAgentResponse>(
+    '/v1/agents/update_agente_secret_key',
+    request
+  );
+  return response.data;
+};
+
+export const updateAgenteAccess = async (
+  request: UpdateAgentAccessRequest
+): Promise<UpdateAgentResponse> => {
+  const response = await apiClient.put<UpdateAgentResponse>(
+    '/v1/agents/update_agente_access',
     request
   );
   return response.data;

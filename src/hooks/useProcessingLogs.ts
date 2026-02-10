@@ -37,6 +37,7 @@ export const useProcessingLogsPaginated = (
     placeholderData: (prev) => prev,
     staleTime: 0,
     gcTime: 0,
+    refetchOnWindowFocus: false,
     refetchInterval: (query) => {
       // Check if any document is processing
       const data = query.state.data;

@@ -2,18 +2,40 @@ import { useState, useEffect } from 'react';
 import { Search, CirclePlus } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
-import { AgentsTable, AgentsSidebar } from '@/components/agents';
+import { AgentsTable, AgentsSidebar, AgentsSidebarUpdate, AgentsSidebarAccess } from '@/components/agents';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
+import {
+  useUpdateAgenteStatus,
+  useUpdateAgenteOperativo,
+  useUpdateAgenteSecretKey,
+} from '@/hooks/useAgentsQueries';
+import type { Agente } from '@/types/agents';
 
 const AgentsManagement = () => {
   const { user } = useQueryAuthContext();
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isUpdateSidebarOpen, setIsUpdateSidebarOpen] = useState(false);
+  const [isAccessSidebarOpen, setIsAccessSidebarOpen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<Agente | null>(null);
+  const [selectedAgentAreas, setSelectedAgentAreas] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Debounce search input
+  const { mutate: toggleStatus } = useUpdateAgenteStatus(id_empresa);
+  const { mutate: toggleOperativo } = useUpdateAgenteOperativo(id_empresa);
+  const { mutate: regenerateSecretKey } = useUpdateAgenteSecretKey(id_empresa);
+
+  // Close all sidebars when company changes
+  useEffect(() => {
+    setIsSidebarOpen(false);
+    setIsUpdateSidebarOpen(false);
+    setIsAccessSidebarOpen(false);
+    setSelectedAgent(null);
+    setSelectedAgentAreas([]);
+  }, [id_empresa]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchInput);
@@ -23,6 +45,39 @@ const AgentsManagement = () => {
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
+  };
+
+  const closeUpdateSidebar = () => {
+    setIsUpdateSidebarOpen(false);
+    setSelectedAgent(null);
+  };
+
+  const closeAccessSidebar = () => {
+    setIsAccessSidebarOpen(false);
+    setSelectedAgent(null);
+  };
+
+  const handleEditAgent = (agent: Agente) => {
+    setSelectedAgent(agent);
+    setIsUpdateSidebarOpen(true);
+  };
+
+  const handleToggleStatus = (idAgente: number, currentStatus: number) => {
+    toggleStatus({ id_agente: idAgente, status: currentStatus === 1 ? 0 : 1 });
+  };
+
+  const handleToggleOperativo = (idAgente: number, currentOperativo: number) => {
+    toggleOperativo({ id_agente: idAgente, operativo: currentOperativo === 1 ? 0 : 1 });
+  };
+
+  const handleRegenerateSecretKey = (idAgente: number) => {
+    regenerateSecretKey({ id_agente: idAgente });
+  };
+
+  const handleChangeAccess = (agent: Agente, agentAreaList: string[]) => {
+    setSelectedAgent(agent);
+    setSelectedAgentAreas(agentAreaList || []);
+    setIsAccessSidebarOpen(true);
   };
 
   return (
@@ -44,16 +99,19 @@ const AgentsManagement = () => {
               Agregar agente
             </Button>
           </div>
-          <AgentsTable searchTerm={debouncedSearch} />
+          <AgentsTable
+            searchTerm={debouncedSearch}
+            onEditAgent={handleEditAgent}
+            onToggleStatus={handleToggleStatus}
+            onToggleOperativo={handleToggleOperativo}
+            onRegenerateSecretKey={handleRegenerateSecretKey}
+            onChangeAccess={handleChangeAccess}
+          />
         </div>
       </div>
-
-      {/* Right Sidebar - Create Agent */}
-      <AgentsSidebar
-        isOpen={isSidebarOpen}
-        onClose={closeSidebar}
-        id_empresa={id_empresa}
-      />
+      <AgentsSidebar isOpen={isSidebarOpen} onClose={closeSidebar} id_empresa={id_empresa} />
+      <AgentsSidebarUpdate isOpen={isUpdateSidebarOpen} onClose={closeUpdateSidebar} id_empresa={id_empresa} agent={selectedAgent} />
+      <AgentsSidebarAccess isOpen={isAccessSidebarOpen} onClose={closeAccessSidebar} id_empresa={id_empresa} agent={selectedAgent} agentAreas={selectedAgentAreas} />
     </div>
   );
 };

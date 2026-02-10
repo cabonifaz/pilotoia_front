@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, memo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
 import { Button } from "@/components/shadcn/button";
 import { Badge } from "@/components/shadcn/badge";
@@ -34,7 +34,6 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  Phone,
   Filter,
   ArrowUp,
   ArrowDown,
@@ -42,6 +41,8 @@ import {
 import { Loader } from "@/components/loader/Loader";
 import { useGetAgentesPaginated } from "@/hooks/useAgentsQueries";
 import { useQueryAuthContext } from "@/contexts/QueryAuthContext";
+import { AgentRowActions } from "./AgentRowActions";
+import type { Agente } from "@/types/agents";
 import {
   DndContext,
   KeyboardSensor,
@@ -63,13 +64,16 @@ import { CSS } from "@dnd-kit/utilities";
 // --- TIPOS DE DATOS ---
 interface AgentRow {
   ID_AGENTE: number;
-  NUMERO_TELF?: string | null; // Change this to allow null/undefined
+  NUMERO_TELF: string;
+  CODIGO_PAIS: string;
   ID_TIPO_AGENTE: number;
   AREA: string;
   ACCESO_GENERAL: number;
   ESTADO_OPERATIVO: number;
   ID_ESTADO_REGISTRO: number;
   ID_AGENTE_EMPR_AREA: number;
+  ID_EMPRESA: number;
+  ID_AREA: number;
 }
 
 interface AgentGrouped extends AgentRow {
@@ -84,7 +88,7 @@ interface DraggableTableHeaderProps {
   orderDirection: "ASC" | "DESC";
 }
 
-const DraggableTableHeader = ({
+const DraggableTableHeader = memo(({
   header,
   onSortClick,
   orderField,
@@ -180,19 +184,33 @@ const DraggableTableHeader = ({
       </div>
     </TableHead>
   );
-};
+});
+
+DraggableTableHeader.displayName = "DraggableTableHeader";
 
 interface AgentsTableProps {
   searchTerm: string;
+  onEditAgent: (agent: Agente) => void;
+  onToggleStatus: (idAgente: number, currentStatus: number) => void;
+  onToggleOperativo: (idAgente: number, currentOperativo: number) => void;
+  onRegenerateSecretKey: (idAgente: number) => void;
+  onChangeAccess: (agent: Agente, agentAreas: string[]) => void;
 }
 
 const columnHelper = createColumnHelper<AgentGrouped>();
 
-export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
+export const AgentsTable = ({
+  searchTerm,
+  onEditAgent,
+  onToggleStatus,
+  onToggleOperativo,
+  onRegenerateSecretKey,
+  onChangeAccess,
+}: AgentsTableProps) => {
   // --- ESTADOS ---
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [orderField, setOrderField] = useState<any>("NUMERO_TELF");
+  const [orderField, setOrderField] = useState<string>("NUMERO_TELF");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("ASC");
 
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
@@ -208,6 +226,7 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
     "ACCESO_GENERAL",
     "ESTADO_OPERATIVO",
     "ID_ESTADO_REGISTRO",
+    "actions",
   ]);
 
   const { user } = useQueryAuthContext();
@@ -231,7 +250,7 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
     useSensor(KeyboardSensor),
   );
 
-  function handleDragEnd(event: DragEndEvent) {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (active && over && active.id !== over.id) {
       if (over.id === "select" || over.id === "actions") return;
@@ -241,7 +260,7 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
         return arrayMove(items, oldIndex, newIndex);
       });
     }
-  }
+  }, []);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -335,12 +354,25 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
       }),
       columnHelper.accessor("NUMERO_TELF", {
         header: "Teléfono",
-        cell: (info) => (
-          <div className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-blue-500" />
-            <span>{info.getValue() || "N/A"}</span>
-          </div>
-        ),
+        cell: (info) => {
+          const codigoPais = info.row.original.CODIGO_PAIS;
+          const numeroTelf = info.getValue();
+          const [codigoNumerico, codigoIso] = codigoPais.split('-');
+          const localNumber = numeroTelf.startsWith(codigoNumerico)
+            ? numeroTelf.slice(codigoNumerico.length)
+            : numeroTelf;
+
+          return (
+            <div className="flex items-center gap-2">
+              <img
+                src={`https://flagcdn.com/w20/${codigoIso.toLowerCase()}.png`}
+                alt={codigoIso}
+                className="w-5 h-3 object-cover"
+              />
+              <span>+{codigoNumerico} {localNumber}</span>
+            </div>
+          );
+        },
       }),
       columnHelper.accessor("ID_TIPO_AGENTE", {
         header: "Tipo de Agente",
@@ -356,24 +388,12 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
       columnHelper.accessor("AREA", {
         header: "Áreas con Acceso",
         cell: (info) => {
-          const accessGeneral = info.row.original.ACCESO_GENERAL;
           const areas = info.row.original.AREAS_LIST;
 
-          if (accessGeneral === 1) {
-            return (
-              <strong className="text-xs text-muted-foreground">Todas</strong>
-            );
-          }
           return (
-            <div className="flex flex-col gap-1 items-start">
+            <div className="flex flex-col gap-1">
               {areas.map((area, idx) => (
-                // Fuente reducida a text-xs
-                <span
-                  key={`${info.row.id}-${idx}`}
-                  className="text-xs text-muted-foreground font-medium bg-secondary/30 px-1.5 py-0.5 rounded"
-                >
-                  {area}
-                </span>
+                <span key={`${info.row.id}-${idx}`}>{area}</span>
               ))}
             </div>
           );
@@ -471,12 +491,43 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
           </div>
         ),
       }),
+      columnHelper.display({
+        id: "actions",
+        cell: (info) => {
+          const agent = info.row.original;
+          return (
+            <AgentRowActions
+              status={agent.ID_ESTADO_REGISTRO}
+              operativo={agent.ESTADO_OPERATIVO}
+              onEdit={() => onEditAgent(agent)}
+              onToggleStatus={() =>
+                onToggleStatus(agent.ID_AGENTE, agent.ID_ESTADO_REGISTRO)
+              }
+              onToggleOperativo={() =>
+                onToggleOperativo(agent.ID_AGENTE, agent.ESTADO_OPERATIVO)
+              }
+              onRegenerateSecretKey={() =>
+                onRegenerateSecretKey(agent.ID_AGENTE)
+              }
+              onChangeAccess={() => onChangeAccess(agent, agent.AREAS_LIST)}
+            />
+          );
+        },
+        size: 40,
+        minSize: 40,
+        maxSize: 40,
+      }),
     ],
     [
       statusFilter,
       operativeFilter,
       handleStatusFilterChange,
       handleOperativeFilterChange,
+      onEditAgent,
+      onToggleStatus,
+      onToggleOperativo,
+      onRegenerateSecretKey,
+      onChangeAccess,
     ],
   );
 
@@ -596,7 +647,7 @@ export const AgentsTable = ({ searchTerm }: AgentsTableProps) => {
                         </TableRow>
                       ))}
                     </TableHeader>
-                    <TableBody>
+                    <TableBody className="text-xs">
                       {table.getRowModel().rows.length === 0 ? (
                         <TableRow>
                           <TableCell

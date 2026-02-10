@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, memo } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -75,7 +75,7 @@ interface DraggableTableHeaderProps {
   orderDirection: "ASC" | "DESC";
 }
 
-const DraggableTableHeader = ({
+const DraggableTableHeader = memo(({
   header,
   onSortClick,
   orderField,
@@ -153,7 +153,9 @@ const DraggableTableHeader = ({
       </div>
     </TableHead>
   );
-};
+});
+
+DraggableTableHeader.displayName = "DraggableTableHeader";
 
 // --- TIPOS Y PROPS ---
 interface UsersTableProps {
@@ -193,8 +195,8 @@ export const UsersTable = ({
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
   const [rowSelection, setRowSelection] = useState({});
 
-  // Estado para el orden de columnas
-  const [columnOrder, setColumnOrder] = useState<string[]>([
+  // Estado para el orden de columnas (lazy initializer to avoid recreating array on each render)
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => [
     "select",
     "USUARIO",
     "NOMBRES",
@@ -270,7 +272,7 @@ export const UsersTable = ({
     useSensor(KeyboardSensor),
   );
 
-  function handleDragEnd(event: DragEndEvent) {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (active && over && active.id !== over.id) {
       if (over.id === "select" || over.id === "actions") return;
@@ -280,26 +282,24 @@ export const UsersTable = ({
         return arrayMove(items, oldIndex, newIndex);
       });
     }
-  }
+  }, []);
 
   // --- PROCESAMIENTO DE DATOS (Agrupación) ---
   const usuarios = data?.data || [];
 
   const groupedUsuarios = useMemo(() => {
-    return usuarios.reduce((acc, usuario) => {
-      const existing = acc.find(
-        (group) => group[0].ID_USUARIO === usuario.ID_USUARIO,
-      );
-      if (existing) {
-        existing.push(usuario);
+    const map = new Map<number, Usuario[]>();
+    for (const usuario of usuarios) {
+      const group = map.get(usuario.ID_USUARIO);
+      if (group) {
+        group.push(usuario);
       } else {
-        acc.push([usuario]);
+        map.set(usuario.ID_USUARIO, [usuario]);
       }
-      return acc;
-    }, [] as Usuario[][]);
+    }
+    return Array.from(map.values());
   }, [usuarios]);
 
-  // --- COLUMNAS TANSTACK ---
   // --- COLUMNAS TANSTACK ---
   const columns = useMemo(
     () => [
@@ -350,7 +350,29 @@ export const UsersTable = ({
       columnHelper.accessor((row) => row[0].TELEFONO, {
         id: "TELEFONO",
         header: "Teléfono",
-        cell: (info) => info.getValue() || "-",
+        cell: (info) => {
+          const telefono = info.getValue();
+          if (!telefono) return "-";
+
+          const codigoPais = info.row.original[0].CODIGO_PAIS || "";
+          if (!codigoPais) return telefono;
+
+          const [codigoNumerico, codigoIso] = codigoPais.split('-');
+          const localNumber = telefono.startsWith(codigoNumerico)
+            ? telefono.slice(codigoNumerico.length)
+            : telefono;
+
+          return (
+            <div className="flex items-center gap-2">
+              <img
+                src={`https://flagcdn.com/w20/${codigoIso.toLowerCase()}.png`}
+                alt={codigoIso}
+                className="w-5 h-3 object-cover"
+              />
+              <span>+{codigoNumerico} {localNumber}</span>
+            </div>
+          );
+        },
       }),
       columnHelper.accessor((row) => row, {
         id: "AREA",
@@ -571,7 +593,7 @@ export const UsersTable = ({
                         </TableRow>
                       ))}
                     </TableHeader>
-                    <TableBody>
+                    <TableBody className="text-xs">
                       {table.getRowModel().rows.length === 0 ? (
                         <TableRow>
                           <TableCell

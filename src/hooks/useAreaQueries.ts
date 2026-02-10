@@ -138,6 +138,7 @@ export const useGetAreasPaginated = (
 
     placeholderData: (prev) => prev,
     staleTime: 0,
-    gcTime: 0
+    gcTime: 0,
+    refetchOnWindowFocus: false,
   });
 };

@@ -143,5 +143,6 @@ export const useGetCompaniesPaginated = (
     placeholderData: (previousData) => previousData,
     staleTime: 0,
     gcTime: 0,
+    refetchOnWindowFocus: false,
   });
 };

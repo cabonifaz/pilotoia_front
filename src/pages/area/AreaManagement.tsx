@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDebounce } from 'use-debounce';
 import { Search, CirclePlus } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
@@ -15,6 +15,14 @@ const AreaManagement = () => {
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
 
   const { user } = useQueryAuthContext();
+  const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
+
+  // Close all sidebars when company changes
+  useEffect(() => {
+    setIsSidebarOpen(false);
+    setIsAiSidebarOpen(false);
+    setSelectedAreaForAi(null);
+  }, [id_empresa]);
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
@@ -29,9 +37,6 @@ const AreaManagement = () => {
     setSelectedAreaForAi({ id_area, id_empresa, area_name });
     setIsAiSidebarOpen(true);
   };
-
-  // Get the current company ID from user's actual_company_area
-  const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
   return (
     <div className="flex flex-1 overflow-hidden h-full">

@@ -1,6 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createAgente, getAgentesPaginated } from '../api/agentsApi';
-import type { CreateAgentRequest } from '@/types/agents';
+import {
+  createAgente,
+  getAgentesPaginated,
+  updateDatosAgente,
+  updateAgenteStatus,
+  updateAgenteOperativo,
+  updateAgenteSecretKey,
+  updateAgenteAccess,
+} from '../api/agentsApi';
+import type {
+  CreateAgentRequest,
+  UpdateAgentRequest,
+  UpdateAgentStatusRequest,
+  UpdateAgentOperativoRequest,
+  UpdateAgentSecretKeyRequest,
+  UpdateAgentAccessRequest,
+} from '@/types/agents';
 import { toast } from './use-toast';
 
 export const useGetAgentesPaginated = (
@@ -28,7 +43,9 @@ export const useGetAgentesPaginated = (
       });
     },
     enabled: !!id_empresa && id_empresa > 0,
-    staleTime: 30000, // 30 seconds
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
     retry: false,
   });
 };
@@ -63,6 +80,148 @@ export const useCreateAgente = (id_empresa: number) => {
       toast({
         title: 'Error',
         description: errorMessage,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+const extractErrorMessage = (error: any, fallback: string): string => {
+  return error.response?.data?.error?.mensaje ||
+    error.response?.data?.detail?.mensaje ||
+    error.response?.data?.detail?.result?.mensaje ||
+    error.response?.data?.result?.mensaje ||
+    fallback;
+};
+
+const extractSuccessMessage = (data: any, fallback: string): string => {
+  return data.results?.[0]?.MENSAJE || data.result?.mensaje || fallback;
+};
+
+export const useUpdateDatosAgente = (id_empresa: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: UpdateAgentRequest) => {
+      return await updateDatosAgente(request);
+    },
+    retry: false,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['agentes-paginated', id_empresa] });
+      toast({
+        title: 'Éxito',
+        description: extractSuccessMessage(data, 'Datos del agente actualizados exitosamente'),
+        variant: 'success',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: extractErrorMessage(error, 'Error al actualizar los datos del agente'),
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateAgenteStatus = (id_empresa: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: UpdateAgentStatusRequest) => {
+      return await updateAgenteStatus(request);
+    },
+    retry: false,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['agentes-paginated', id_empresa] });
+      toast({
+        title: 'Éxito',
+        description: extractSuccessMessage(data, 'Estado del agente actualizado exitosamente'),
+        variant: 'success',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: extractErrorMessage(error, 'Error al actualizar el estado del agente'),
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateAgenteOperativo = (id_empresa: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: UpdateAgentOperativoRequest) => {
+      return await updateAgenteOperativo(request);
+    },
+    retry: false,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['agentes-paginated', id_empresa] });
+      toast({
+        title: 'Éxito',
+        description: extractSuccessMessage(data, 'Estado operativo del agente actualizado exitosamente'),
+        variant: 'success',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: extractErrorMessage(error, 'Error al actualizar el estado operativo del agente'),
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateAgenteSecretKey = (id_empresa: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: UpdateAgentSecretKeyRequest) => {
+      return await updateAgenteSecretKey(request);
+    },
+    retry: false,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['agentes-paginated', id_empresa] });
+      toast({
+        title: 'Éxito',
+        description: extractSuccessMessage(data, 'Secret key del agente regenerada exitosamente'),
+        variant: 'success',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: extractErrorMessage(error, 'Error al regenerar la secret key del agente'),
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+export const useUpdateAgenteAccess = (id_empresa: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: UpdateAgentAccessRequest) => {
+      return await updateAgenteAccess(request);
+    },
+    retry: false,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['agentes-paginated', id_empresa] });
+      toast({
+        title: 'Éxito',
+        description: extractSuccessMessage(data, 'Acceso del agente actualizado exitosamente'),
+        variant: 'success',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: extractErrorMessage(error, 'Error al actualizar el acceso del agente'),
         variant: 'destructive',
       });
     },

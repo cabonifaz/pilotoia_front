@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, memo } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -47,6 +47,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/shadcn/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/shadcn/select";
 import { Loader } from "@/components/loader/Loader";
 import { useGetModels } from "@/hooks/useIAModelsQueries";
 
@@ -66,7 +73,7 @@ interface DraggableTableHeaderProps {
   header: Header<IAModel, unknown>;
 }
 
-const DraggableTableHeader = ({ header }: DraggableTableHeaderProps) => {
+const DraggableTableHeader = memo(({ header }: DraggableTableHeaderProps) => {
   const columnId = header.column.id;
   const isStatic = columnId === "select" || columnId === "actions";
 
@@ -124,7 +131,9 @@ const DraggableTableHeader = ({ header }: DraggableTableHeaderProps) => {
       </div>
     </TableHead>
   );
-};
+});
+
+DraggableTableHeader.displayName = "DraggableTableHeader";
 
 const getExtraParameterLabel = (tipo: string): string => {
   if (tipo.includes("Embeddings")) return "Vector Size";
@@ -143,7 +152,8 @@ export const AiTable = ({
 }) => {
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnOrder, setColumnOrder] = useState<string[]>([
+  const [pageSize, setPageSize] = useState(10);
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => [
     "select",
     "NOMBRE",
     "IDENTIFICADOR",
@@ -153,7 +163,6 @@ export const AiTable = ({
     "ID_ESTADO_REGISTRO",
   ]);
 
-  const tableContainerRef = useRef<HTMLDivElement>(null);
   const { data, isLoading, error } = useGetModels();
 
   const sensors = useSensors(
@@ -214,11 +223,11 @@ export const AiTable = ({
         header: "Parámetro",
         size: 180,
         cell: (info) => (
-          <div className="text-sm">
+          <div>
             <span className="text-muted-foreground mr-1">
               {getExtraParameterLabel(info.row.original.TIPO)}:
             </span>
-            <span className="font-medium">{Math.floor(info.getValue())}</span>
+            <span>{Math.floor(info.getValue())}</span>
           </div>
         ),
       }),
@@ -244,6 +253,11 @@ export const AiTable = ({
       rowSelection,
       globalFilter: searchTerm,
     },
+    initialState: {
+      pagination: {
+        pageSize,
+      },
+    },
     onSortingChange: setSorting,
     onColumnOrderChange: setColumnOrder,
     onRowSelectionChange: setRowSelection,
@@ -251,10 +265,10 @@ export const AiTable = ({
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getRowId: (row) => row.ID_MODELO.toString(), // Importante para la estabilidad de la selección
+    getRowId: (row) => row.ID_MODELO.toString(),
   });
 
-  // --- 2. RESET DE SELECCIÓN AL PAGINAR ---
+  // Reset selection when page or search changes
   useEffect(() => {
     setRowSelection({});
   }, [table.getState().pagination.pageIndex, searchTerm]);
@@ -265,20 +279,7 @@ export const AiTable = ({
     }
   }, [sortBy]);
 
-  useEffect(() => {
-    const calculateItems = () => {
-      if (tableContainerRef.current) {
-        const availableHeight = tableContainerRef.current.clientHeight - 45;
-        const calculated = Math.floor(availableHeight / 48); // Un poco más de margen por fila
-        table.setPageSize(Math.max(5, calculated));
-      }
-    };
-    calculateItems();
-    window.addEventListener("resize", calculateItems);
-    return () => window.removeEventListener("resize", calculateItems);
-  }, [data, table]);
-
-  function handleDragEnd(event: DragEndEvent) {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (active && over && active.id !== over.id) {
       if (over.id === "select") return;
@@ -288,21 +289,57 @@ export const AiTable = ({
         return arrayMove(items, oldIndex, newIndex);
       });
     }
-  }
+  }, []);
+
+  const handlePageSizeChange = useCallback((value: string) => {
+    const newSize = Number(value);
+    setPageSize(newSize);
+    table.setPageSize(newSize);
+    table.setPageIndex(0);
+  }, [table]);
 
   const draggableColumns = useMemo(
     () => columnOrder.filter((id) => id !== "select"),
     [columnOrder],
   );
 
+  const currentPage = table.getState().pagination.pageIndex + 1;
+  const totalPages = table.getPageCount();
+  const totalRecords = table.getFilteredRowModel().rows.length;
+  const startIndex = (currentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(currentPage * pageSize, totalRecords);
+
   return (
     <Card className="flex-1 flex flex-col min-h-0">
       <CardHeader className="pb-3">
-        <div className="flex flex-col items-start gap-1">
-          <h1 className="text-2xl font-bold text-foreground">Modelos IA</h1>
-          <p className="text-xs text-muted-foreground">
-            Gestiona los modelos disponibles.
-          </p>
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col items-start gap-1">
+            <h1 className="text-2xl font-bold text-foreground">Modelos IA</h1>
+            <p className="text-xs text-muted-foreground">
+              Gestiona los modelos disponibles.
+            </p>
+          </div>
+
+          {!isLoading && !error && totalRecords > 0 && (
+            <div className="hidden md:flex items-center gap-2">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                Filas por página:
+              </span>
+              <Select
+                value={pageSize.toString()}
+                onValueChange={handlePageSizeChange}
+              >
+                <SelectTrigger className="w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="15">15</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </CardHeader>
 
@@ -316,14 +353,9 @@ export const AiTable = ({
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <div
-                ref={tableContainerRef}
-                className="flex-1 min-h-0 border rounded-lg overflow-hidden"
-              >
-                <div className="h-full overflow-auto">
+              <div className="flex-1 min-h-0 border rounded-lg">
+                <div className="h-full overflow-y-auto">
                   <Table className="w-full table-fixed">
-                    {" "}
-                    {/* table-fixed ayuda a respetar los tamaños 'size' */}
                     <TableHeader className="sticky top-0 z-20 bg-white shadow-sm">
                       {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
@@ -341,14 +373,18 @@ export const AiTable = ({
                         </TableRow>
                       ))}
                     </TableHeader>
-                    <TableBody>
+                    <TableBody className="text-xs">
                       {table.getRowModel().rows.length === 0 ? (
                         <TableRow>
                           <TableCell
                             colSpan={columnOrder.length}
                             className="h-24 text-center"
                           >
-                            No se encontraron resultados.
+                            <p className="text-muted-foreground">
+                              {searchTerm
+                                ? `No se encontraron coincidencias para "${searchTerm}"`
+                                : "No hay modelos registrados"}
+                            </p>
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -360,7 +396,7 @@ export const AiTable = ({
                             {row.getVisibleCells().map((cell) => (
                               <TableCell
                                 key={cell.id}
-                                style={{ width: cell.column.getSize() }} // Aplicar el ancho aquí
+                                style={{ width: cell.column.getSize() }}
                                 className={
                                   cell.column.id === "select"
                                     ? "px-1 text-center"
@@ -382,38 +418,85 @@ export const AiTable = ({
               </div>
             </DndContext>
 
-            {/* Pagination UI simplificada */}
-            <div className="flex flex-col items-center gap-2 flex-shrink-0 pt-2">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => table.previousPage()}
-                  disabled={!table.getCanPreviousPage()}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
+            {totalRecords > 0 && (
+              <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.previousPage()}
+                    disabled={!table.getCanPreviousPage()}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden md:inline">Anterior</span>
+                  </Button>
 
-                <div className="flex items-center gap-1">
-                  <span className="text-sm font-medium">Página</span>
-                  <span className="text-sm font-bold">
-                    {table.getState().pagination.pageIndex + 1}
-                  </span>
-                  <span className="text-sm font-medium">
-                    de {table.getPageCount()}
-                  </span>
+                  {/* Desktop Pagination */}
+                  <div className="hidden md:flex gap-1">
+                    {(() => {
+                      const maxButtons = 5;
+                      const halfRange = Math.floor(maxButtons / 2);
+                      let startPage = Math.max(1, currentPage - halfRange);
+                      const endPage = Math.min(
+                        totalPages,
+                        startPage + maxButtons - 1,
+                      );
+
+                      if (endPage - startPage + 1 < maxButtons) {
+                        startPage = Math.max(1, endPage - maxButtons + 1);
+                      }
+
+                      const pages: (number | string)[] = [];
+                      if (startPage > 1) {
+                        pages.push(1);
+                        if (startPage > 2) pages.push("...");
+                      }
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(i);
+                      }
+                      if (endPage < totalPages) {
+                        if (endPage < totalPages - 1) pages.push("...");
+                        pages.push(totalPages);
+                      }
+
+                      return pages.map((page, idx) => (
+                        <Button
+                          key={`${page}-${idx}`}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() =>
+                            typeof page === "number" && table.setPageIndex(page - 1)
+                          }
+                          disabled={page === "..."}
+                        >
+                          {page}
+                        </Button>
+                      ));
+                    })()}
+                  </div>
+
+                  {/* Mobile Pagination */}
+                  <div className="flex md:hidden gap-1">
+                    <Button variant="outline" size="sm" disabled>
+                      {currentPage} / {totalPages}
+                    </Button>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.nextPage()}
+                    disabled={!table.getCanNextPage()}
+                  >
+                    <span className="hidden md:inline">Siguiente</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => table.nextPage()}
-                  disabled={!table.getCanNextPage()}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Mostrando {startIndex}-{endIndex} de {totalRecords} modelos
+                </p>
               </div>
-            </div>
+            )}
           </>
         )}
       </CardContent>

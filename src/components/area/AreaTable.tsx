@@ -71,13 +71,13 @@ import type { Area } from "@/types/area";
 
 // --- COMPONENTE CABECERA ARRASTRABLE ---
 interface DraggableTableHeaderProps {
-  header: Header<any, unknown>;
-  onSortClick: (field: any) => void;
+  header: Header<Area, unknown>;
+  onSortClick: (field: string) => void;
   orderField: string;
   orderDirection: "ASC" | "DESC";
 }
 
-const DraggableTableHeader = ({
+const DraggableTableHeader = memo(({
   header,
   onSortClick,
   orderField,
@@ -148,7 +148,10 @@ const DraggableTableHeader = ({
       </div>
     </TableHead>
   );
-};
+});
+
+DraggableTableHeader.displayName = "DraggableTableHeader";
+
 // Format date to readable format
 const formatDate = (isoDate: string): string => {
   const date = new Date(isoDate);
@@ -244,7 +247,7 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
   const [editingAreaId, setEditingAreaId] = useState<number | null>(null);
   const [originalAreaName, setOriginalAreaName] = useState<string>("");
-  const [columnOrder, setColumnOrder] = useState<string[]>([
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => [
     "select",
     "AREA",
     "FCHCRE",
@@ -275,23 +278,17 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
     useSensor(KeyboardSensor),
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
-
     if (active && over && active.id !== over.id) {
-      // Definimos los IDs prohibidos
-      const staticColumns = ["select", "actions"];
-
-      // Si intentamos soltar sobre una columna estática, cancelamos o ajustamos
-      if (staticColumns.includes(over.id as string)) return;
-
+      if (over.id === "select" || over.id === "actions") return;
       setColumnOrder((items) => {
         const oldIndex = items.indexOf(active.id as string);
         const newIndex = items.indexOf(over.id as string);
         return arrayMove(items, oldIndex, newIndex);
       });
     }
-  };
+  }, []);
 
   // Reset editing and selection state when pagination, filters, or sorting change
   useEffect(() => {
@@ -340,12 +337,12 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
 
   // Memoized sort handler
   const handleSortClick = useCallback(
-    (field: "AREA" | "FCHCRE" | "ID_ESTADO_REGISTRO") => {
+    (field: string) => {
       if (isEditing) return;
       setOrderDirection((prev) =>
         orderField === field && prev === "ASC" ? "DESC" : "ASC"
       );
-      setOrderField(field);
+      setOrderField(field as typeof orderField);
       setCurrentPage(1);
     },
     [isEditing, orderField]
@@ -544,6 +541,11 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
     [isEditing]
   );
 
+  const draggableColumns = useMemo(
+    () => columnOrder.filter((id) => id !== "select" && id !== "actions"),
+    [columnOrder],
+  );
+
   const areas = data?.areas || [];
   const totalPages = data?.total_paginas || 0;
   const totalRecords = data?.total_registros || 0;
@@ -630,10 +632,7 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
                       {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
                           <SortableContext
-                            // Filtramos los IDs estáticos para que dnd-kit no los considere parte del flujo de ordenamiento
-                            items={columnOrder.filter(
-                              (id) => !["select", "actions"].includes(id),
-                            )}
+                            items={draggableColumns}
                             strategy={horizontalListSortingStrategy}
                           >
                             {headerGroup.headers.map((header) => (
@@ -649,7 +648,7 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
                         </TableRow>
                       ))}
                     </TableHeader>
-                    <TableBody>
+                    <TableBody className="text-xs">
                       {table.getRowModel().rows.map((row) => (
                         <TableRow key={row.id}>
                           {row.getVisibleCells().map((cell) => {
