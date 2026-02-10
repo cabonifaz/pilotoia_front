@@ -34,7 +34,6 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  Phone,
   Filter,
   ArrowUp,
   ArrowDown,
@@ -353,12 +352,25 @@ export const AgentsTable = ({
       }),
       columnHelper.accessor("NUMERO_TELF", {
         header: "Teléfono",
-        cell: (info) => (
-          <div className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-blue-500" />
-            <span>{info.getValue()}</span>
-          </div>
-        ),
+        cell: (info) => {
+          const codigoPais = info.row.original.CODIGO_PAIS;
+          const numeroTelf = info.getValue();
+          const [codigoNumerico, codigoIso] = codigoPais.split('-');
+          const localNumber = numeroTelf.startsWith(codigoNumerico)
+            ? numeroTelf.slice(codigoNumerico.length)
+            : numeroTelf;
+
+          return (
+            <div className="flex items-center gap-2">
+              <img
+                src={`https://flagcdn.com/w20/${codigoIso.toLowerCase()}.png`}
+                alt={codigoIso}
+                className="w-5 h-3 object-cover"
+              />
+              <span>+{codigoNumerico} {localNumber}</span>
+            </div>
+          );
+        },
       }),
       columnHelper.accessor("ID_TIPO_AGENTE", {
         header: "Tipo de Agente",

@@ -350,7 +350,29 @@ export const UsersTable = ({
       columnHelper.accessor((row) => row[0].TELEFONO, {
         id: "TELEFONO",
         header: "Teléfono",
-        cell: (info) => info.getValue() || "-",
+        cell: (info) => {
+          const telefono = info.getValue();
+          if (!telefono) return "-";
+
+          const codigoPais = info.row.original[0].CODIGO_PAIS || "";
+          if (!codigoPais) return telefono;
+
+          const [codigoNumerico, codigoIso] = codigoPais.split('-');
+          const localNumber = telefono.startsWith(codigoNumerico)
+            ? telefono.slice(codigoNumerico.length)
+            : telefono;
+
+          return (
+            <div className="flex items-center gap-2">
+              <img
+                src={`https://flagcdn.com/w20/${codigoIso.toLowerCase()}.png`}
+                alt={codigoIso}
+                className="w-5 h-3 object-cover"
+              />
+              <span>+{codigoNumerico} {localNumber}</span>
+            </div>
+          );
+        },
       }),
       columnHelper.accessor((row) => row, {
         id: "AREA",
