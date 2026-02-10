@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDebounce } from 'use-debounce';
 import { Search, CirclePlus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
@@ -26,8 +26,16 @@ const DocumentUpload = () => {
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
 
   const { user } = useCurrentUser();
+  const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
   const areaName = user?.actual_company_area?.AREA || 'esta área';
   const deleteMutation = useDeleteKnowledge();
+
+  // Close sidebar and dialog when company changes
+  useEffect(() => {
+    setIsSidebarOpen(false);
+    setIsDeleteDialogOpen(false);
+    setSelectedRows([]);
+  }, [id_empresa]);
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);

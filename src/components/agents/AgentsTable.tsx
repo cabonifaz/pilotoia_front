@@ -386,12 +386,8 @@ export const AgentsTable = ({
       columnHelper.accessor("AREA", {
         header: "Áreas con Acceso",
         cell: (info) => {
-          const accessGeneral = info.row.original.ACCESO_GENERAL;
           const areas = info.row.original.AREAS_LIST;
 
-          if (accessGeneral === 1) {
-            return <strong>Todas</strong>;
-          }
           return (
             <div className="flex flex-col gap-1">
               {areas.map((area, idx) => (

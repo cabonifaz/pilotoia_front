@@ -33,6 +33,7 @@ const StreamingChat = () => {
           // Clear chat_id from sessionStorage when company/area changes
           sessionStorage.removeItem('current_chat_id');
           setSelectedChatId(undefined);
+          setIsConfigSidebarOpen(false);
         }
 
         // Update the ref with the current company/area

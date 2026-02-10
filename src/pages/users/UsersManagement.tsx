@@ -19,6 +19,16 @@ const UsersManagement = () => {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  // Close all sidebars when company changes
+  useEffect(() => {
+    setIsSidebarOpen(false);
+    setIsUpdateSidebarOpen(false);
+    setIsPasswordSidebarOpen(false);
+    setIsAccessSidebarOpen(false);
+    setSelectedUser(null);
+    setSelectedUserAreas([]);
+  }, [id_empresa]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchInput);

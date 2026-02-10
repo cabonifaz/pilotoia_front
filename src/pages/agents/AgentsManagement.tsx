@@ -27,6 +27,15 @@ const AgentsManagement = () => {
   const { mutate: toggleOperativo } = useUpdateAgenteOperativo(id_empresa);
   const { mutate: regenerateSecretKey } = useUpdateAgenteSecretKey(id_empresa);
 
+  // Close all sidebars when company changes
+  useEffect(() => {
+    setIsSidebarOpen(false);
+    setIsUpdateSidebarOpen(false);
+    setIsAccessSidebarOpen(false);
+    setSelectedAgent(null);
+    setSelectedAgentAreas([]);
+  }, [id_empresa]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchInput);
