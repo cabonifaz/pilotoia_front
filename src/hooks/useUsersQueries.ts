@@ -26,7 +26,7 @@ export const useGetUsuariosPaginated = (
       });
     },
     enabled: !!id_empresa && id_empresa > 0,
-    staleTime: 30000, // 30 seconds
+    staleTime: 0,
     retry: false,
   });
 };

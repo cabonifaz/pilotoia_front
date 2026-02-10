@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, memo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
 import { Button } from "@/components/shadcn/button";
 import { Badge } from "@/components/shadcn/badge";
@@ -70,7 +70,7 @@ interface DraggableTableHeaderProps {
   orderField: string | null;
   orderDirection: "ASC" | "DESC";
 }
-const DraggableTableHeader = ({
+const DraggableTableHeader = memo(({
   header,
   onSortClick,
   orderField,
@@ -142,7 +142,10 @@ const DraggableTableHeader = ({
       </div>
     </TableHead>
   );
-};
+});
+
+DraggableTableHeader.displayName = "DraggableTableHeader";
+
 // Format date to readable format
 const formatDate = (isoDate: string): string => {
   const date = new Date(isoDate);
@@ -181,7 +184,7 @@ export const CompanyTable = ({
   // --- ESTADOS EXISTENTES ---
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [orderField, setOrderField] = useState<any>("RAZON_SOCIAL");
+  const [orderField, setOrderField] = useState<"ID_EMPRESA" | "RUC" | "RAZON_SOCIAL" | "FCHCRE" | "ID_ESTADO_REGISTRO">("RAZON_SOCIAL");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("ASC");
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
   const [rowSelection, setRowSelection] = useState({});
@@ -213,20 +216,17 @@ export const CompanyTable = ({
   );
 
   // 4. Manejador del final del arrastre
-  function handleDragEnd(event: DragEndEvent) {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
-
     if (active && over && active.id !== over.id) {
-      // Evitar soltar sobre 'select' o 'actions'
       if (over.id === "select" || over.id === "actions") return;
-
       setColumnOrder((items) => {
         const oldIndex = items.indexOf(active.id as string);
         const newIndex = items.indexOf(over.id as string);
         return arrayMove(items, oldIndex, newIndex);
       });
     }
-  }
+  }, []);
 
   // Memoized handler for generating URL
   const handleGenerateURL = useCallback((secretKey: string) => {
@@ -260,7 +260,7 @@ export const CompanyTable = ({
     setOrderDirection((prev) =>
       orderField === field && prev === "ASC" ? "DESC" : "ASC"
     );
-    setOrderField(field);
+    setOrderField(field as typeof orderField);
     setCurrentPage(1);
   }, [orderField]);
 
@@ -495,7 +495,7 @@ export const CompanyTable = ({
                         </TableRow>
                       ))}
                     </TableHeader>
-                    <TableBody>
+                    <TableBody className="text-xs">
                       {table.getRowModel().rows.length === 0 ? (
                         <TableRow>
                           <TableCell

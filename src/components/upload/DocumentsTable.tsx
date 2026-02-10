@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, memo } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -157,7 +157,7 @@ interface DraggableTableHeaderProps {
   orderDirection: "ASC" | "DESC";
 }
 
-const DraggableTableHeader = ({
+const DraggableTableHeader = memo(({
   header,
   onSortClick,
   orderField,
@@ -238,7 +238,9 @@ const DraggableTableHeader = ({
       </div>
     </TableHead>
   );
-};
+});
+
+DraggableTableHeader.displayName = "DraggableTableHeader";
 
 // --- COMPONENTE PRINCIPAL ---
 
@@ -259,7 +261,7 @@ export const DocumentsTable = ({
   // 1. Estados de Paginación y Filtros
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [orderField, setOrderField] = useState<string>("FCHMOD");
+  const [orderField, setOrderField] = useState<"NOMBRE_DOCUMENTO" | "FCHMOD" | "FCHCRE" | "ID_ESTADO_PROCESO" | "AREA" | "USUARIO_CARGA" | "EMBEDDING_MODEL" | "FCH_EXTRACCION" | "FCH_SEGMENTACION" | "FCH_VECTORIZACION">("FCHMOD");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
 
@@ -270,7 +272,7 @@ export const DocumentsTable = ({
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   // 3. Estados de la Tabla (Orden Columnas y Selección)
-  const [columnOrder, setColumnOrder] = useState<string[]>([
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => [
     "select",
     "NOMBRE_DOCUMENTO",
     "USUARIO_CARGA",
@@ -303,7 +305,7 @@ export const DocumentsTable = ({
     currentPage,
     pageSize,
     searchTerm,
-    orderField as any,
+    orderField,
     orderDirection,
     statusFilter,
   );
@@ -354,7 +356,7 @@ export const DocumentsTable = ({
       setOrderDirection((prev) =>
         orderField === field && prev === "ASC" ? "DESC" : "ASC",
       );
-      setOrderField(field);
+      setOrderField(field as typeof orderField);
       setCurrentPage(1);
     },
     [orderField],
@@ -370,7 +372,7 @@ export const DocumentsTable = ({
     setCurrentPage(1);
   }, []);
 
-  const handleViewDocument = async (ruta_documento: string, name: string) => {
+  const handleViewDocument = useCallback(async (ruta_documento: string, name: string) => {
     try {
       setLoadingPreview(true);
       setPreviewDocName(name);
@@ -398,7 +400,7 @@ export const DocumentsTable = ({
     } finally {
       setLoadingPreview(false);
     }
-  };
+  }, []);
 
   // --- DND SETUP ---
   const sensors = useSensors(
@@ -407,7 +409,7 @@ export const DocumentsTable = ({
     useSensor(KeyboardSensor),
   );
 
-  function handleDragEnd(event: DragEndEvent) {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (active && over && active.id !== over.id) {
       if (over.id === "select" || over.id === "actions") return;
@@ -417,7 +419,7 @@ export const DocumentsTable = ({
         return arrayMove(items, oldIndex, newIndex);
       });
     }
-  }
+  }, []);
   useEffect(() => {
     setRowSelection({});
   }, [
@@ -718,7 +720,7 @@ export const DocumentsTable = ({
                         </TableRow>
                       ))}
                     </TableHeader>
-                    <TableBody>
+                    <TableBody className="text-xs">
                       {table.getRowModel().rows.length === 0 ? (
                         <TableRow>
                           <TableCell

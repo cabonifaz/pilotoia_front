@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, memo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
 import { Button } from "@/components/shadcn/button";
 import { Badge } from "@/components/shadcn/badge";
@@ -88,7 +88,7 @@ interface DraggableTableHeaderProps {
   orderDirection: "ASC" | "DESC";
 }
 
-const DraggableTableHeader = ({
+const DraggableTableHeader = memo(({
   header,
   onSortClick,
   orderField,
@@ -184,7 +184,9 @@ const DraggableTableHeader = ({
       </div>
     </TableHead>
   );
-};
+});
+
+DraggableTableHeader.displayName = "DraggableTableHeader";
 
 interface AgentsTableProps {
   searchTerm: string;
@@ -208,7 +210,7 @@ export const AgentsTable = ({
   // --- ESTADOS ---
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [orderField, setOrderField] = useState<any>("NUMERO_TELF");
+  const [orderField, setOrderField] = useState<string>("NUMERO_TELF");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("ASC");
 
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
@@ -248,7 +250,7 @@ export const AgentsTable = ({
     useSensor(KeyboardSensor),
   );
 
-  function handleDragEnd(event: DragEndEvent) {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (active && over && active.id !== over.id) {
       if (over.id === "select" || over.id === "actions") return;
@@ -258,7 +260,7 @@ export const AgentsTable = ({
         return arrayMove(items, oldIndex, newIndex);
       });
     }
-  }
+  }, []);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -645,7 +647,7 @@ export const AgentsTable = ({
                         </TableRow>
                       ))}
                     </TableHeader>
-                    <TableBody>
+                    <TableBody className="text-xs">
                       {table.getRowModel().rows.length === 0 ? (
                         <TableRow>
                           <TableCell
