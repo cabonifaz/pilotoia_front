@@ -157,88 +157,90 @@ interface DraggableTableHeaderProps {
   orderDirection: "ASC" | "DESC";
 }
 
-const DraggableTableHeader = memo(({
-  header,
-  onSortClick,
-  orderField,
-  orderDirection,
-}: DraggableTableHeaderProps) => {
-  const columnId = header.column.id;
-  const isStatic = columnId === "select" || columnId === "actions";
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: columnId,
-    disabled: isStatic,
-  });
+const DraggableTableHeader = memo(
+  ({
+    header,
+    onSortClick,
+    orderField,
+    orderDirection,
+  }: DraggableTableHeaderProps) => {
+    const columnId = header.column.id;
+    const isStatic = columnId === "select" || columnId === "actions";
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({
+      id: columnId,
+      disabled: isStatic,
+    });
 
-  const columnSize = header.column.getSize();
+    const columnSize = header.column.getSize();
 
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 100 : 1,
-    position: "relative" as const,
-    width: columnSize,
-    minWidth: columnSize,
-    maxWidth: columnSize,
-  };
+    const style = {
+      transform: CSS.Translate.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      zIndex: isDragging ? 100 : 1,
+      position: "relative" as const,
+      width: columnSize,
+      minWidth: columnSize,
+      maxWidth: columnSize,
+    };
 
-  // Campos que permiten ordenamiento en el backend
-  const isSortable = [
-    "NOMBRE_DOCUMENTO",
-    "FCHMOD",
-    "FCHCRE",
-    "ID_ESTADO_PROCESO",
-    "AREA",
-    "USUARIO_CARGA",
-    "EMBEDDING_MODEL",
-    "FCH_EXTRACCION",
-    "FCH_SEGMENTACION",
-    "FCH_VECTORIZACION",
-  ].includes(columnId);
+    // Campos que permiten ordenamiento en el backend
+    const isSortable = [
+      "NOMBRE_DOCUMENTO",
+      "FCHMOD",
+      "FCHCRE",
+      "ID_ESTADO_PROCESO",
+      "AREA",
+      "USUARIO_CARGA",
+      "EMBEDDING_MODEL",
+      "FCH_EXTRACCION",
+      "FCH_SEGMENTACION",
+      "FCH_VECTORIZACION",
+    ].includes(columnId);
 
-  return (
-    <TableHead
-      ref={setNodeRef}
-      style={style}
-      className={`bg-white border-b ${isStatic ? "px-1 text-center" : ""}`}
-    >
-      <div
-        className={`flex items-center ${isStatic ? "justify-center" : "gap-2"}`}
+    return (
+      <TableHead
+        ref={setNodeRef}
+        style={style}
+        className={`bg-white border-b ${isStatic ? "px-1 text-center" : ""}`}
       >
-        {!isStatic && (
-          <div
-            {...attributes}
-            {...listeners}
-            className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
-          >
-            ::
-          </div>
-        )}
         <div
-          className={`flex items-center gap-1 ${isSortable ? "cursor-pointer select-none" : ""}`}
-          onClick={() => isSortable && onSortClick(columnId)}
+          className={`flex items-center ${isStatic ? "justify-center" : "gap-2"}`}
         >
-          {flexRender(header.column.columnDef.header, header.getContext())}
-          {isSortable &&
-            orderField === columnId &&
-            (orderDirection === "ASC" ? (
-              <ArrowUp className="h-3 w-3" />
-            ) : (
-              <ArrowDown className="h-3 w-3" />
-            ))}
+          {!isStatic && (
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
+            >
+              ::
+            </div>
+          )}
+          <div
+            className={`flex items-center gap-1 ${isSortable ? "cursor-pointer select-none" : ""}`}
+            onClick={() => isSortable && onSortClick(columnId)}
+          >
+            {flexRender(header.column.columnDef.header, header.getContext())}
+            {isSortable &&
+              orderField === columnId &&
+              (orderDirection === "ASC" ? (
+                <ArrowUp className="h-3 w-3" />
+              ) : (
+                <ArrowDown className="h-3 w-3" />
+              ))}
+          </div>
         </div>
-      </div>
-    </TableHead>
-  );
-});
+      </TableHead>
+    );
+  },
+);
 
 DraggableTableHeader.displayName = "DraggableTableHeader";
 
@@ -261,7 +263,18 @@ export const DocumentsTable = ({
   // 1. Estados de Paginación y Filtros
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [orderField, setOrderField] = useState<"NOMBRE_DOCUMENTO" | "FCHMOD" | "FCHCRE" | "ID_ESTADO_PROCESO" | "AREA" | "USUARIO_CARGA" | "EMBEDDING_MODEL" | "FCH_EXTRACCION" | "FCH_SEGMENTACION" | "FCH_VECTORIZACION">("FCHMOD");
+  const [orderField, setOrderField] = useState<
+    | "NOMBRE_DOCUMENTO"
+    | "FCHMOD"
+    | "FCHCRE"
+    | "ID_ESTADO_PROCESO"
+    | "AREA"
+    | "USUARIO_CARGA"
+    | "EMBEDDING_MODEL"
+    | "FCH_EXTRACCION"
+    | "FCH_SEGMENTACION"
+    | "FCH_VECTORIZACION"
+  >("FCHMOD");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
 
@@ -301,7 +314,7 @@ export const DocumentsTable = ({
   }, [searchTerm, statusFilter]);
 
   // Query de Datos
-  const { data, isLoading, error } = useProcessingLogsPaginated(
+  const { data, isLoading, isFetching, error } = useProcessingLogsPaginated(
     currentPage,
     pageSize,
     searchTerm,
@@ -372,35 +385,38 @@ export const DocumentsTable = ({
     setCurrentPage(1);
   }, []);
 
-  const handleViewDocument = useCallback(async (ruta_documento: string, name: string) => {
-    try {
-      setLoadingPreview(true);
-      setPreviewDocName(name);
+  const handleViewDocument = useCallback(
+    async (ruta_documento: string, name: string) => {
+      try {
+        setLoadingPreview(true);
+        setPreviewDocName(name);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/v1/knowledge/document/url?ruta_documento=${encodeURIComponent(ruta_documento)}`,
-      );
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          responseData?.result?.mensaje || "Error al obtener documento",
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/api/v1/knowledge/document/url?ruta_documento=${encodeURIComponent(ruta_documento)}`,
         );
-      }
+        const responseData = await response.json();
 
-      setPreviewUrl(responseData.url);
-      setPreviewOpen(true);
-    } catch (err) {
-      console.error(err);
-      toast({
-        title: "Error",
-        description: "No se pudo cargar el documento.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingPreview(false);
-    }
-  }, []);
+        if (!response.ok) {
+          throw new Error(
+            responseData?.result?.mensaje || "Error al obtener documento",
+          );
+        }
+
+        setPreviewUrl(responseData.url);
+        setPreviewOpen(true);
+      } catch (err) {
+        console.error(err);
+        toast({
+          title: "Error",
+          description: "No se pudo cargar el documento.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingPreview(false);
+      }
+    },
+    [],
+  );
 
   // --- DND SETUP ---
   const sensors = useSensors(
@@ -682,7 +698,18 @@ export const DocumentsTable = ({
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
-        {isLoading && <Loader text="Cargando documentos..." />}
+        {(isLoading || isFetching) && (
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white">
+            {/* Usamos bg-white sin transparencias para "tapar" todo. 
+         Si usas modo oscuro, puedes usar bg-background 
+      */}
+            <Loader
+              text={
+                isLoading ? "Cargando documentos..." : "Actualizando lista..."
+              }
+            />
+          </div>
+        )}
 
         {error && (
           <div className="flex-1 flex items-center justify-center">

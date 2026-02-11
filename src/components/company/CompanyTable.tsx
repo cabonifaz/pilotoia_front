@@ -70,79 +70,83 @@ interface DraggableTableHeaderProps {
   orderField: string | null;
   orderDirection: "ASC" | "DESC";
 }
-const DraggableTableHeader = memo(({
-  header,
-  onSortClick,
-  orderField,
-  orderDirection,
-}: DraggableTableHeaderProps) => {
-  const columnId = header.column.id;
-  const isStatic = columnId === "select" || columnId === "actions";
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: columnId,
-    disabled: isStatic,
-  });
+const DraggableTableHeader = memo(
+  ({
+    header,
+    onSortClick,
+    orderField,
+    orderDirection,
+  }: DraggableTableHeaderProps) => {
+    const columnId = header.column.id;
+    const isStatic = columnId === "select" || columnId === "actions";
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({
+      id: columnId,
+      disabled: isStatic,
+    });
 
-  const columnSize = header.column.getSize();
+    const columnSize = header.column.getSize();
 
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 100 : 1,
-    position: "relative" as const,
-    width: columnSize,
-    minWidth: columnSize,
-    maxWidth: columnSize,
-  };
+    const style = {
+      transform: CSS.Translate.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      zIndex: isDragging ? 100 : 1,
+      position: "relative" as const,
+      width: columnSize,
+      minWidth: columnSize,
+      maxWidth: columnSize,
+    };
 
-  const isSortable = [
-    "RUC",
-    "RAZON_SOCIAL",
-    "FCHCRE",
-    "ID_ESTADO_REGISTRO",
-  ].includes(columnId);
+    const isSortable = [
+      "RUC",
+      "RAZON_SOCIAL",
+      "FCHCRE",
+      "ID_ESTADO_REGISTRO",
+    ].includes(columnId);
 
-  return (
-    <TableHead
-      ref={setNodeRef}
-      style={style}
-      className={`bg-white border-b ${isStatic ? "px-1 text-center" : ""}`}
-    >
-      <div className={`flex items-center ${isStatic ? "justify-center" : "gap-2"}`}>
-        {!isStatic && (
-          <div
-            {...attributes}
-            {...listeners}
-            className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
-          >
-            ::
-          </div>
-        )}
+    return (
+      <TableHead
+        ref={setNodeRef}
+        style={style}
+        className={`bg-white border-b ${isStatic ? "px-1 text-center" : ""}`}
+      >
         <div
-          className={`flex items-center gap-1 ${isSortable ? "cursor-pointer select-none" : ""}`}
-          onClick={() => isSortable && onSortClick(columnId)}
+          className={`flex items-center ${isStatic ? "justify-center" : "gap-2"}`}
         >
-          {flexRender(header.column.columnDef.header, header.getContext())}
-          {isSortable &&
-            orderField === columnId &&
-            (orderDirection === "ASC" ? (
-              <ArrowUp className="h-3 w-3" />
-            ) : (
-              <ArrowDown className="h-3 w-3" />
-            ))}
+          {!isStatic && (
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
+            >
+              ::
+            </div>
+          )}
+          <div
+            className={`flex items-center gap-1 ${isSortable ? "cursor-pointer select-none" : ""}`}
+            onClick={() => isSortable && onSortClick(columnId)}
+          >
+            {flexRender(header.column.columnDef.header, header.getContext())}
+            {isSortable &&
+              orderField === columnId &&
+              (orderDirection === "ASC" ? (
+                <ArrowUp className="h-3 w-3" />
+              ) : (
+                <ArrowDown className="h-3 w-3" />
+              ))}
+          </div>
         </div>
-      </div>
-    </TableHead>
-  );
-});
+      </TableHead>
+    );
+  },
+);
 
 DraggableTableHeader.displayName = "DraggableTableHeader";
 
@@ -184,7 +188,9 @@ export const CompanyTable = ({
   // --- ESTADOS EXISTENTES ---
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [orderField, setOrderField] = useState<"ID_EMPRESA" | "RUC" | "RAZON_SOCIAL" | "FCHCRE" | "ID_ESTADO_REGISTRO">("RAZON_SOCIAL");
+  const [orderField, setOrderField] = useState<
+    "ID_EMPRESA" | "RUC" | "RAZON_SOCIAL" | "FCHCRE" | "ID_ESTADO_REGISTRO"
+  >("RAZON_SOCIAL");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("ASC");
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
   const [rowSelection, setRowSelection] = useState({});
@@ -197,7 +203,7 @@ export const CompanyTable = ({
     "ID_ESTADO_REGISTRO",
     "actions",
   ]);
-  const { data, isLoading, error } = useGetCompaniesPaginated(
+  const { data, isLoading, isFetching, error } = useGetCompaniesPaginated(
     currentPage,
     pageSize,
     searchTerm,
@@ -253,16 +259,26 @@ export const CompanyTable = ({
   // Reset row selection when data context changes
   useEffect(() => {
     setRowSelection({});
-  }, [currentPage, pageSize, orderField, orderDirection, statusFilter, searchTerm]);
+  }, [
+    currentPage,
+    pageSize,
+    orderField,
+    orderDirection,
+    statusFilter,
+    searchTerm,
+  ]);
 
   // Memoized sort handler
-  const handleSortClick = useCallback((field: string) => {
-    setOrderDirection((prev) =>
-      orderField === field && prev === "ASC" ? "DESC" : "ASC"
-    );
-    setOrderField(field as typeof orderField);
-    setCurrentPage(1);
-  }, [orderField]);
+  const handleSortClick = useCallback(
+    (field: string) => {
+      setOrderDirection((prev) =>
+        orderField === field && prev === "ASC" ? "DESC" : "ASC",
+      );
+      setOrderField(field as typeof orderField);
+      setCurrentPage(1);
+    },
+    [orderField],
+  );
 
   // Memoized page size handler
   const handlePageSizeChange = useCallback((value: string) => {
@@ -463,7 +479,18 @@ export const CompanyTable = ({
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
-        {isLoading && <Loader text="Cargando empresas..." />}
+        {(isLoading || isFetching) && (
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white">
+            {/* Usamos bg-white sin transparencias para "tapar" todo. 
+         Si usas modo oscuro, puedes usar bg-background 
+      */}
+            <Loader
+              text={
+                isLoading ? "Cargando empresas..." : "Actualizando lista..."
+              }
+            />
+          </div>
+        )}
 
         {!isLoading && !error && (
           <>
@@ -509,7 +536,10 @@ export const CompanyTable = ({
                         table.getRowModel().rows.map((row) => (
                           <TableRow key={row.id}>
                             {row.getVisibleCells().map((cell) => {
-                              const isCompactColumn = ["select", "actions"].includes(cell.column.id);
+                              const isCompactColumn = [
+                                "select",
+                                "actions",
+                              ].includes(cell.column.id);
                               return (
                                 <TableCell
                                   key={cell.id}
@@ -518,7 +548,11 @@ export const CompanyTable = ({
                                     minWidth: cell.column.getSize(),
                                     maxWidth: cell.column.getSize(),
                                   }}
-                                  className={isCompactColumn ? "px-1 text-center" : undefined}
+                                  className={
+                                    isCompactColumn
+                                      ? "px-1 text-center"
+                                      : undefined
+                                  }
                                 >
                                   {flexRender(
                                     cell.column.columnDef.cell,
