@@ -14,6 +14,7 @@ import {
 } from '@/components/shadcn/select';
 import { useUpdateDatosAgente } from '@/hooks/useAgentsQueries';
 import { useGetPhoneCodes } from '@/hooks/usePhoneCodesQueries';
+import { useGetParametros } from '@/hooks/useParametrosQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 import type { Agente } from '@/types/agents';
 import type { PhoneCode } from '@/types/phoneCodes';
@@ -42,6 +43,8 @@ export const AgentsSidebarUpdate = ({
 
   const { mutate: updateDatosAgente, isPending } = useUpdateDatosAgente(id_empresa);
   const { data: phoneCodesData } = useGetPhoneCodes();
+  const { parametrosMap } = useGetParametros();
+  const tiposAgente = parametrosMap['12'] || [];
 
   // Strip country code prefix from stored phone number
   const stripCodigoNumerico = (cp: string, tel: string) => {
@@ -209,7 +212,11 @@ export const AgentsSidebarUpdate = ({
                 <SelectValue placeholder="Selecciona un tipo" />
               </SelectTrigger>
               <SelectContent className="text-sm">
-                <SelectItem value="1">WhatsApp</SelectItem>
+                {tiposAgente.map((tipo) => (
+                  <SelectItem key={tipo.NUM1} value={String(tipo.NUM1)}>
+                    {tipo.STRING1}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

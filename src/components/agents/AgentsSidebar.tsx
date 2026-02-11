@@ -16,6 +16,7 @@ import {
 import { useCreateAgente } from '@/hooks/useAgentsQueries';
 import { useGetAreas } from '@/hooks/useAreaQueries';
 import { useGetPhoneCodes } from '@/hooks/usePhoneCodesQueries';
+import { useGetParametros } from '@/hooks/useParametrosQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 import type { PhoneCode } from '@/types/phoneCodes';
 
@@ -44,6 +45,8 @@ export const AgentsSidebar = ({
   const { mutate: createAgente, isPending } = useCreateAgente(id_empresa);
   const { data: areasData } = useGetAreas(id_empresa);
   const { data: phoneCodesData } = useGetPhoneCodes();
+  const { parametrosMap } = useGetParametros();
+  const tiposAgente = parametrosMap['12'] || [];
 
   // Get General area ID for auto-default
   const generalAreaId = areasData?.areas?.find((area) => area.AREA === 'General')?.ID_AREA;
@@ -226,7 +229,11 @@ export const AgentsSidebar = ({
                 <SelectValue placeholder="Selecciona un tipo" />
               </SelectTrigger>
               <SelectContent className="text-sm">
-                <SelectItem value="1">WhatsApp</SelectItem>
+                {tiposAgente.map((tipo) => (
+                  <SelectItem key={tipo.NUM1} value={String(tipo.NUM1)}>
+                    {tipo.STRING1}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
