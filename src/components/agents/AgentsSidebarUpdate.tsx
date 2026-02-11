@@ -13,11 +13,9 @@ import {
   SelectValue,
 } from '@/components/shadcn/select';
 import { useUpdateDatosAgente } from '@/hooks/useAgentsQueries';
-import { useGetPhoneCodes } from '@/hooks/usePhoneCodesQueries';
 import { useGetParametros } from '@/hooks/useParametrosQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 import type { Agente } from '@/types/agents';
-import type { PhoneCode } from '@/types/phoneCodes';
 
 interface AgentsSidebarUpdateProps {
   isOpen: boolean;
@@ -42,8 +40,8 @@ export const AgentsSidebarUpdate = ({
   const [accesoGeneral, setAccesoGeneral] = useState(0);
 
   const { mutate: updateDatosAgente, isPending } = useUpdateDatosAgente(id_empresa);
-  const { data: phoneCodesData } = useGetPhoneCodes();
   const { parametrosMap } = useGetParametros();
+  const phoneCodes = parametrosMap['8'] || [];
   const tiposAgente = parametrosMap['12'] || [];
 
   // Strip country code prefix from stored phone number
@@ -146,17 +144,17 @@ export const AgentsSidebarUpdate = ({
                 <SelectTrigger className="w-28 h-9">
                   {codigoPais && (() => {
                     const [codigoNumerico, codigoIso] = codigoPais.split('-');
-                    const selectedCode = phoneCodesData?.phone_codes?.find(
-                      c => `${c.CODIGO_NUMERICO}-${c.CODIGO_ISO}` === codigoPais
+                    const selectedCode = phoneCodes.find(
+                      c => `${c.NUM1}-${c.STRING1}` === codigoPais
                     );
                     return selectedCode ? (
                       <div className="flex items-center gap-2">
                         <img
-                          src={`https://flagcdn.com/w20/${selectedCode.CODIGO_ISO.toLowerCase()}.png`}
-                          alt={selectedCode.NOMBRE_PAIS}
+                          src={`https://flagcdn.com/w20/${selectedCode.STRING1.toLowerCase()}.png`}
+                          alt={selectedCode.STRING2}
                           className="w-5 h-3 object-cover"
                         />
-                        <span>{selectedCode.PREFIJO_TELEFONICO}</span>
+                        <span>{selectedCode.STRING3}</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
@@ -171,18 +169,18 @@ export const AgentsSidebarUpdate = ({
                   })()}
                 </SelectTrigger>
                 <SelectContent className="text-sm">
-                  {phoneCodesData?.phone_codes?.map((code: PhoneCode) => (
+                  {phoneCodes.map((code) => (
                     <SelectItem
-                      key={`${code.CODIGO_NUMERICO}-${code.CODIGO_ISO}`}
-                      value={`${code.CODIGO_NUMERICO}-${code.CODIGO_ISO}`}
+                      key={`${code.NUM1}-${code.STRING1}`}
+                      value={`${code.NUM1}-${code.STRING1}`}
                     >
                       <div className="flex items-center gap-2">
                         <img
-                          src={`https://flagcdn.com/w20/${code.CODIGO_ISO.toLowerCase()}.png`}
-                          alt={code.NOMBRE_PAIS}
+                          src={`https://flagcdn.com/w20/${code.STRING1.toLowerCase()}.png`}
+                          alt={code.STRING2}
                           className="w-5 h-3 object-cover"
                         />
-                        <span>{code.NOMBRE_PAIS}</span>
+                        <span>{code.STRING2}</span>
                       </div>
                     </SelectItem>
                   ))}

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { getParamByIdMaestro, type Parametro } from '../api/parametrosApi';
 
-const PARAMETROS_IDS = ['12'];
+const PARAMETROS_IDS = ['8', '12'];
 
 export const useGetParametros = () => {
   const results = useQueries({
