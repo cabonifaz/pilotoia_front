@@ -21,6 +21,8 @@ import { Avatar, AvatarFallback } from "@/components/shadcn/avatar";
 import { Bot, Loader2 } from "lucide-react";
 import { useInView } from "react-intersection-observer";
 import { getDefaultLanguage } from "../../constants/languages";
+import { Skeleton } from "../shadcn/skeleton";
+import { cn } from "@/lib/utils";
 
 interface ChatComponentProps {
   chatContext: ChatContext;
@@ -36,6 +38,7 @@ const ChatComponent = ({
   const [userQuery, setUserQuery] = useState("");
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [isLogoLoading, setIsLogoLoading] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Get transcription provider from environment
@@ -43,13 +46,13 @@ const ChatComponent = ({
 
   // Initialize with provider-aware default language
   const [selectedLanguage, setSelectedLanguage] = useState<string>(
-    getDefaultLanguage(transcribeProvider === "aws" ? "aws" : "openai")
+    getDefaultLanguage(transcribeProvider === "aws" ? "aws" : "openai"),
   );
 
   const currentMainActionRef = useRef<() => void>(() => {});
   const isUserSendingRef = useRef(false);
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined
+    undefined,
   );
 
   // Get current user data
@@ -72,7 +75,7 @@ const ChatComponent = ({
   } = useChatMessages(
     chatContext.chat_id,
     chatContext.company_id,
-    chatContext.area_id
+    chatContext.area_id,
   );
 
   // Get streaming functions
@@ -95,11 +98,20 @@ const ChatComponent = ({
   // Get logo URL from actual company area
   const { user } = useQueryAuthContext();
   const actualCompanyArea = (user as any)?.actual_company_area;
-  const logoUrl = actualCompanyArea?.LOGO
-    ? `${import.meta.env.VITE_LOGO_URL_BASE}${
-        actualCompanyArea.LOGO
-      }?v=${Date.now()}`
-    : "/fractal-logo.svg";
+
+  // MEMORIZAR la URL para evitar recargas infinitas por el Date.now()
+  const logoUrl = useMemo(() => {
+    if (!actualCompanyArea?.LOGO) return "/fractal-logo.svg";
+
+    const baseUrl = import.meta.env.VITE_LOGO_URL_BASE;
+    // Solo se recalcula si el LOGO de la empresa cambia
+    return `${baseUrl}${actualCompanyArea.LOGO}?v=${Date.now()}`;
+  }, [actualCompanyArea?.LOGO]);
+
+  // Reiniciar el skeleton si la URL cambia (cambio de empresa)
+  useEffect(() => {
+    setIsLogoLoading(true);
+  }, [logoUrl]);
   const previousScrollHeightRef = useRef<number>(0);
 
   // Ref to track if we should auto-submit on final transcript (continuous mode - AWS)
@@ -107,17 +119,21 @@ const ChatComponent = ({
   const submitActionRef = useRef<(() => void) | null>(null);
   // Refs for stop/start recording in continuous mode (AWS)
   const stopRecordingRef = useRef<(() => void) | null>(null);
-  const startRecordingRef = useRef<((config?: any) => Promise<void>) | null>(null);
+  const startRecordingRef = useRef<((config?: any) => Promise<void>) | null>(
+    null,
+  );
   const prepareRecordingRef = useRef<(() => void) | null>(null);
   // Track the language for restarting recording
-  const selectedLanguageRef = useRef<string>('es-ES');
+  const selectedLanguageRef = useRef<string>("es-ES");
   // Guard to prevent double submit in continuous mode (for in-flight transcripts)
   const isProcessingContinuousRef = useRef(false);
 
   // Refs for continuous file mode (OpenAI)
   const isContinuousFileModeRef = useRef(false);
   const stopFileRecordingRef = useRef<(() => void) | null>(null);
-  const startFileRecordingRef = useRef<((language: string) => Promise<void>) | null>(null);
+  const startFileRecordingRef = useRef<
+    ((language: string) => Promise<void>) | null
+  >(null);
   const prepareFileRecordingRef = useRef<(() => void) | null>(null);
   // Guard to prevent double submit in continuous file mode
   const isProcessingContinuousFileRef = useRef(false);
@@ -139,11 +155,14 @@ const ChatComponent = ({
     clearTranscript,
   } = useTranscribe({
     onFinalTranscript: (finalTranscript) => {
-
       // Guard: Skip if we're already processing a request (prevents double messages from in-flight transcripts)
       if (isProcessingContinuousRef.current) return;
 
-      if (isContinuousModeRef.current && finalTranscript.trim() && submitActionRef.current) {
+      if (
+        isContinuousModeRef.current &&
+        finalTranscript.trim() &&
+        submitActionRef.current
+      ) {
         // Set guard immediately to prevent any subsequent transcripts
         isProcessingContinuousRef.current = true;
 
@@ -174,7 +193,7 @@ const ChatComponent = ({
         });
       }
     },
-    []
+    [],
   );
 
   // Get file transcription functions (OpenAI)
@@ -192,7 +211,6 @@ const ChatComponent = ({
     resumeRecording: resumeFileRecording,
   } = useFileTranscribe({
     onTranscriptionComplete: (transcript) => {
-
       // Guard: Skip if we're already processing a request
       if (isProcessingContinuousFileRef.current) return;
 
@@ -200,7 +218,9 @@ const ChatComponent = ({
       if (isContinuousFileModeRef.current) {
         // If no voice detected (empty transcript), just restart recording
         if (!transcript.trim()) {
-          console.log('[CONTINUOUS-FILE] No voice detected, restarting recording...');
+          console.log(
+            "[CONTINUOUS-FILE] No voice detected, restarting recording...",
+          );
           // Restart recording immediately
           startFileRecordingRef.current?.(selectedLanguageRef.current);
           return;
@@ -255,7 +275,13 @@ const ChatComponent = ({
     if (shouldAutoScroll || !!streamingMessageId) {
       scrollToBottom("smooth");
     }
-  }, [messages.length, isFetchingNextPage, streamingMessageId, scrollToBottom, shouldAutoScroll]);
+  }, [
+    messages.length,
+    isFetchingNextPage,
+    streamingMessageId,
+    scrollToBottom,
+    shouldAutoScroll,
+  ]);
 
   // Update parent when chat_id is received from backend
   useEffect(() => {
@@ -290,7 +316,7 @@ const ChatComponent = ({
         fetchNextPage();
       }
     },
-    [hasNextPage, isFetchingNextPage, fetchNextPage]
+    [hasNextPage, isFetchingNextPage, fetchNextPage],
   );
 
   // Cleanup timeout on unmount
@@ -317,7 +343,6 @@ const ChatComponent = ({
     }
   }, [fileTranscriptionResult]);
 
-
   // Handle microphone click for AWS transcription
   const handleMicrophoneClick = useCallback(async () => {
     if (isRecording) {
@@ -326,7 +351,13 @@ const ChatComponent = ({
       clearTranscript();
       await startRecording({ language_code: selectedLanguage as any });
     }
-  }, [isRecording, stopRecording, clearTranscript, startRecording, selectedLanguage]);
+  }, [
+    isRecording,
+    stopRecording,
+    clearTranscript,
+    startRecording,
+    selectedLanguage,
+  ]);
 
   // Wrapper for file transcription that uses selected language
   const handleStartFileRecording = useCallback(async () => {
@@ -347,9 +378,19 @@ const ChatComponent = ({
       isContinuousModeRef.current = true;
       // Reset flag when starting
       isProcessingContinuousRef.current = false;
-      await startRecording({ language_code: selectedLanguage as any, continuous: true });
+      await startRecording({
+        language_code: selectedLanguage as any,
+        continuous: true,
+      });
     }
-  }, [isRecording, isContinuousMode, stopRecording, clearTranscript, startRecording, selectedLanguage]);
+  }, [
+    isRecording,
+    isContinuousMode,
+    stopRecording,
+    clearTranscript,
+    startRecording,
+    selectedLanguage,
+  ]);
 
   // Handle continuous file mode click (OpenAI) - reuses useFileTranscribe with continuous behavior
   const handleContinuousFileClick = useCallback(async () => {
@@ -366,7 +407,13 @@ const ChatComponent = ({
       isProcessingContinuousFileRef.current = false;
       await startFileRecording(selectedLanguage);
     }
-  }, [isFileRecording, isContinuousFileMode, stopFileRecording, startFileRecording, selectedLanguage]);
+  }, [
+    isFileRecording,
+    isContinuousFileMode,
+    stopFileRecording,
+    startFileRecording,
+    selectedLanguage,
+  ]);
 
   // TTS toggle handler - initializes audio on enable, resets on disable
   const handleTtsToggle = (enabled: boolean) => {
@@ -396,7 +443,16 @@ const ChatComponent = ({
         pauseAwsRecording();
       }
     }
-  }, [isContinuousFileMode, isFilePaused, pauseFileRecording, resumeFileRecording, isContinuousMode, isAwsPaused, pauseAwsRecording, resumeAwsRecording]);
+  }, [
+    isContinuousFileMode,
+    isFilePaused,
+    pauseFileRecording,
+    resumeFileRecording,
+    isContinuousMode,
+    isAwsPaused,
+    pauseAwsRecording,
+    resumeAwsRecording,
+  ]);
 
   const chatQuery = useCallback(async () => {
     if (!userQuery.trim()) return;
@@ -415,9 +471,11 @@ const ChatComponent = ({
     }
 
     // Determine if we need to restart recording after completion (continuous mode - AWS)
-    const shouldRestartOnComplete = isProcessingContinuousRef.current && isContinuousModeRef.current;
+    const shouldRestartOnComplete =
+      isProcessingContinuousRef.current && isContinuousModeRef.current;
     // Determine if we need to restart file recording after completion (continuous file mode - OpenAI)
-    const shouldRestartFileOnComplete = isProcessingContinuousFileRef.current && isContinuousFileModeRef.current;
+    const shouldRestartFileOnComplete =
+      isProcessingContinuousFileRef.current && isContinuousFileModeRef.current;
 
     // Pre-request microphone permissions (runs in parallel with searchVectorial)
     if (shouldRestartOnComplete) {
@@ -428,36 +486,41 @@ const ChatComponent = ({
     }
 
     // Determine which onComplete callback to use
-    const onComplete = (shouldRestartOnComplete || shouldRestartFileOnComplete) ? () => {
-      if (shouldRestartOnComplete) {
-        // Restart AWS streaming recording after search completes
-        setTimeout(async () => {
-          // Clear the processing guard
-          isProcessingContinuousRef.current = false;
+    const onComplete =
+      shouldRestartOnComplete || shouldRestartFileOnComplete
+        ? () => {
+            if (shouldRestartOnComplete) {
+              // Restart AWS streaming recording after search completes
+              setTimeout(async () => {
+                // Clear the processing guard
+                isProcessingContinuousRef.current = false;
 
-          // Only restart if still in continuous mode
-          if (isContinuousModeRef.current) {
-            await startRecordingRef.current?.({
-              language_code: selectedLanguageRef.current,
-              continuous: true
-            });
+                // Only restart if still in continuous mode
+                if (isContinuousModeRef.current) {
+                  await startRecordingRef.current?.({
+                    language_code: selectedLanguageRef.current,
+                    continuous: true,
+                  });
+                }
+              }, 100);
+            }
+
+            if (shouldRestartFileOnComplete) {
+              // Restart OpenAI file recording after search completes
+              setTimeout(async () => {
+                // Clear the processing guard
+                isProcessingContinuousFileRef.current = false;
+
+                // Only restart if still in continuous file mode
+                if (isContinuousFileModeRef.current) {
+                  await startFileRecordingRef.current?.(
+                    selectedLanguageRef.current,
+                  );
+                }
+              }, 100);
+            }
           }
-        }, 100);
-      }
-
-      if (shouldRestartFileOnComplete) {
-        // Restart OpenAI file recording after search completes
-        setTimeout(async () => {
-          // Clear the processing guard
-          isProcessingContinuousFileRef.current = false;
-
-          // Only restart if still in continuous file mode
-          if (isContinuousFileModeRef.current) {
-            await startFileRecordingRef.current?.(selectedLanguageRef.current);
-          }
-        }, 100);
-      }
-    } : undefined;
+        : undefined;
 
     await searchVectorial(currentQuery, chatContext, ttsEnabled, onComplete);
   }, [userQuery, searchVectorial, chatContext, ttsEnabled]);
@@ -551,19 +614,25 @@ const ChatComponent = ({
         isFileRecording={isFileRecording && !isContinuousFileMode}
         isFileSpeaking={isFileSpeaking && !isContinuousFileMode}
         isFileTranscribing={isFileTranscribing}
-        fileMediaStream={transcribeProvider === 'aws' ? awsMediaStream : fileMediaStream}
+        fileMediaStream={
+          transcribeProvider === "aws" ? awsMediaStream : fileMediaStream
+        }
         onPrepareRecording={prepareFileRecording}
         onStartRecording={handleStartFileRecording}
         onStopRecording={stopFileRecording}
         isContinuousRecording={isRecording && isContinuousMode}
         isContinuousConnecting={isConnecting && isContinuousMode}
-        isContinuousSpeaking={transcribeProvider === 'aws' ? isAwsSpeaking : isFileSpeaking}
+        isContinuousSpeaking={
+          transcribeProvider === "aws" ? isAwsSpeaking : isFileSpeaking
+        }
         onContinuousVoiceClick={handleContinuousVoiceClick}
         isContinuousFileRecording={isFileRecording && isContinuousFileMode}
         isContinuousFileSpeaking={isFileSpeaking && isContinuousFileMode}
-        isContinuousFileTranscribing={isFileTranscribing && isContinuousFileMode}
+        isContinuousFileTranscribing={
+          isFileTranscribing && isContinuousFileMode
+        }
         onContinuousFileClick={handleContinuousFileClick}
-        isMuted={transcribeProvider === 'aws' ? isAwsPaused : isFilePaused}
+        isMuted={transcribeProvider === "aws" ? isAwsPaused : isFilePaused}
         onMuteToggle={handleMuteToggle}
       >
         <div className="h-full flex flex-col">
@@ -577,11 +646,23 @@ const ChatComponent = ({
             <div className="flex-1 flex items-center justify-center">
               <div className="w-full flex flex-col gap-3">
                 <div className="flex items-center justify-center mb-2">
-                  <div className="w-[148px] flex items-center justify-center">
+                  {/* Contenedor relativo con altura mínima para evitar saltos */}
+                  <div className="w-[148px] min-h-[48px] relative flex items-center justify-center">
+                    {/* Skeleton: Se muestra mientras isLogoLoading sea true */}
+                    {isLogoLoading && (
+                      <Skeleton className="w-full h-12 rounded-md" />
+                    )}
+
                     <img
+                      key={logoUrl} // Forzar re-montado si cambia la empresa
                       src={logoUrl}
                       alt={actualCompanyArea?.RAZON_SOCIAL || "Logo Fractal"}
-                      className="w-auto h-auto min-h-6 max-h-12 max-w-full object-contain"
+                      className={cn(
+                        "w-auto h-auto max-h-12 max-w-full object-contain transition-opacity duration-300",
+                        isLogoLoading ? "opacity-0 absolute" : "opacity-100",
+                      )}
+                      onLoad={() => setIsLogoLoading(false)}
+                      onError={() => setIsLogoLoading(false)} // Evitar skeleton infinito en error
                     />
                   </div>
                 </div>

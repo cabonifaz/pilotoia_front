@@ -34,7 +34,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/shadcn/select";
-import { Loader } from "@/components/loader/Loader";
 import {
   useUpdateAreaStatus,
   useUpdateAreaName,
@@ -68,6 +67,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Area } from "@/types/area";
+import TableWithPaginationSkeleton from "../shadcn/table-skeleton";
 
 // --- COMPONENTE CABECERA ARRASTRABLE ---
 interface DraggableTableHeaderProps {
@@ -77,78 +77,82 @@ interface DraggableTableHeaderProps {
   orderDirection: "ASC" | "DESC";
 }
 
-const DraggableTableHeader = memo(({
-  header,
-  onSortClick,
-  orderField,
-  orderDirection,
-}: DraggableTableHeaderProps) => {
-  const isStatic = ["select", "actions"].includes(header.id);
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: header.id,
-    disabled: isStatic, // Desactiva el hook si es estática
-  });
+const DraggableTableHeader = memo(
+  ({
+    header,
+    onSortClick,
+    orderField,
+    orderDirection,
+  }: DraggableTableHeaderProps) => {
+    const isStatic = ["select", "actions"].includes(header.id);
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({
+      id: header.id,
+      disabled: isStatic, // Desactiva el hook si es estática
+    });
 
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 100 : 1,
-    position: "relative" as const,
-  };
+    const style = {
+      transform: CSS.Translate.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      zIndex: isDragging ? 100 : 1,
+      position: "relative" as const,
+    };
 
-  const isSortable = ["AREA", "FCHCRE", "ID_ESTADO_REGISTRO"].includes(
-    header.id,
-  );
+    const isSortable = ["AREA", "FCHCRE", "ID_ESTADO_REGISTRO"].includes(
+      header.id,
+    );
 
-  const columnSize = header.column.getSize();
-  const headerStyle = {
-    ...style,
-    width: columnSize,
-    minWidth: columnSize,
-    maxWidth: columnSize,
-  };
+    const columnSize = header.column.getSize();
+    const headerStyle = {
+      ...style,
+      width: columnSize,
+      minWidth: columnSize,
+      maxWidth: columnSize,
+    };
 
-  return (
-    <TableHead
-      ref={setNodeRef}
-      style={headerStyle}
-      className={`bg-white border-b ${isStatic ? "px-1 text-center" : ""}`}
-    >
-      <div className={`flex items-center ${isStatic ? "justify-center" : "gap-2"}`}>
-        {!isStatic && (
-          <div
-            {...attributes}
-            {...listeners}
-            className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
-          >
-            ::
-          </div>
-        )}
+    return (
+      <TableHead
+        ref={setNodeRef}
+        style={headerStyle}
+        className={`bg-white border-b ${isStatic ? "px-1 text-center" : ""}`}
+      >
         <div
-          className={`flex items-center gap-1 ${isSortable ? "cursor-pointer select-none" : ""}`}
-          onClick={() => isSortable && onSortClick(header.id)}
+          className={`flex items-center ${isStatic ? "justify-center" : "gap-2"}`}
         >
-          {flexRender(header.column.columnDef.header, header.getContext())}
-          {isSortable &&
-            orderField === header.id &&
-            (orderDirection === "ASC" ? (
-              <ArrowUp className="h-3 w-3" />
-            ) : (
-              <ArrowDown className="h-3 w-3" />
-            ))}
+          {!isStatic && (
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
+            >
+              ::
+            </div>
+          )}
+          <div
+            className={`flex items-center gap-1 ${isSortable ? "cursor-pointer select-none" : ""}`}
+            onClick={() => isSortable && onSortClick(header.id)}
+          >
+            {flexRender(header.column.columnDef.header, header.getContext())}
+            {isSortable &&
+              orderField === header.id &&
+              (orderDirection === "ASC" ? (
+                <ArrowUp className="h-3 w-3" />
+              ) : (
+                <ArrowDown className="h-3 w-3" />
+              ))}
+          </div>
         </div>
-      </div>
-    </TableHead>
-  );
-});
+      </TableHead>
+    );
+  },
+);
 
 DraggableTableHeader.displayName = "DraggableTableHeader";
 
@@ -242,7 +246,9 @@ interface AreaTableProps {
 export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [orderField, setOrderField] = useState<"AREA" | "FCHCRE" | "ID_ESTADO_REGISTRO">("AREA");
+  const [orderField, setOrderField] = useState<
+    "AREA" | "FCHCRE" | "ID_ESTADO_REGISTRO"
+  >("AREA");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("ASC");
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
   const [editingAreaId, setEditingAreaId] = useState<number | null>(null);
@@ -259,7 +265,7 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
   const [rowSelection, setRowSelection] = useState({});
 
   // Server-side paginatFion query
-  const { data, isLoading, error } = useGetAreasPaginated(
+  const { data, isLoading, isFetching, error } = useGetAreasPaginated(
     id_empresa || 0,
     currentPage,
     pageSize,
@@ -324,7 +330,7 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
         setEditingAreaId(null);
       }
     },
-    [editingAreaId, id_empresa, originalAreaName, updateAreaName]
+    [editingAreaId, id_empresa, originalAreaName, updateAreaName],
   );
 
   const handleCancelEdit = useCallback(() => {
@@ -340,12 +346,12 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
     (field: string) => {
       if (isEditing) return;
       setOrderDirection((prev) =>
-        orderField === field && prev === "ASC" ? "DESC" : "ASC"
+        orderField === field && prev === "ASC" ? "DESC" : "ASC",
       );
       setOrderField(field as typeof orderField);
       setCurrentPage(1);
     },
-    [isEditing, orderField]
+    [isEditing, orderField],
   );
 
   // Memoized status filter handler
@@ -355,7 +361,7 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
       setStatusFilter(status);
       setCurrentPage(1);
     },
-    [isEditing]
+    [isEditing],
   );
 
   const columns = useMemo(
@@ -436,7 +442,9 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => handleStatusFilterChange(null)}>
+                <DropdownMenuItem
+                  onClick={() => handleStatusFilterChange(null)}
+                >
                   Todos
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleStatusFilterChange(1)}>
@@ -538,7 +546,7 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
       setPageSize(Number(value));
       setCurrentPage(1);
     },
-    [isEditing]
+    [isEditing],
   );
 
   const draggableColumns = useMemo(
@@ -608,7 +616,14 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
         {/* Loading State */}
-        {isLoading && <Loader text="Cargando áreas..." />}
+        {(isLoading || isFetching) && (
+          <div>
+            <TableWithPaginationSkeleton
+              pageSize={8}
+              columnCount={columnOrder.length}
+            />
+          </div>
+        )}
 
         {/* Error State */}
         {error && (
@@ -652,7 +667,10 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
                       {table.getRowModel().rows.map((row) => (
                         <TableRow key={row.id}>
                           {row.getVisibleCells().map((cell) => {
-                            const isCompactColumn = ["select", "actions"].includes(cell.column.id);
+                            const isCompactColumn = [
+                              "select",
+                              "actions",
+                            ].includes(cell.column.id);
                             return (
                               <TableCell
                                 key={cell.id}
@@ -661,7 +679,11 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
                                   minWidth: cell.column.getSize(),
                                   maxWidth: cell.column.getSize(),
                                 }}
-                                className={isCompactColumn ? "px-1 text-center" : undefined}
+                                className={
+                                  isCompactColumn
+                                    ? "px-1 text-center"
+                                    : undefined
+                                }
                               >
                                 {flexRender(
                                   cell.column.columnDef.cell,
