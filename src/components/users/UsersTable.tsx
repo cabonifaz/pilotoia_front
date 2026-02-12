@@ -58,7 +58,6 @@ import {
   SelectValue,
 } from "@/components/shadcn/select";
 
-import { Loader } from "@/components/loader/Loader";
 import {
   useGetUsuariosPaginated,
   useUpdateUsuarioStatus,
@@ -66,6 +65,7 @@ import {
 import { useQueryAuthContext } from "@/contexts/QueryAuthContext";
 import { UserRowActions } from "./UserRowActions";
 import type { Usuario } from "@/types/users";
+import TableWithPaginationSkeleton from "../shadcn/table-skeleton";
 
 // --- COMPONENTE DE CABECERA ARRASTRABLE (Reutilizable) ---
 interface DraggableTableHeaderProps {
@@ -75,85 +75,87 @@ interface DraggableTableHeaderProps {
   orderDirection: "ASC" | "DESC";
 }
 
-const DraggableTableHeader = memo(({
-  header,
-  onSortClick,
-  orderField,
-  orderDirection,
-}: DraggableTableHeaderProps) => {
-  const columnId = header.column.id;
-  const isStatic = columnId === "select" || columnId === "actions";
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: columnId,
-    disabled: isStatic,
-  });
+const DraggableTableHeader = memo(
+  ({
+    header,
+    onSortClick,
+    orderField,
+    orderDirection,
+  }: DraggableTableHeaderProps) => {
+    const columnId = header.column.id;
+    const isStatic = columnId === "select" || columnId === "actions";
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({
+      id: columnId,
+      disabled: isStatic,
+    });
 
-  const columnSize = header.column.getSize();
+    const columnSize = header.column.getSize();
 
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 100 : 1,
-    position: "relative" as const,
-    width: columnSize,
-    minWidth: columnSize,
-    maxWidth: columnSize,
-  };
+    const style = {
+      transform: CSS.Translate.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      zIndex: isDragging ? 100 : 1,
+      position: "relative" as const,
+      width: columnSize,
+      minWidth: columnSize,
+      maxWidth: columnSize,
+    };
 
-  // Definir qué columnas permiten ordenamiento por API
-  const isSortable = [
-    "USUARIO",
-    "NOMBRES",
-    "APELLIDOS",
-    "TELEFONO",
-    "AREA",
-    "ROL",
-    "ID_ESTADO_REGISTRO",
-  ].includes(columnId);
+    // Definir qué columnas permiten ordenamiento por API
+    const isSortable = [
+      "USUARIO",
+      "NOMBRES",
+      "APELLIDOS",
+      "TELEFONO",
+      "AREA",
+      "ROL",
+      "ID_ESTADO_REGISTRO",
+    ].includes(columnId);
 
-  return (
-    <TableHead
-      ref={setNodeRef}
-      style={style}
-      className={`bg-white border-b ${isStatic ? "px-1 text-center" : ""}`}
-    >
-      <div
-        className={`flex items-center ${isStatic ? "justify-center" : "gap-2"}`}
+    return (
+      <TableHead
+        ref={setNodeRef}
+        style={style}
+        className={`bg-white border-b ${isStatic ? "px-1 text-center" : ""}`}
       >
-        {!isStatic && (
-          <div
-            {...attributes}
-            {...listeners}
-            className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
-          >
-            ::
-          </div>
-        )}
         <div
-          className={`flex items-center gap-1 ${isSortable ? "cursor-pointer select-none" : ""}`}
-          onClick={() => isSortable && onSortClick(columnId)}
+          className={`flex items-center ${isStatic ? "justify-center" : "gap-2"}`}
         >
-          {flexRender(header.column.columnDef.header, header.getContext())}
-          {isSortable &&
-            orderField === columnId &&
-            (orderDirection === "ASC" ? (
-              <ArrowUp className="h-3 w-3" />
-            ) : (
-              <ArrowDown className="h-3 w-3" />
-            ))}
+          {!isStatic && (
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing text-muted-foreground/50"
+            >
+              ::
+            </div>
+          )}
+          <div
+            className={`flex items-center gap-1 ${isSortable ? "cursor-pointer select-none" : ""}`}
+            onClick={() => isSortable && onSortClick(columnId)}
+          >
+            {flexRender(header.column.columnDef.header, header.getContext())}
+            {isSortable &&
+              orderField === columnId &&
+              (orderDirection === "ASC" ? (
+                <ArrowUp className="h-3 w-3" />
+              ) : (
+                <ArrowDown className="h-3 w-3" />
+              ))}
+          </div>
         </div>
-      </div>
-    </TableHead>
-  );
-});
+      </TableHead>
+    );
+  },
+);
 
 DraggableTableHeader.displayName = "DraggableTableHeader";
 
@@ -357,7 +359,7 @@ export const UsersTable = ({
           const codigoPais = info.row.original[0].CODIGO_PAIS || "";
           if (!codigoPais) return telefono;
 
-          const [codigoNumerico, codigoIso] = codigoPais.split('-');
+          const [codigoNumerico, codigoIso] = codigoPais.split("-");
           const localNumber = telefono.startsWith(codigoNumerico)
             ? telefono.slice(codigoNumerico.length)
             : telefono;
@@ -369,7 +371,9 @@ export const UsersTable = ({
                 alt={codigoIso}
                 className="w-5 h-3 object-cover"
               />
-              <span>+{codigoNumerico} {localNumber}</span>
+              <span>
+                +{codigoNumerico} {localNumber}
+              </span>
             </div>
           );
         },
@@ -555,7 +559,12 @@ export const UsersTable = ({
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
-        {isLoading && <Loader text="Cargando usuarios..." />}
+        {isLoading && (
+          <TableWithPaginationSkeleton
+            pageSize={8}
+            columnCount={columnOrder.length}
+          />
+        )}
 
         {error && (
           <div className="flex-1 flex items-center justify-center">

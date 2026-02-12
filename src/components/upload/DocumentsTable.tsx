@@ -33,7 +33,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/shadcn/table";
-import { Loader } from "@/components/loader/Loader";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import { useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
 import { toast } from "@/hooks/use-toast"; // Asumo que tienes esto basado en el anterior
@@ -64,6 +63,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import TableWithPaginationSkeleton from "../shadcn/table-skeleton";
 
 // --- TIPOS Y AYUDAS ---
 
@@ -101,7 +101,7 @@ const getStatusFromStage = (idEstadoProceso: number, estadoProceso: string) => {
     7: "destructive",
   };
 
-  let statusBadge: StatusBadge = { label: estadoProceso };
+  const statusBadge: StatusBadge = { label: estadoProceso };
 
   if (idEstadoProceso < 0) {
     statusBadge.variant = "destructive" as const;
@@ -699,16 +699,10 @@ export const DocumentsTable = ({
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
         {(isLoading || isFetching) && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white">
-            {/* Usamos bg-white sin transparencias para "tapar" todo. 
-         Si usas modo oscuro, puedes usar bg-background 
-      */}
-            <Loader
-              text={
-                isLoading ? "Cargando documentos..." : "Actualizando lista..."
-              }
-            />
-          </div>
+          <TableWithPaginationSkeleton
+            pageSize={8}
+            columnCount={columnOrder.length}
+          />
         )}
 
         {error && (

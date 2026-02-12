@@ -34,7 +34,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/shadcn/select";
-import { Loader } from "@/components/loader/Loader";
 import {
   useUpdateAreaStatus,
   useUpdateAreaName,
@@ -68,6 +67,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Area } from "@/types/area";
+import TableWithPaginationSkeleton from "../shadcn/table-skeleton";
 
 // --- COMPONENTE CABECERA ARRASTRABLE ---
 interface DraggableTableHeaderProps {
@@ -617,12 +617,10 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
         {/* Loading State */}
         {(isLoading || isFetching) && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white">
-            {/* Usamos bg-white sin transparencias para "tapar" todo. 
-         Si usas modo oscuro, puedes usar bg-background 
-      */}
-            <Loader
-              text={isLoading ? "Cargando areas..." : "Actualizando lista..."}
+          <div>
+            <TableWithPaginationSkeleton
+              pageSize={8}
+              columnCount={columnOrder.length}
             />
           </div>
         )}

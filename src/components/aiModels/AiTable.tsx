@@ -54,8 +54,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/shadcn/select";
-import { Loader } from "@/components/loader/Loader";
 import { useGetModels } from "@/hooks/useIAModelsQueries";
+import TableWithPaginationSkeleton from "../shadcn/table-skeleton";
 
 // --- TIPOS ---
 interface IAModel {
@@ -348,14 +348,10 @@ export const AiTable = ({
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
         {(isLoading || isFetching) && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white">
-            {/* Usamos bg-white sin transparencias para "tapar" todo. 
-         Si usas modo oscuro, puedes usar bg-background 
-      */}
-            <Loader
-              text={isLoading ? "Cargando modelos..." : "Actualizando lista..."}
-            />
-          </div>
+          <TableWithPaginationSkeleton
+            pageSize={8}
+            columnCount={columnOrder.length}
+          />
         )}
         {!isLoading && !error && (
           <>

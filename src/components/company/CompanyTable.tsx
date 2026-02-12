@@ -39,7 +39,6 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-import { Loader } from "@/components/loader/Loader";
 import {
   useGetCompaniesPaginated,
   useUpdateCompanyStatus,
@@ -63,6 +62,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import TableWithPaginationSkeleton from "../shadcn/table-skeleton";
 // --- COMPONENTE DE CABECERA ARRASTRABLE ---
 interface DraggableTableHeaderProps {
   header: Header<Company, unknown>;
@@ -480,16 +480,10 @@ export const CompanyTable = ({
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
         {(isLoading || isFetching) && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white">
-            {/* Usamos bg-white sin transparencias para "tapar" todo. 
-         Si usas modo oscuro, puedes usar bg-background 
-      */}
-            <Loader
-              text={
-                isLoading ? "Cargando empresas..." : "Actualizando lista..."
-              }
-            />
-          </div>
+          <TableWithPaginationSkeleton
+            pageSize={8}
+            columnCount={columnOrder.length}
+          />
         )}
 
         {!isLoading && !error && (
