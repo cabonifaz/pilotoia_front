@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { Loader } from "@/components/loader/Loader";
 import { useGetAgentesPaginated } from "@/hooks/useAgentsQueries";
+import { useGetParametros } from "@/hooks/useParametrosQueries";
 import { useQueryAuthContext } from "@/contexts/QueryAuthContext";
 import { AgentRowActions } from "./AgentRowActions";
 import type { Agente } from "@/types/agents";
@@ -232,6 +233,9 @@ export const AgentsTable = ({
   const { user } = useQueryAuthContext();
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
+  const { parametrosMap } = useGetParametros();
+  const tiposAgente = parametrosMap['12'] || [];
+
   const { data, isLoading, error } = useGetAgentesPaginated(
     id_empresa || 0,
     currentPage,
@@ -376,14 +380,18 @@ export const AgentsTable = ({
       }),
       columnHelper.accessor("ID_TIPO_AGENTE", {
         header: "Tipo de Agente",
-        cell: (info) => (
-          // Centrado vertical y horizontal
-          <div className="flex justify-center">
-            <Badge variant={info.getValue() === 1 ? "success" : "default"}>
-              {info.getValue() === 1 ? "WhatsApp" : `Tipo ${info.getValue()}`}
-            </Badge>
-          </div>
-        ),
+        cell: (info) => {
+          const value = info.getValue();
+          const variantMap: Record<number, "success" | "blue" | "outline"> = { 1: "success", 2: "blue", 3: "outline" };
+          const label = tiposAgente.find((t) => t.NUM1 === value)?.STRING1 || `Tipo ${value}`;
+          return (
+            <div className="flex justify-center">
+              <Badge variant={variantMap[value] || "default"}>
+                {label}
+              </Badge>
+            </div>
+          );
+        },
       }),
       columnHelper.accessor("AREA", {
         header: "Áreas con Acceso",

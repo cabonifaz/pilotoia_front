@@ -33,6 +33,8 @@ const badgeVariants = cva(
           "border-transparent bg-cyan text-cyan-foreground shadow hover:bg-cyan/80",
         pink:
           "border-transparent bg-pink text-pink-foreground shadow hover:bg-pink/80",
+        blue:
+          "border-transparent bg-blue text-blue-foreground shadow hover:bg-blue/80",
       },
     },
     defaultVariants: {
