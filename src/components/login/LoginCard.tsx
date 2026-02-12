@@ -1,5 +1,5 @@
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
@@ -14,6 +14,8 @@ import {
 import { useGetCompaniesLogin } from "../../hooks/useCompanyQueries";
 import type { LoginFormData } from "../../pages/login/LoginForm";
 import type { CompanyLogin } from "../../types/company";
+import { Skeleton } from "../shadcn/skeleton";
+import { cn } from "@/lib/utils";
 
 interface LoginCardProps {
   register: any;
@@ -45,7 +47,7 @@ export const LoginCard = ({
   REMEMBER_ME_PASSWORD_KEY,
 }: LoginCardProps) => {
   const [showPassword, setShowPassword] = useState(false);
-
+  const [isImageLoading, setIsImageLoading] = useState(true);
   // Cámbiala temporalmente por esto:
   const { data: companiesLogin = [], isLoading: isLoadingCompanies } =
     useGetCompaniesLogin();
@@ -66,18 +68,39 @@ export const LoginCard = ({
     (company: CompanyLogin) => company.RAZON_SOCIAL === selectedCompany,
   );
 
-  const logoUrl = selectedCompanyData?.LOGO
-    ? `${import.meta.env.VITE_LOGO_URL_BASE}${selectedCompanyData.LOGO}?v=${Date.now()}`
-    : "/fractal-logo.svg";
+  const logoUrl = useMemo(() => {
+    if (!selectedCompanyData?.LOGO) return "/fractal-logo.svg";
+
+    // El timestamp solo se genera una vez cuando cambia el LOGO
+    return `${import.meta.env.VITE_LOGO_URL_BASE}${selectedCompanyData.LOGO}?v=${Date.now()}`;
+  }, [selectedCompanyData?.LOGO]);
+
+  useEffect(() => {
+    setIsImageLoading(true);
+  }, [logoUrl]);
 
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="text-center space-y-4">
-        <div className="w-full">
+        <div className="w-full relative flex justify-center items-center min-h-[128px]">
+          {isImageLoading && <Skeleton className="w-full h-32 rounded-lg" />}
+
           <img
+            key={logoUrl} // 4. Agregamos una key para forzar el re-montado de la imagen
             src={logoUrl}
             alt={selectedCompanyData?.RAZON_SOCIAL || "Logo Fractal"}
-            className="block mx-auto w-full max-h-32 object-contain"
+            className={cn(
+              "block mx-auto w-full max-h-32 object-contain transition-opacity duration-300",
+              isImageLoading ? "opacity-0 absolute" : "opacity-100",
+            )}
+            onLoad={() => {
+              console.log("Imagen cargada con éxito");
+              setIsImageLoading(false);
+            }}
+            onError={() => {
+              console.error("Error al cargar la imagen");
+              setIsImageLoading(false);
+            }}
           />
         </div>
         <h2 className="text-2xl font-semibold text-slate-900">

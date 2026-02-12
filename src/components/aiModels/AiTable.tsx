@@ -54,8 +54,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/shadcn/select";
-import { Loader } from "@/components/loader/Loader";
 import { useGetModels } from "@/hooks/useIAModelsQueries";
+import TableWithPaginationSkeleton from "../shadcn/table-skeleton";
 
 // --- TIPOS ---
 interface IAModel {
@@ -163,7 +163,7 @@ export const AiTable = ({
     "ID_ESTADO_REGISTRO",
   ]);
 
-  const { data, isLoading, error } = useGetModels();
+  const { data, isLoading, isFetching, error } = useGetModels();
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -291,12 +291,15 @@ export const AiTable = ({
     }
   }, []);
 
-  const handlePageSizeChange = useCallback((value: string) => {
-    const newSize = Number(value);
-    setPageSize(newSize);
-    table.setPageSize(newSize);
-    table.setPageIndex(0);
-  }, [table]);
+  const handlePageSizeChange = useCallback(
+    (value: string) => {
+      const newSize = Number(value);
+      setPageSize(newSize);
+      table.setPageSize(newSize);
+      table.setPageIndex(0);
+    },
+    [table],
+  );
 
   const draggableColumns = useMemo(
     () => columnOrder.filter((id) => id !== "select"),
@@ -344,8 +347,12 @@ export const AiTable = ({
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
-        {isLoading && <Loader text="Cargando modelos..." />}
-
+        {(isLoading || isFetching) && (
+          <TableWithPaginationSkeleton
+            pageSize={8}
+            columnCount={columnOrder.length}
+          />
+        )}
         {!isLoading && !error && (
           <>
             <DndContext
@@ -465,7 +472,8 @@ export const AiTable = ({
                           variant={currentPage === page ? "default" : "outline"}
                           size="sm"
                           onClick={() =>
-                            typeof page === "number" && table.setPageIndex(page - 1)
+                            typeof page === "number" &&
+                            table.setPageIndex(page - 1)
                           }
                           disabled={page === "..."}
                         >
