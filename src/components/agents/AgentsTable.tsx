@@ -236,7 +236,7 @@ export const AgentsTable = ({
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
   const { parametrosMap } = useGetParametros();
-  const tiposAgente = parametrosMap['12'] || [];
+  const tiposAgente = parametrosMap["12"] || [];
 
   const { data, isLoading, isFetching, error } = useGetAgentesPaginated(
     id_empresa || 0,
@@ -386,13 +386,17 @@ export const AgentsTable = ({
         header: "Tipo de Agente",
         cell: (info) => {
           const value = info.getValue();
-          const variantMap: Record<number, "success" | "blue" | "outline"> = { 1: "success", 2: "blue", 3: "outline" };
-          const label = tiposAgente.find((t) => t.NUM1 === value)?.STRING1 || `Tipo ${value}`;
+          const variantMap: Record<number, "success" | "blue" | "outline"> = {
+            1: "success",
+            2: "blue",
+            3: "outline",
+          };
+          const label =
+            tiposAgente.find((t) => t.NUM1 === value)?.STRING1 ||
+            `Tipo ${value}`;
           return (
             <div className="flex justify-center">
-              <Badge variant={variantMap[value] || "default"}>
-                {label}
-              </Badge>
+              <Badge variant={variantMap[value] || "default"}>{label}</Badge>
             </div>
           );
         },
@@ -627,10 +631,12 @@ export const AgentsTable = ({
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
         {(isLoading || isFetching) && (
-          <TableWithPaginationSkeleton
-            pageSize={8}
-            columnCount={columnOrder.length}
-          />
+          <div className="absolute inset-0 z-30 bg-white/80 backdrop-blur-[1px] p-6">
+            <TableWithPaginationSkeleton
+              pageSize={pageSize}
+              columnCount={columnOrder.length}
+            />
+          </div>
         )}
         {error && <p className="text-red-500">Error: {error.message}</p>}
 
@@ -641,7 +647,9 @@ export const AgentsTable = ({
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <div className="flex-1 min-h-0 border rounded-lg">
+              <div
+                className={`flex-1 min-h-0 border rounded-lg ${isFetching ? "opacity-20" : "opacity-100"} transition-opacity`}
+              >
                 <div className="h-full overflow-y-auto">
                   <Table>
                     <TableHeader className="sticky top-0 z-20 bg-white shadow-sm">

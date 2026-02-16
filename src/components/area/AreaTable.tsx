@@ -617,9 +617,9 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
         {/* Loading State */}
         {(isLoading || isFetching) && (
-          <div>
+          <div className="absolute inset-0 z-30 bg-white/80 backdrop-blur-[1px] p-6">
             <TableWithPaginationSkeleton
-              pageSize={8}
+              pageSize={pageSize}
               columnCount={columnOrder.length}
             />
           </div>
@@ -640,7 +640,9 @@ export const AreaTable = ({ searchTerm, onConfigureAi }: AreaTableProps) => {
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <div className="flex-1 min-h-0 border rounded-lg">
+              <div
+                className={`flex-1 min-h-0 border rounded-lg ${isFetching ? "opacity-20" : "opacity-100"} transition-opacity`}
+              >
                 <div className="h-full overflow-y-auto">
                   <Table>
                     <TableHeader className="sticky top-0 z-20 bg-white shadow-sm">

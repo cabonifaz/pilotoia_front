@@ -348,10 +348,12 @@ export const AiTable = ({
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
         {(isLoading || isFetching) && (
-          <TableWithPaginationSkeleton
-            pageSize={8}
-            columnCount={columnOrder.length}
-          />
+          <div className="absolute inset-0 z-30 bg-white/80 backdrop-blur-[1px] p-6">
+            <TableWithPaginationSkeleton
+              pageSize={pageSize}
+              columnCount={columnOrder.length}
+            />
+          </div>
         )}
         {!isLoading && !error && (
           <>
@@ -360,7 +362,9 @@ export const AiTable = ({
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <div className="flex-1 min-h-0 border rounded-lg">
+              <div
+                className={`flex-1 min-h-0 border rounded-lg ${isFetching ? "opacity-20" : "opacity-100"} transition-opacity`}
+              >
                 <div className="h-full overflow-y-auto">
                   <Table className="w-full table-fixed">
                     <TableHeader className="sticky top-0 z-20 bg-white shadow-sm">
