@@ -289,9 +289,6 @@ export const UsersTable = ({
   // --- PROCESAMIENTO DE DATOS (Agrupación) ---
   const usuarios = data?.data || [];
   // 2. Definimos una constante de carga real
-  const showSkeleton = isLoading || (isFetching && usuarios.length === 0);
-  // O si quieres que el skeleton aparezca SIEMPRE al cambiar de página:
-  const isNavigating = isFetching;
   const groupedUsuarios = useMemo(() => {
     const map = new Map<number, Usuario[]>();
     for (const usuario of usuarios) {
