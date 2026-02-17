@@ -214,7 +214,7 @@ export const UsersTable = ({
   const { user } = useQueryAuthContext();
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
 
-  const { data, isLoading, error } = useGetUsuariosPaginated(
+  const { data, isLoading, isFetching, error } = useGetUsuariosPaginated(
     id_empresa || 0,
     currentPage,
     pageSize,
@@ -288,7 +288,7 @@ export const UsersTable = ({
 
   // --- PROCESAMIENTO DE DATOS (Agrupación) ---
   const usuarios = data?.data || [];
-
+  // 2. Definimos una constante de carga real
   const groupedUsuarios = useMemo(() => {
     const map = new Map<number, Usuario[]>();
     for (const usuario of usuarios) {
@@ -559,11 +559,13 @@ export const UsersTable = ({
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
-        {isLoading && (
-          <TableWithPaginationSkeleton
-            pageSize={8}
-            columnCount={columnOrder.length}
-          />
+        {(isLoading || isFetching) && (
+          <div className="absolute inset-0 z-30 bg-white/80 backdrop-blur-[1px] p-6">
+            <TableWithPaginationSkeleton
+              pageSize={pageSize}
+              columnCount={columnOrder.length}
+            />
+          </div>
         )}
 
         {error && (
@@ -579,7 +581,9 @@ export const UsersTable = ({
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <div className="flex-1 min-h-0 border rounded-lg">
+              <div
+                className={`flex-1 min-h-0 border rounded-lg ${isFetching ? "opacity-20" : "opacity-100"} transition-opacity`}
+              >
                 <div className="h-full overflow-y-auto">
                   <Table>
                     <TableHeader className="sticky top-0 z-20 bg-white shadow-sm">
