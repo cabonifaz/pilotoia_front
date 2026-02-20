@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
-import { Upload, FileText, X, Trash2 } from 'lucide-react';
+import { Upload, FileText, X, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
 import { Label } from '@/components/shadcn/label';
@@ -15,6 +15,9 @@ import { useGetAreas } from '@/hooks/useAreaQueries';
 import { useGetModels } from '@/hooks/useIAModelsQueries';
 import { useQueryAuthContext } from '@/contexts/QueryAuthContext';
 
+type FileStatus = 'idle' | 'uploading' | 'done' | 'error';
+type UploadPhase = 'idle' | 'preparing' | 'uploading' | 'registering';
+
 interface UploadedFile {
   file: File;
   id: string;
@@ -27,6 +30,13 @@ interface UploadSidebarProps {
   onUploadSuccess?: () => void;
 }
 
+const PHASE_LABELS: Record<UploadPhase, string> = {
+  idle: 'Agregar',
+  preparing: 'Preparando...',
+  uploading: 'Subiendo...',
+  registering: 'Registrando...',
+};
+
 export const UploadSidebar = ({
   isOpen,
   onClose,
@@ -37,6 +47,8 @@ export const UploadSidebar = ({
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [areaId, setAreaId] = useState<number | ''>('');
   const [embeddingModelId, setEmbeddingModelId] = useState('4');
+  const [fileStatuses, setFileStatuses] = useState<Record<string, FileStatus>>({});
+  const [uploadPhase, setUploadPhase] = useState<UploadPhase>('idle');
 
   const { user } = useQueryAuthContext();
   const contextIdEmpresa = (user as any)?.actual_company_area?.ID_EMPRESA;
@@ -55,12 +67,14 @@ export const UploadSidebar = ({
     }
   }, [isOpen, id_empresa]);
 
-  // Reset state when sidebar closes
+  // Reset all state when sidebar closes
   useEffect(() => {
     if (!isOpen) {
       setFiles([]);
       setAreaId('');
       setEmbeddingModelId('4');
+      setFileStatuses({});
+      setUploadPhase('idle');
     }
   }, [isOpen]);
 
@@ -75,7 +89,6 @@ export const UploadSidebar = ({
 
       setFiles((prev) => [...prev, ...newFiles]);
 
-      // Reset file input value so the same file can be selected again
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -87,21 +100,30 @@ export const UploadSidebar = ({
     setFiles((prev) => prev.filter((f) => f.id !== fileId));
   }, []);
 
-  const handleUpload = () => {
-    // Prevent duplicate calls if already in progress
-    if (isGeneratingUrls) {
-      return;
+  const handleFileStatusChange = useCallback((fileId: string, status: FileStatus) => {
+    setFileStatuses((prev) => ({ ...prev, [fileId]: status }));
+    if (status === 'uploading') {
+      setUploadPhase('uploading');
     }
+  }, []);
 
-    if (!id_empresa || areaId === '' || files.length === 0) {
-      return;
-    }
+  const handleUpload = () => {
+    if (isGeneratingUrls) return;
+    if (!id_empresa || areaId === '' || files.length === 0) return;
+
+    const initialStatuses: Record<string, FileStatus> = {};
+    files.forEach((f) => { initialStatuses[f.id] = 'idle'; });
+    setFileStatuses(initialStatuses);
+    setUploadPhase('preparing');
 
     generatePresignedUrls(
       {
         files: files.map((f) => f.file),
+        fileIds: files.map((f) => f.id),
         areaId: typeof areaId === 'number' ? areaId : undefined,
         embeddingModel: embeddingModelId,
+        onFileStatusChange: handleFileStatusChange,
+        onRegisterStart: () => setUploadPhase('registering'),
       },
       {
         onSuccess: () => {
@@ -149,13 +171,14 @@ export const UploadSidebar = ({
               variant="ghost"
               size="icon"
               onClick={onClose}
+              disabled={isGeneratingUrls}
             >
               <X className="h-5 w-5" />
             </Button>
           </div>
         </CardHeader>
 
-        {/* Contenido scrollable con altura definida */}
+        {/* Contenido scrollable */}
         <CardContent className="flex-1 overflow-y-auto py-4 space-y-4">
           {/* Area Select */}
           <div className="space-y-2">
@@ -218,52 +241,96 @@ export const UploadSidebar = ({
             </Select>
           </div>
 
-          {/* Drop Zone */}
-          <div
-            className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors cursor-pointer"
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <div className="flex flex-col items-center justify-center gap-2 text-center">
-              <Upload className="w-8 h-8 text-gray-400" />
-              <p className="text-xs font-medium text-gray-600">
-                Arrastra y suelta tus documentos aquí
-              </p>
-              <p className="text-xs text-gray-500">O haz click para navegar en tus documentos</p>
+          {/* Drop Zone — hidden while uploading */}
+          {!isGeneratingUrls && (
+            <div
+              className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors cursor-pointer"
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <div className="flex flex-col items-center justify-center gap-2 text-center">
+                <Upload className="w-8 h-8 text-gray-400" />
+                <p className="text-xs font-medium text-gray-600">
+                  Arrastra y suelta tus documentos aquí
+                </p>
+                <p className="text-xs text-gray-500">O haz click para navegar en tus documentos</p>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Selected Files List */}
+          {/* File List */}
           {files.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-medium">
-                Seleccionado {files.length} archivo{files.length > 1 ? 's' : ''}
+                {isGeneratingUrls
+                  ? `${files.length} archivo${files.length > 1 ? 's' : ''} en proceso`
+                  : `Seleccionado ${files.length} archivo${files.length > 1 ? 's' : ''}`}
               </p>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {files.map((file) => (
-                  <div
-                    key={file.id}
-                    className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200"
-                  >
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium truncate">{file.file.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {(file.file.size / 1024 / 1024).toFixed(1)} MB
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {files.map((file) => {
+                  const status = fileStatuses[file.id] || 'idle';
+
+                  if (isGeneratingUrls) {
+                    return (
+                      <div
+                        key={file.id}
+                        className="p-3 bg-muted rounded-lg border space-y-1.5"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                          <p className="text-xs font-medium truncate flex-1">{file.file.name}</p>
+                          {status === 'done' && (
+                            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          )}
+                          {status === 'error' && (
+                            <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                          )}
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={[
+                              'h-full rounded-full transition-all duration-300',
+                              status === 'idle' ? 'w-0' : '',
+                              status === 'uploading' ? 'w-full bg-blue-500 animate-pulse' : '',
+                              status === 'done' ? 'w-full bg-green-500' : '',
+                              status === 'error' ? 'w-full bg-red-500' : '',
+                            ].join(' ')}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {status === 'idle' && 'Esperando...'}
+                          {status === 'uploading' && 'Subiendo...'}
+                          {status === 'done' && 'Listo'}
+                          {status === 'error' && 'Error al subir'}
                         </p>
                       </div>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveFile(file.id)}
-                      disabled={isGeneratingUrls}
-                      className="text-red-500 hover:text-red-700 flex-shrink-0"
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={file.id}
+                      className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200"
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate">{file.file.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {(file.file.size / 1024 / 1024).toFixed(1)} MB
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFile(file.id)}
+                        className="text-red-500 hover:text-red-700 flex-shrink-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -293,7 +360,7 @@ export const UploadSidebar = ({
             disabled={isGeneratingUrls || !id_empresa || areaId === '' || !embeddingModelId.trim() || files.length === 0 || !user}
             className="flex-1"
           >
-            {isGeneratingUrls ? 'Subiendo...' : 'Agregar'}
+            {PHASE_LABELS[uploadPhase]}
           </Button>
         </div>
       </Card>
