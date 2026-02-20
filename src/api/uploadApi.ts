@@ -1,6 +1,6 @@
 import type { MensajeResponse } from '@/types/Mensaje';
 import apiClient from './apiClient';
-import type { KnowledgeLoadResponse, BatchUploadKnowledgeRequest, BatchUploadKnowledgeResponse } from '@/types/upload';
+import type { KnowledgeLoadResponse, BatchUploadKnowledgeRequest, BatchUploadKnowledgeResponse, RegisterIngestRequest, RegisterIngestResponse, PaginatedRagDocumentsResponse } from '@/types/upload';
 
 export const getPresignedUrls = async (
   batchRequest: BatchUploadKnowledgeRequest
@@ -120,6 +120,43 @@ export const uploadMultiplePdfs = async (
     uploadCompanyId: companyId,
     uploadAreaId: areaId,
   };
+};
+
+export const registerIngestion = async (
+  request: RegisterIngestRequest
+): Promise<RegisterIngestResponse> => {
+  const response = await apiClient.post<RegisterIngestResponse>(
+    '/v1/knowledge/register_ingestion',
+    request
+  );
+  return response.data;
+};
+
+export const getCompanyRagDocumentsPaginated = async (
+  companyId: number,
+  areaId: number,
+  numPagina: number,
+  tamPagina: number,
+  termBusqueda?: string,
+  campoOrden?: string,
+  dirOrden?: string,
+  filtroEstado?: number
+): Promise<PaginatedRagDocumentsResponse> => {
+  const params = new URLSearchParams({
+    id_empresa: companyId.toString(),
+    id_area: areaId.toString(),
+    num_pagina: numPagina.toString(),
+    tam_pagina: tamPagina.toString(),
+    campo_orden: campoOrden || 'FCHCRE',
+    dir_orden: dirOrden || 'DESC',
+  });
+  if (termBusqueda) params.append('term_busqueda', termBusqueda);
+  if (filtroEstado !== undefined) params.append('filtro_estado', filtroEstado.toString());
+
+  const response = await apiClient.get<PaginatedRagDocumentsResponse>(
+    `/v1/knowledge/get_rag_documents_paginated?${params.toString()}`
+  );
+  return response.data;
 };
 
 export const batchUpdateKnowledgeState = async (

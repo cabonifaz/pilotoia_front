@@ -19,15 +19,45 @@ export interface BatchUploadKnowledgeResponse {
     s3_key: string;
     document_name: string;
   }>;
-  message_result: {
-    ID_TIPO_MENSAJE: number;
-    MENSAJE: string;
-  };
-  created_ids: number[];
-  result: {
-    idTipoMensaje: number;
-    mensaje: string;
-  };
+}
+
+export interface DocumentoIngestItem {
+  nombre_documento: string;
+  ruta_documento: string;
+  id_modelo_embedding: number;
+}
+
+export interface RegisterIngestRequest {
+  id_empresa: number;
+  id_area: number;
+  documentos: DocumentoIngestItem[];
+}
+
+export interface RegisterIngestResponse {
+  registros: Array<{ id_documento: number; id_proceso: number }>;
+  total: number;
+}
+
+export interface RagDocumentRecord {
+  ID_DOCUMENTO: number;
+  NOMBRE_DOCUMENTO: string;
+  RUTA_DOCUMENTO: string;
+  FCHCRE: string;
+  ID_PROCESO: number;
+  NRO_INTENTO: number;
+  ID_ESTADO_PROCESO: number;
+  ESTADO_NOMBRE: string;
+  FCH_INICIO: string | null;
+  FCH_FIN: string | null;
+  DURACION_SEG: number | null;
+  MENSAJE_ERROR: string | null;
+}
+
+export interface PaginatedRagDocumentsResponse {
+  registros: RagDocumentRecord[];
+  total_registros: number;
+  total_paginas: number;
+  pagina_actual: number;
 }
 
 export interface PresignedUrlResponse {
