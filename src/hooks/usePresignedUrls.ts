@@ -1,14 +1,18 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getPresignedUrls, uploadPdfToS3 } from '../api/uploadApi';
+import { getPresignedUrls, uploadPdfToS3, registerIngestion } from '../api/uploadApi';
 import type { BatchUploadKnowledgeResponse, BatchUploadKnowledgeRequest } from '../types/upload';
 import { useCurrentUser } from './useUserQueries';
-import { useBatchUpdateKnowledgeState } from './useBatchUpdateKnowledgeState';
 import { toast } from './use-toast';
+
+type FileStatus = 'idle' | 'uploading' | 'done' | 'error';
 
 interface UploadPdfsParams {
   files: File[];
+  fileIds: string[];
   areaId?: number;
   embeddingModel?: string;
+  onFileStatusChange?: (fileId: string, status: FileStatus) => void;
+  onRegisterStart?: () => void;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
 }
@@ -16,10 +20,10 @@ interface UploadPdfsParams {
 export const usePresignedUrls = () => {
   const { user } = useCurrentUser();
   const queryClient = useQueryClient();
-  const batchUpdateMutation = useBatchUpdateKnowledgeState();
 
   return useMutation({
-    mutationFn: async ({ files, areaId: selectedAreaId, embeddingModel: selectedEmbeddingModel }: UploadPdfsParams): Promise<BatchUploadKnowledgeResponse & { uploadCompanyId: number; uploadAreaId: number }> => {
+    mutationFn: async (params: UploadPdfsParams): Promise<BatchUploadKnowledgeResponse & { uploadCompanyId: number; uploadAreaId: number }> => {
+      const { files, fileIds, areaId: selectedAreaId, embeddingModel: selectedEmbeddingModel, onFileStatusChange, onRegisterStart } = params;
       const companyId = user?.actual_company_area?.ID_EMPRESA;
       const areaId = selectedAreaId;
       const embeddingModel = selectedEmbeddingModel || '4';
@@ -29,7 +33,7 @@ export const usePresignedUrls = () => {
       }
 
       try {
-        // Step 1: Get presigned URLs from backend
+        // Step 1: Get presigned URLs from backend (no DB write)
         const batchRequest: BatchUploadKnowledgeRequest = {
           id_empresa: companyId,
           id_area: areaId,
@@ -39,24 +43,29 @@ export const usePresignedUrls = () => {
 
         const response = await getPresignedUrls(batchRequest);
 
-        // Step 2: Store created IDs IMMEDIATELY (before S3 upload attempts)
-        // This ensures IDs are available even if S3 uploads fail
-        // Store with the actual upload company/area IDs to match retrieval
-        queryClient.setQueryData(['created_knowledge_ids', companyId, areaId], response.created_ids);
+        // Step 2: Upload files to S3 concurrently, tracking per-file status
+        fileIds.forEach(id => onFileStatusChange?.(id, 'uploading'));
 
-        // Step 3: Upload files to S3 using presigned URLs
-        const uploadPromises = response.uploads.map((upload, index) => {
-          return uploadPdfToS3(upload.presigned_url, files[index]);
-        });
+        const uploadPromises = response.uploads.map((upload, index) =>
+          uploadPdfToS3(upload.presigned_url, files[index])
+            .then(() => { onFileStatusChange?.(fileIds[index], 'done'); })
+            .catch((err) => { onFileStatusChange?.(fileIds[index], 'error'); throw err; })
+        );
 
         await Promise.all(uploadPromises);
 
-        // Step 4: Invalidate cache after successful uploads
-        queryClient.invalidateQueries({ queryKey: ['knowledge-paginated'] });
-        
+        // Step 3: Register docs in DB and enqueue to SQS
+        onRegisterStart?.();
+        const documentos = response.uploads.map(upload => ({
+          nombre_documento: upload.document_name,
+          ruta_documento: upload.s3_key,
+          id_modelo_embedding: parseInt(embeddingModel),
+        }));
+        await registerIngestion({ id_empresa: companyId, id_area: areaId, documentos });
 
+        // Step 4: Invalidate table cache
+        queryClient.invalidateQueries({ queryKey: ['rag-documents-paginated'] });
 
-        // Return response with company/area IDs attached
         return {
           ...response,
           uploadCompanyId: companyId,
@@ -64,50 +73,23 @@ export const usePresignedUrls = () => {
         };
       } catch (error) {
         console.error('Upload error:', error);
-        // Re-throw with context to handle in onError
         throw error;
       }
     },
-    // Disable automatic retry for uploads to prevent duplicates
     retry: false,
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast({
         title: 'Éxito',
         description: 'Documentos subidos correctamente',
         variant: 'success',
       });
-
-      // Get the company and area IDs from the mutation data
-      const mutationData = data as any;
-      const companyId = mutationData.uploadCompanyId;
-      const areaId = mutationData.uploadAreaId;
-
-      // Trigger batch update with status 1 (in queue) using the upload's company/area
-      batchUpdateMutation.mutate({
-        idEstadoProceso: 1,
-        companyId,
-        areaId
-      });
     },
-    onError: (error: Error, variables: UploadPdfsParams) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
         description: `Error en la carga: ${error.message}`,
         variant: 'destructive',
       });
-
-      // Get company and area IDs from upload variables
-      const companyId = user?.actual_company_area?.ID_EMPRESA;
-      const areaId = variables.areaId;
-
-      // Trigger batch update with status 7 (error) to mark failed uploads
-      if (companyId && areaId) {
-        batchUpdateMutation.mutate({
-          idEstadoProceso: 7,
-          companyId,
-          areaId
-        });
-      }
     },
   });
 };
