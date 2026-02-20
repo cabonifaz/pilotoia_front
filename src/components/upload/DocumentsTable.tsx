@@ -35,7 +35,7 @@ import {
 } from "@/components/shadcn/table";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import { useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
-import { toast } from "@/hooks/use-toast"; // Asumo que tienes esto basado en el anterior
+import { toast } from "@/hooks/use-toast";
 
 // --- TANSTACK & DND IMPORTS ---
 import {
@@ -89,19 +89,20 @@ type StatusBadge = {
   variant?: BadgeVariant;
 };
 
-const getStatusFromStage = (idEstadoProceso: number, estadoProceso: string) => {
+const getStatusFromStage = (idEstadoProceso: number, estadoNombre: string) => {
   const badgeColorMap: { [key: number]: BadgeVariant } = {
-    0: "cyan",
-    1: "warning",
-    2: "purple",
-    3: "info",
-    4: "orange",
-    5: "teal",
-    6: "success",
-    7: "destructive",
+    0: "cyan",        // Subiendo
+    1: "warning",     // En cola (extracción)
+    2: "purple",      // Extrayendo texto
+    3: "info",        // En cola (segmentación)
+    4: "orange",      // Segmentando
+    5: "teal",        // En cola (vectorización)
+    6: "warning",     // Vectorizando
+    7: "success",     // Cargado ← terminal success
+    8: "destructive", // Error   ← terminal error
   };
 
-  const statusBadge: StatusBadge = { label: estadoProceso };
+  const statusBadge: StatusBadge = { label: estadoNombre };
 
   if (idEstadoProceso < 0) {
     statusBadge.variant = "destructive" as const;
@@ -113,7 +114,7 @@ const getStatusFromStage = (idEstadoProceso: number, estadoProceso: string) => {
   return statusBadge || { label: "Desconocido", variant: "secondary" as const };
 };
 
-const formatDate = (isoDate: string): string => {
+const formatDate = (isoDate: string | null): string => {
   if (!isoDate) return "-";
   const date = new Date(isoDate);
   return date.toLocaleDateString("es-ES", {
@@ -127,26 +128,19 @@ const formatDate = (isoDate: string): string => {
 
 interface DocumentData {
   id: string;
-  id_usuario: number;
-  usuario_carga: string;
-  id_empresa: number;
-  empresa: string;
-  id_area: number;
-  area: string;
-  id_estado_proceso: number;
-  estado_proceso: string;
-  embedding_model_provider: string;
-  embedding_model: string;
-  name: string; // Mapped from 'documento'
-  fecha_ultima_actualizacion: string;
-  createdDate: string; // Formatted
-  fecha_extraccion: string;
-  fecha_segmentacion: string;
-  fecha_vectorizacion: string;
-  fecha_finalizado: string;
-  en_ejecucion: number;
+  id_documento: number;
+  nombre_documento: string;
   ruta_documento: string;
-  status: StatusBadge; // Calculated
+  fchcre: string;
+  id_proceso: number;
+  nro_intento: number;
+  id_estado_proceso: number;
+  estado_nombre: string;
+  fch_inicio: string | null;
+  fch_fin: string | null;
+  duracion_seg: number | null;
+  mensaje_error: string | null;
+  status: StatusBadge;
 }
 
 // --- COMPONENTE DE CABECERA ARRASTRABLE ---
@@ -191,18 +185,13 @@ const DraggableTableHeader = memo(
       maxWidth: columnSize,
     };
 
-    // Campos que permiten ordenamiento en el backend
     const isSortable = [
       "NOMBRE_DOCUMENTO",
-      "FCHMOD",
       "FCHCRE",
       "ID_ESTADO_PROCESO",
-      "AREA",
-      "USUARIO_CARGA",
-      "EMBEDDING_MODEL",
-      "FCH_EXTRACCION",
-      "FCH_SEGMENTACION",
-      "FCH_VECTORIZACION",
+      "FCH_INICIO",
+      "FCH_FIN",
+      "DURACION_SEG",
     ].includes(columnId);
 
     return (
@@ -248,7 +237,7 @@ DraggableTableHeader.displayName = "DraggableTableHeader";
 
 interface DocumentsTableProps {
   searchTerm: string;
-  selectedRows?: string[]; // Ids externos
+  selectedRows?: string[];
   onSelectionChange?: (selectedIds: string[]) => void;
   uploadTrigger?: number;
 }
@@ -265,16 +254,12 @@ export const DocumentsTable = ({
   const [pageSize, setPageSize] = useState(10);
   const [orderField, setOrderField] = useState<
     | "NOMBRE_DOCUMENTO"
-    | "FCHMOD"
     | "FCHCRE"
     | "ID_ESTADO_PROCESO"
-    | "AREA"
-    | "USUARIO_CARGA"
-    | "EMBEDDING_MODEL"
-    | "FCH_EXTRACCION"
-    | "FCH_SEGMENTACION"
-    | "FCH_VECTORIZACION"
-  >("FCHMOD");
+    | "FCH_INICIO"
+    | "FCH_FIN"
+    | "DURACION_SEG"
+  >("FCHCRE");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
 
@@ -288,13 +273,11 @@ export const DocumentsTable = ({
   const [columnOrder, setColumnOrder] = useState<string[]>(() => [
     "select",
     "NOMBRE_DOCUMENTO",
-    "USUARIO_CARGA",
-    "EMBEDDING_MODEL",
     "FCHCRE",
-    "FCH_EXTRACCION",
-    "FCH_SEGMENTACION",
-    "FCH_VECTORIZACION",
-    "FCHMOD",
+    "FCH_INICIO",
+    "FCH_FIN",
+    "DURACION_SEG",
+    "NRO_INTENTO",
     "ID_ESTADO_PROCESO",
     "actions",
   ]);
@@ -323,34 +306,24 @@ export const DocumentsTable = ({
     statusFilter,
   );
 
-  // Transformación de datos para la tabla (Mapeo)
+  // Transformación de datos para la tabla
   const tableData: DocumentData[] = useMemo(() => {
     return (
-      data?.registros?.map((upload) => ({
-        id: upload.id,
-        id_usuario: upload.id_usuario,
-        usuario_carga: upload.usuario_carga || "Sistema",
-        id_empresa: upload.id_empresa,
-        empresa: upload.empresa || "Sin empresa",
-        id_area: upload.id_area,
-        area: upload.area || "Sin área",
-        id_estado_proceso: upload.id_estado_proceso,
-        estado_proceso: upload.estado_proceso,
-        embedding_model_provider: upload.embedding_model_provider,
-        embedding_model: upload.embedding_model,
-        name: upload.documento || "Sin nombre",
-        fecha_ultima_actualizacion: upload.fecha_ultima_actualizacion,
-        createdDate: formatDate(upload.fecha_inicio),
-        fecha_extraccion: upload.fecha_extraccion,
-        fecha_segmentacion: upload.fecha_segmentacion,
-        fecha_vectorizacion: upload.fecha_vectorizacion,
-        fecha_finalizado: upload.fecha_finalizado,
-        en_ejecucion: upload.en_ejecucion,
-        ruta_documento: upload.ruta_documento,
-        status: getStatusFromStage(
-          upload.id_estado_proceso,
-          upload.estado_proceso,
-        ),
+      data?.registros?.map((r) => ({
+        id: r.ID_DOCUMENTO.toString(),
+        id_documento: r.ID_DOCUMENTO,
+        nombre_documento: r.NOMBRE_DOCUMENTO,
+        ruta_documento: r.RUTA_DOCUMENTO,
+        fchcre: r.FCHCRE,
+        id_proceso: r.ID_PROCESO,
+        nro_intento: r.NRO_INTENTO,
+        id_estado_proceso: r.ID_ESTADO_PROCESO,
+        estado_nombre: r.ESTADO_NOMBRE,
+        fch_inicio: r.FCH_INICIO,
+        fch_fin: r.FCH_FIN,
+        duracion_seg: r.DURACION_SEG,
+        mensaje_error: r.MENSAJE_ERROR,
+        status: getStatusFromStage(r.ID_ESTADO_PROCESO, r.ESTADO_NOMBRE),
       })) || []
     );
   }, [data]);
@@ -436,6 +409,7 @@ export const DocumentsTable = ({
       });
     }
   }, []);
+
   useEffect(() => {
     setRowSelection({});
   }, [
@@ -446,6 +420,7 @@ export const DocumentsTable = ({
     orderField,
     orderDirection,
   ]);
+
   // --- DEFINICIÓN DE COLUMNAS ---
   const columns = useMemo(
     () => [
@@ -474,54 +449,45 @@ export const DocumentsTable = ({
         minSize: 40,
         maxSize: 40,
       }),
-      columnHelper.accessor("name", {
+      columnHelper.accessor("nombre_documento", {
         id: "NOMBRE_DOCUMENTO",
         header: "Nombre",
         cell: (info) => (
-          // Usamos items-start para que el icono se quede arriba si hay varias líneas
           <div className="flex items-start gap-2">
-            {/* shrink-0 evita que el icono se aplaste */}
             <FileText className="h-4 w-4 text-blue-500 mt-1 shrink-0 self-center" />
-            {/* Quitamos 'truncate' y 'max-w'. Ponemos break-words */}
             <span className="whitespace-normal break-words">
               {info.getValue()}
             </span>
           </div>
         ),
-        // Puedes aumentar el tamaño mínimo si quieres
         minSize: 200,
       }),
-      columnHelper.accessor("usuario_carga", {
-        id: "USUARIO_CARGA",
-        header: "Usuario Carga",
-      }),
-      columnHelper.accessor("embedding_model", {
-        id: "EMBEDDING_MODEL",
-        header: "Modelo Embedding",
-      }),
-      columnHelper.accessor("createdDate", {
+      columnHelper.accessor("fchcre", {
         id: "FCHCRE",
         header: "Creado el",
-      }),
-      columnHelper.accessor("fecha_extraccion", {
-        id: "FCH_EXTRACCION",
-        header: "Extracción",
         cell: (info) => formatDate(info.getValue()),
       }),
-      columnHelper.accessor("fecha_segmentacion", {
-        id: "FCH_SEGMENTACION",
-        header: "Segmentación",
+      columnHelper.accessor("fch_inicio", {
+        id: "FCH_INICIO",
+        header: "Inicio proceso",
         cell: (info) => formatDate(info.getValue()),
       }),
-      columnHelper.accessor("fecha_vectorizacion", {
-        id: "FCH_VECTORIZACION",
-        header: "Vectorización",
+      columnHelper.accessor("fch_fin", {
+        id: "FCH_FIN",
+        header: "Fin proceso",
         cell: (info) => formatDate(info.getValue()),
       }),
-      columnHelper.accessor("fecha_finalizado", {
-        id: "FCHMOD",
-        header: "Finalizado",
-        cell: (info) => formatDate(info.getValue()),
+      columnHelper.accessor("duracion_seg", {
+        id: "DURACION_SEG",
+        header: "Duración (s)",
+        cell: (info) => {
+          const val = info.getValue();
+          return val !== null ? `${val}s` : "-";
+        },
+      }),
+      columnHelper.accessor("nro_intento", {
+        id: "NRO_INTENTO",
+        header: "Intentos",
       }),
       columnHelper.accessor("status", {
         id: "ID_ESTADO_PROCESO",
@@ -555,41 +521,47 @@ export const DocumentsTable = ({
                   onClick={() => handleStatusFilterChange(1)}
                   className={statusFilter === 1 ? "bg-accent" : ""}
                 >
-                  En cola
+                  En cola (extracción)
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleStatusFilterChange(2)}
                   className={statusFilter === 2 ? "bg-accent" : ""}
                 >
-                  Procesando
+                  Extrayendo texto
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleStatusFilterChange(3)}
                   className={statusFilter === 3 ? "bg-accent" : ""}
                 >
-                  Texto extraído
+                  En cola (segmentación)
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleStatusFilterChange(4)}
                   className={statusFilter === 4 ? "bg-accent" : ""}
                 >
-                  Texto segmentado
+                  Segmentando
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleStatusFilterChange(5)}
                   className={statusFilter === 5 ? "bg-accent" : ""}
                 >
-                  Segmentos vectorizados
+                  En cola (vectorización)
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleStatusFilterChange(6)}
                   className={statusFilter === 6 ? "bg-accent" : ""}
                 >
-                  Cargado
+                  Vectorizando
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleStatusFilterChange(7)}
                   className={statusFilter === 7 ? "bg-accent" : ""}
+                >
+                  Cargado
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleStatusFilterChange(8)}
+                  className={statusFilter === 8 ? "bg-accent" : ""}
                 >
                   Error
                 </DropdownMenuItem>
@@ -598,13 +570,23 @@ export const DocumentsTable = ({
           </div>
         ),
         cell: (info) => (
-          <div className="flex items-center gap-2">
-            <Badge variant={info.getValue().variant}>
-              {info.getValue().label}
-            </Badge>
-            {info.row.original.en_ejecucion === 1 && (
-              <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
-            )}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <Badge variant={info.getValue().variant}>
+                {info.getValue().label}
+              </Badge>
+              {info.row.original.fch_fin === null &&
+                info.row.original.id_estado_proceso !== 7 &&
+                info.row.original.id_estado_proceso !== 8 && (
+                  <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+            </div>
+            {info.row.original.id_estado_proceso === 8 &&
+              info.row.original.mensaje_error && (
+                <span className="text-xs text-destructive">
+                  {info.row.original.mensaje_error}
+                </span>
+              )}
           </div>
         ),
       }),
@@ -622,7 +604,7 @@ export const DocumentsTable = ({
                 onClick={() =>
                   handleViewDocument(
                     info.row.original.ruta_documento,
-                    info.row.original.name,
+                    info.row.original.nombre_documento,
                   )
                 }
               >
@@ -649,7 +631,7 @@ export const DocumentsTable = ({
     onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
-    getRowId: (row) => row.id, // Importante para la selección correcta
+    getRowId: (row) => row.id,
   });
 
   const draggableColumns = useMemo(
