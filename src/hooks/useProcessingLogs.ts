@@ -1,30 +1,29 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {batchDeleteKnowledge, getCompanyUploadsPaginated } from '@/api/uploadApi';
+import { batchDeleteKnowledge, getCompanyRagDocumentsPaginated } from '@/api/uploadApi';
 import { useCurrentUser } from '@/hooks/useUserQueries';
 import { toast } from '@/hooks/use-toast';
+import type { RagDocumentRecord } from '@/types/upload';
 
 export const useProcessingLogsPaginated = (
   page: number,
   pageSize: number,
   searchTerm: string,
-  orderField: 'NOMBRE_DOCUMENTO' | 'FCHMOD' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'AREA' | 'USUARIO_CARGA' | 'EMBEDDING_MODEL' | 'FCH_EXTRACCION' | 'FCH_SEGMENTACION' | 'FCH_VECTORIZACION',
+  orderField: 'NOMBRE_DOCUMENTO' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'FCH_INICIO' | 'FCH_FIN' | 'DURACION_SEG',
   orderDirection: 'ASC' | 'DESC',
   statusFilter: number | null
 ) => {
   const { user } = useCurrentUser();
   const companyId = user?.actual_company_area?.ID_EMPRESA;
   const areaId = user?.actual_company_area?.ID_AREA;
-  
 
-  // Polling interval
   const pollingInterval = Number(import.meta.env.VITE_POLLING_INTERVAL) || 30000;
 
   return useQuery({
-    queryKey: ['knowledge-paginated', companyId, areaId, page, pageSize, searchTerm, orderField, orderDirection, statusFilter],
+    queryKey: ['rag-documents-paginated', companyId, areaId, page, pageSize, searchTerm, orderField, orderDirection, statusFilter],
     queryFn: () =>
-      getCompanyUploadsPaginated(
+      getCompanyRagDocumentsPaginated(
         companyId!,
-        areaId,
+        areaId!,
         page,
         pageSize,
         searchTerm,
@@ -32,17 +31,16 @@ export const useProcessingLogsPaginated = (
         orderDirection,
         statusFilter !== null ? statusFilter : undefined
       ),
-    enabled: !!companyId,
+    enabled: !!companyId && !!areaId,
     retry: false,
     placeholderData: (prev) => prev,
     staleTime: 0,
     gcTime: 0,
     refetchOnWindowFocus: false,
     refetchInterval: (query) => {
-      // Check if any document is processing
       const data = query.state.data;
       const hasProcessing = data?.registros?.some(
-        (doc: any) => doc.id_estado_proceso !== 6 && doc.id_estado_proceso !== 7
+        (doc: RagDocumentRecord) => doc.ID_ESTADO_PROCESO !== 7 && doc.ID_ESTADO_PROCESO !== 8
       );
       return hasProcessing ? pollingInterval : false;
     }
@@ -55,13 +53,11 @@ export const useDeleteKnowledge = () => {
   return useMutation({
     mutationFn: (idCargas: number[]) => batchDeleteKnowledge(idCargas),
     onSuccess: (data) => {
-      // Invalidate and refetch knowledge query
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['knowledge-paginated'],
-        refetchType: 'active' // Solo refetch queries activas
+        refetchType: 'active'
       });
 
-      // Show success toast
       toast({
         title: "Documentos eliminados",
         description: `${data.deleted_count} documento(s) eliminado(s) exitosamente`,
@@ -69,7 +65,6 @@ export const useDeleteKnowledge = () => {
       });
     },
     onError: (error: Error) => {
-      // Error toast is already shown by apiClient interceptor
       console.error('Error deleting knowledge:', error);
     }
   });
