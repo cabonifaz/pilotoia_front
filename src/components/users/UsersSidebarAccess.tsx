@@ -120,15 +120,15 @@ export const UsersSidebarAccess = ({
       if (prevAreas.includes(areaId)) {
         // Unchecking an area
         const newAreas = prevAreas.filter((id) => id !== areaId);
-        // If no areas left for Usuario (role 3), revert to General
-        if (newAreas.length === 0 && idTipoRol === '3' && generalAreaId) {
+        // If no areas left for Supervisor or Usuario (role 3), revert to General
+        if (newAreas.length === 0 && ['3', '5'].includes(idTipoRol) && generalAreaId) {
           return [generalAreaId];
         }
         return newAreas;
       } else {
         // Checking an area
-        // For Usuario (role 3), remove General if it's there and add the new area
-        if (idTipoRol === '3' && generalAreaId && prevAreas.includes(generalAreaId)) {
+        // For Supervisor or Usuario (role 3 or 5), remove General if it's there and add the new area
+        if (['3', '5'].includes(idTipoRol) && generalAreaId && prevAreas.includes(generalAreaId)) {
           return [areaId];
         }
         return [...prevAreas, areaId];
@@ -136,30 +136,18 @@ export const UsersSidebarAccess = ({
     });
   };
 
-  // Auto-select General area when role changes to Administrador (2) or Usuario (3)
-  useEffect(() => {
-    if (idTipoRol === '2') {
-      // Administrador: automatically select General area
-      if (generalAreaId) {
-        setSelectedAreas([generalAreaId]);
-      } else if (areasData?.areas) {
-        const generalArea = areasData.areas.find((area) => area.AREA === 'General');
-        if (generalArea) {
-          setSelectedAreas([generalArea.ID_AREA]);
-        }
-      }
-    } else if (idTipoRol === '3') {
-      // Usuario: automatically select General area by default
-      if (generalAreaId) {
-        setSelectedAreas([generalAreaId]);
-      } else if (areasData?.areas) {
-        const generalArea = areasData.areas.find((area) => area.AREA === 'General');
-        if (generalArea) {
-          setSelectedAreas([generalArea.ID_AREA]);
-        }
+  const handleRoleChange = (newRole: string) => {
+    setIdTipoRol(newRole);
+    // Auto-select General area when manually changing role
+    if (generalAreaId) {
+      setSelectedAreas([generalAreaId]);
+    } else if (areasData?.areas) {
+      const generalArea = areasData.areas.find((area) => area.AREA === 'General');
+      if (generalArea) {
+        setSelectedAreas([generalArea.ID_AREA]);
       }
     }
-  }, [idTipoRol, generalAreaId, areasData]);
+  };
 
   // Filter areas based on role
   const displayedAreas = areasData?.areas?.filter((area) => {
@@ -167,7 +155,7 @@ export const UsersSidebarAccess = ({
       // Administrador: only show Default and General areas
       return ['Default', 'General'].includes(area.AREA);
     } else {
-      // Usuario: show all areas except Default and General
+      // Supervisor or Usuario: show all areas except Default and General
       return !['Default', 'General'].includes(area.AREA);
     }
   }) || [];
@@ -215,12 +203,13 @@ export const UsersSidebarAccess = ({
           {/* Rol Select */}
           <div className="space-y-2">
             <Label className="text-xs">Rol</Label>
-            <Select value={idTipoRol} onValueChange={setIdTipoRol} disabled={isPending}>
+            <Select value={idTipoRol} onValueChange={handleRoleChange} disabled={isPending}>
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="Selecciona un rol" />
               </SelectTrigger>
               <SelectContent className="text-sm">
                 <SelectItem value="2">Administrador</SelectItem>
+                <SelectItem value='5'>Supervisor</SelectItem>
                 <SelectItem value="3">Usuario</SelectItem>
               </SelectContent>
             </Select>
@@ -229,9 +218,9 @@ export const UsersSidebarAccess = ({
           {/* Áreas Checkboxes */}
           <div className="space-y-2">
             <Label className="text-xs">Áreas {idTipoRol === '2' && '(Automático)'}</Label>
-            {idTipoRol === '3' && (
+            {['3', '5'].includes(idTipoRol) && (
               <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                La información del área General está disponible para todos los usuarios
+                El usuario tendra acceso al área General por defecto
               </p>
             )}
             <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
