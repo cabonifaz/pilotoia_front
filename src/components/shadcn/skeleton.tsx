@@ -7,8 +7,8 @@ function Skeleton({
   return (
     <div
       className={cn(
-        // Cambiamos bg-muted por bg-gray-200 (y un gris oscuro para modo noche)
-        "animate-pulse rounded-md bg-gray-100 dark:bg-gray-200",
+        // Light mode uses a light gray, dark mode a much darker shade for visibility
+        "animate-pulse rounded-md bg-gray-200 dark:bg-gray-700",
         className,
       )}
       {...props}

@@ -167,7 +167,7 @@ export const LoginPage = () => {
   };
 
   return (
-    <section className="min-h-screen w-full bg-slate-50 flex justify-center items-center p-4">
+    <section className="min-h-screen w-full bg-background  flex justify-center items-center p-4">
       <LoginCard
         register={register}
         handleSubmit={handleSubmit}

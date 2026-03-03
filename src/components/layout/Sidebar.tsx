@@ -98,7 +98,7 @@ const Sidebar = ({
     <aside
       className={cn(
         "bg-muted border-r border-border flex flex-col transition-all duration-300",
-        "fixed md:static inset-y-0 left-0 z-40", // Mobile: fixed overlay; Desktop: static
+        "fixed md:static inset-y-0 left-0 z-40 dark:bg-slate-900", // Mobile: fixed overlay; Desktop: static
         "w-60", // Fixed width for mobile and expanded desktop
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full", // Mobile slide in/out
         "md:translate-x-0", // Desktop always visible
