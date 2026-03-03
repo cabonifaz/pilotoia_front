@@ -103,7 +103,7 @@ export const LoginCard = ({
             }}
           />
         </div>
-        <h2 className="text-2xl font-semibold text-slate-900">
+        <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">
           Ingresa a tu cuenta
         </h2>
       </CardHeader>

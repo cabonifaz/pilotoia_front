@@ -480,7 +480,7 @@ export const CompanyTable = ({
 
       <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden gap-4 relative">
         {(isLoading || isFetching) && (
-          <div className="absolute inset-0 z-30 bg-white/80 backdrop-blur-[1px] p-6">
+          <div className="absolute inset-0 z-30 bg-card backdrop-blur-[1px] p-6">
             <TableWithPaginationSkeleton
               pageSize={pageSize}
               columnCount={columnOrder.length}
