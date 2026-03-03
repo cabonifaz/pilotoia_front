@@ -3,6 +3,7 @@ import {
   ChevronDown,
   LogOut,
   User,
+  ClipboardCheck,
   Shield,
   Lock,
   Moon,
@@ -45,6 +46,8 @@ const UserDropdown = () => {
         return <Shield className="h-4 w-4" />;
       case 2: // Admin
         return <Lock className="h-4 w-4" />;
+      case 5: // Supervisor
+        return <ClipboardCheck className="h-4 w-4" />;
       case 3: // User
       default:
         return <User className="h-4 w-4" />;
