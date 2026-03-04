@@ -15,10 +15,10 @@ export const TableWithPaginationSkeleton = ({
 }) => {
   return (
     // Agregamos z-index y fondo para que cubra la tabla vieja si es necesario
-    <div className="flex flex-col gap-4 animate-in fade-in duration-300 bg-white w-full h-full">
+    <div className="flex flex-col gap-4 animate-in fade-in duration-300 w-full h-full">
       <div className="border rounded-lg overflow-hidden">
         <Table>
-          <TableHeader className="bg-muted/50">
+          <TableHeader>
             <TableRow>
               {Array.from({ length: columnCount }).map((_, i) => (
                 <TableHead

@@ -1,10 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
-import { X, Upload } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shadcn/card';
-import { Button } from '@/components/shadcn/button';
-import { Label } from '@/components/shadcn/label';
-import { useUploadCompanyLogo } from '@/hooks/useCompanyQueries';
-import { toast } from '@/hooks/use-toast';
+import { useState, useEffect, useRef } from "react";
+import { X, Upload } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/shadcn/card";
+import { Button } from "@/components/shadcn/button";
+import { Label } from "@/components/shadcn/label";
+import { useUploadCompanyLogo } from "@/hooks/useCompanyQueries";
+import { toast } from "@/hooks/use-toast";
 
 interface CompanyLogoSidebarProps {
   isOpen: boolean;
@@ -40,12 +46,12 @@ export const CompanyLogoSidebar = ({
     if (!file) return;
 
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/svg+xml'];
+    const allowedTypes = ["image/jpeg", "image/png", "image/svg+xml"];
     if (!allowedTypes.includes(file.type)) {
       toast({
-        title: 'Error',
-        description: 'Solo se permiten archivos JPG, PNG o SVG',
-        variant: 'destructive',
+        title: "Error",
+        description: "Solo se permiten archivos JPG, PNG o SVG",
+        variant: "destructive",
       });
       return;
     }
@@ -54,9 +60,9 @@ export const CompanyLogoSidebar = ({
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
       toast({
-        title: 'Error',
-        description: 'El tamaño máximo del logo es 5MB',
-        variant: 'destructive',
+        title: "Error",
+        description: "El tamaño máximo del logo es 5MB",
+        variant: "destructive",
       });
       return;
     }
@@ -75,7 +81,7 @@ export const CompanyLogoSidebar = ({
     setLogoFile(null);
     setLogoPreview(null);
     if (logoInputRef.current) {
-      logoInputRef.current.value = '';
+      logoInputRef.current.value = "";
     }
   };
 
@@ -95,14 +101,14 @@ export const CompanyLogoSidebar = ({
           setLogoPreview(null);
           onClose();
         },
-      }
+      },
     );
   };
 
   return (
     <div
       className={`fixed top-16 bottom-0 right-0 w-96 bg-background border-l shadow-lg transform transition-all duration-300 flex flex-col z-50 ${
-        isOpen ? 'translate-x-0' : 'translate-x-full'
+        isOpen ? "translate-x-0" : "translate-x-full"
       }`}
     >
       <Card className="h-full rounded-none border-0 flex flex-col">
@@ -142,27 +148,36 @@ export const CompanyLogoSidebar = ({
                   <p className="text-xs font-medium text-gray-600">
                     Subir logo
                   </p>
-                  <p className="text-xs text-gray-500">JPG, PNG o SVG (max 5MB)</p>
+                  <p className="text-xs text-gray-500">
+                    JPG, PNG o SVG (max 5MB)
+                  </p>
                 </div>
               </div>
             ) : (
               <div className="relative border-2 border-gray-300 rounded-lg p-4">
                 <div className="flex flex-col items-center gap-3">
                   <img
-                    src={logoPreview || `${import.meta.env.VITE_LOGO_URL_BASE}${logo}?v=${Date.now()}`}
+                    src={
+                      logoPreview ||
+                      `${import.meta.env.VITE_LOGO_URL_BASE}${logo}?v=${Date.now()}`
+                    }
                     alt="Logo preview"
                     className="w-32 h-32 object-contain"
                   />
                   <div className="w-full text-center">
                     {logoFile ? (
                       <>
-                        <p className="text-xs font-medium truncate">{logoFile.name}</p>
+                        <p className="text-xs font-medium truncate">
+                          {logoFile.name}
+                        </p>
                         <p className="text-xs text-gray-500">
                           {(logoFile.size / 1024 / 1024).toFixed(2)} MB
                         </p>
                       </>
                     ) : (
-                      <p className="text-xs font-medium text-gray-600">Logo actual</p>
+                      <p className="text-xs font-medium text-gray-600">
+                        Logo actual
+                      </p>
                     )}
                   </div>
                   <Button
@@ -196,7 +211,7 @@ export const CompanyLogoSidebar = ({
           </div>
 
           {/* Info text */}
-          <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
+          <div className="text-xs text-muted-foreground bg-muted p-3 rounded-lg">
             <p className="font-medium mb-1">Recomendaciones:</p>
             <ul className="list-disc list-inside space-y-1">
               <li>Usa un fondo transparente para mejores resultados</li>
@@ -221,7 +236,7 @@ export const CompanyLogoSidebar = ({
             disabled={isPending || !logoFile}
             className="flex-1"
           >
-            {isPending ? 'Subiendo...' : 'Actualizar'}
+            {isPending ? "Subiendo..." : "Actualizar"}
           </Button>
         </div>
       </Card>
