@@ -6,7 +6,7 @@ interface ContinuousFileTranscribeButtonProps {
   isRecording: boolean;
   isTranscribing: boolean;
   isDisabled?: boolean;
-  onMouseEnter?: () => void;
+  onMouseDown?: () => void;
   onClick: () => void;
 }
 
@@ -14,7 +14,7 @@ export const ContinuousFileTranscribeButton = ({
   isRecording,
   isTranscribing,
   isDisabled = false,
-  onMouseEnter,
+  onMouseDown,
   onClick,
 }: ContinuousFileTranscribeButtonProps) => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -37,7 +37,7 @@ export const ContinuousFileTranscribeButton = ({
     <Button
       type="button"
       tabIndex={-1}
-      onMouseEnter={onMouseEnter}
+      onMouseDown={onMouseDown}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}

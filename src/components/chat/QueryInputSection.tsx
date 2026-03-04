@@ -227,7 +227,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                       isRecording={isFileRecording}
                       isTranscribing={isFileTranscribing}
                       isDisabled={isLoading}
-                      onMouseEnter={onPrepareRecording}
+                      onMouseDown={onPrepareRecording}
                       onClick={() => {
                         isFileRecording
                           ? onStopRecording()
@@ -245,7 +245,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
                       isRecording={isContinuousFileRecording}
                       isTranscribing={isContinuousFileTranscribing}
                       isDisabled={isLoading || isFileRecording}
-                      onMouseEnter={onPrepareRecording}
+                      onMouseDown={onPrepareRecording}
                       onClick={() => {
                         onContinuousFileClick();
                         textareaRef.current?.focus();
