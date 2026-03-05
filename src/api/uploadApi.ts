@@ -207,3 +207,24 @@ export const batchDeleteKnowledge = async (
   );
   return response.data;
 };
+
+export interface RetryIngestionResponse {
+  id_proceso: number;
+  nro_intento: number;
+  id_etapa: number;
+  result: {
+    idTipoMensaje: number;
+    mensaje: string;
+  };
+}
+
+export const retryIngestion = async (
+  idDocumento: number,
+  idEtapa: number
+): Promise<RetryIngestionResponse> => {
+  const response = await apiClient.post<RetryIngestionResponse>(
+    '/v1/knowledge/retry_ingestion',
+    { id_documento: idDocumento, id_etapa: idEtapa }
+  );
+  return response.data;
+};
