@@ -19,7 +19,6 @@ import {
 } from "@/components/shadcn/card";
 import { Avatar, AvatarFallback } from "@/components/shadcn/avatar";
 import { Bot, Loader2 } from "lucide-react";
-import { useInView } from "react-intersection-observer";
 import { getDefaultLanguage } from "../../constants/languages";
 import { Skeleton } from "../shadcn/skeleton";
 import { cn } from "@/lib/utils";
@@ -91,9 +90,6 @@ const ChatComponent = ({
     resetAudio,
   } = useChatStream();
   const { isAuthenticated, token } = useExternalLogin();
-
-  // Reference to detect scroll top (for pagination)
-  const { ref: topSentinelRef } = useInView({ threshold: 0 });
 
   // Get logo URL from actual company area
   const { user } = useQueryAuthContext();
@@ -243,6 +239,15 @@ const ChatComponent = ({
   // Track continuous mode state (reuses the same hooks)
   const [isContinuousMode, setIsContinuousMode] = useState(false);
   const [isContinuousFileMode, setIsContinuousFileMode] = useState(false);
+
+  // Reset scroll state when switching chats
+  useEffect(() => {
+    setShouldAutoScroll(true);
+    previousScrollHeightRef.current = 0;
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [chatContext.chat_id]);
 
   // Scroll management effect
   useEffect(() => {
@@ -683,14 +688,11 @@ const ChatComponent = ({
                   className="w-full h-full overflow-y-auto messages-container"
                   onScroll={handleScroll}
                 >
-                  <div
-                    ref={topSentinelRef}
-                    className="h-4 w-full flex justify-center py-2"
-                  >
-                    {isFetchingNextPage && (
+                  {isFetchingNextPage && (
+                    <div className="h-4 w-full flex justify-center py-2">
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    )}
-                  </div>
+                    </div>
+                  )}
                   {messages?.map((message) => (
                     <MessageBubble
                       key={message.id}

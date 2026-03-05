@@ -6,6 +6,7 @@ import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/select';
 import { useCreateModel } from '@/hooks/useIAModelsQueries';
+import { useGetParametros } from '@/hooks/useParametrosQueries';
 import type { ModelCreateRequest } from '@/types/iaModels';
 
 interface AiSidebarProps {
@@ -27,6 +28,8 @@ export const AiSidebar = ({
   });
 
   const { mutate: createModel, isPending } = useCreateModel();
+  const { parametrosMap } = useGetParametros();
+  const tiposModelo = parametrosMap['2'] || [];
 
   // Reset state when sidebar closes
   useEffect(() => {
@@ -163,8 +166,11 @@ export const AiSidebar = ({
                 <SelectValue placeholder="Seleccione un tipo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">Embeddings</SelectItem>
-                <SelectItem value="2">Text Vision</SelectItem>
+                {tiposModelo.map((tipo) => (
+                  <SelectItem key={tipo.NUM1} value={String(tipo.NUM1)}>
+                    {tipo.STRING1}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

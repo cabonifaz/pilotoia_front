@@ -36,7 +36,7 @@ export const AreaAiSidebar = ({
   }, [modelsData]);
 
   const llmModels = useMemo(() => {
-    return modelsData?.models?.filter(m => m.ID_TIPO === 2) ?? [];
+    return modelsData?.models?.filter(m => [2, 3].includes(m.ID_TIPO)) ?? [];
   }, [modelsData]);
 
   const [isEditable, setIsEditable] = useState(false);
