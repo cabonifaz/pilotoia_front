@@ -7,6 +7,7 @@ import {
   Filter,
   ArrowUp,
   ArrowDown,
+  RotateCcw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
 import { Button } from "@/components/shadcn/button";
@@ -17,6 +18,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/shadcn/dropdown-menu";
 import {
   Select,
@@ -35,6 +40,7 @@ import {
 } from "@/components/shadcn/table";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import { useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
+import { useRetryIngestion } from "@/hooks/useRetryIngestion";
 import { toast } from "@/hooks/use-toast";
 
 // --- TANSTACK & DND IMPORTS ---
@@ -262,6 +268,9 @@ export const DocumentsTable = ({
   >("FCHCRE");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
+
+  // Retry mutation
+  const retryMutation = useRetryIngestion();
 
   // 2. Estados de Vista Previa (Modal)
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -592,31 +601,64 @@ export const DocumentsTable = ({
       }),
       columnHelper.display({
         id: "actions",
-        cell: (info) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="text-muted-foreground hover:text-foreground px-2">
-                ⋮
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() =>
-                  handleViewDocument(
-                    info.row.original.ruta_documento,
-                    info.row.original.nombre_documento,
-                  )
-                }
-              >
-                Ver documento
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ),
+        cell: (info) => {
+          const row = info.row.original;
+          const canRetry = row.id_estado_proceso === 7 || row.id_estado_proceso === 8;
+          const isPending = retryMutation.isPending && retryMutation.variables?.idDocumento === row.id_documento;
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="text-muted-foreground hover:text-foreground px-2" disabled={isPending}>
+                  {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : "⋮"}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() =>
+                    handleViewDocument(
+                      row.ruta_documento,
+                      row.nombre_documento,
+                    )
+                  }
+                >
+                  Ver documento
+                </DropdownMenuItem>
+                {canRetry && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Reintentar desde...
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem
+                          onClick={() => retryMutation.mutate({ idDocumento: row.id_documento, idEtapa: 1 })}
+                        >
+                          Extracción (etapa 1)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => retryMutation.mutate({ idDocumento: row.id_documento, idEtapa: 2 })}
+                        >
+                          Segmentación (etapa 2)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => retryMutation.mutate({ idDocumento: row.id_documento, idEtapa: 3 })}
+                        >
+                          Vectorización (etapa 3)
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
         size: 40,
       }),
     ],
-    [statusFilter, handleStatusFilterChange],
+    [statusFilter, handleStatusFilterChange, retryMutation],
   );
 
   // --- TABLA INSTANCIA ---
