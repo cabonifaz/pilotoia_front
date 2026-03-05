@@ -51,6 +51,7 @@ export interface RagDocumentRecord {
   FCH_FIN: string | null;
   DURACION_SEG: number | null;
   MENSAJE_ERROR: string | null;
+  ULTIMA_ETAPA_EXITOSA: number | null;
 }
 
 export interface PaginatedRagDocumentsResponse {

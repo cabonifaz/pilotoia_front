@@ -146,6 +146,7 @@ interface DocumentData {
   fch_fin: string | null;
   duracion_seg: number | null;
   mensaje_error: string | null;
+  ultima_etapa_exitosa: number | null;
   status: StatusBadge;
 }
 
@@ -332,6 +333,7 @@ export const DocumentsTable = ({
         fch_fin: r.FCH_FIN,
         duracion_seg: r.DURACION_SEG,
         mensaje_error: r.MENSAJE_ERROR,
+        ultima_etapa_exitosa: r.ULTIMA_ETAPA_EXITOSA,
         status: getStatusFromStage(r.ID_ESTADO_PROCESO, r.ESTADO_NOMBRE),
       })) || []
     );
@@ -632,21 +634,34 @@ export const DocumentsTable = ({
                         Reintentar desde...
                       </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
-                        <DropdownMenuItem
-                          onClick={() => retryMutation.mutate({ idDocumento: row.id_documento, idEtapa: 1 })}
-                        >
-                          Extracción (etapa 1)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => retryMutation.mutate({ idDocumento: row.id_documento, idEtapa: 2 })}
-                        >
-                          Segmentación (etapa 2)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => retryMutation.mutate({ idDocumento: row.id_documento, idEtapa: 3 })}
-                        >
-                          Vectorización (etapa 3)
-                        </DropdownMenuItem>
+                        {(() => {
+                          const lastSuccess = row.ultima_etapa_exitosa ?? 0;
+                          const stage2Enabled = row.id_estado_proceso === 7 || lastSuccess >= 1;
+                          const stage3Enabled = row.id_estado_proceso === 7 || lastSuccess >= 2;
+                          return (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => retryMutation.mutate({ idDocumento: row.id_documento, idEtapa: 1 })}
+                              >
+                                Extracción (etapa 1)
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={!stage2Enabled}
+                                onClick={() => stage2Enabled && retryMutation.mutate({ idDocumento: row.id_documento, idEtapa: 2 })}
+                                className={!stage2Enabled ? "text-muted-foreground" : ""}
+                              >
+                                Segmentación (etapa 2)
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={!stage3Enabled}
+                                onClick={() => stage3Enabled && retryMutation.mutate({ idDocumento: row.id_documento, idEtapa: 3 })}
+                                className={!stage3Enabled ? "text-muted-foreground" : ""}
+                              >
+                                Vectorización (etapa 3)
+                              </DropdownMenuItem>
+                            </>
+                          );
+                        })()}
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
                   </>
