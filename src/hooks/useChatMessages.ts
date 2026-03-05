@@ -1,9 +1,12 @@
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { chatApi } from "../api/chatApi";
 import { queryKeys } from "../lib/queryClient";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 const MAX_RECENT_CHATS = 10;
+
+// Module-level: persists across component mounts for the entire app session
+const recentChats: (number | null)[] = [];
 
 export const useChatMessages = (
   chatId: number | null | undefined,
@@ -11,7 +14,6 @@ export const useChatMessages = (
   area_id: number,
 ) => {
   const queryClient = useQueryClient();
-  const recentChatsRef = useRef<(number | null)[]>([]);
 
   // Track and cleanup old chat message caches
   useEffect(() => {
@@ -21,15 +23,16 @@ export const useChatMessages = (
       // Add chat to recent list (remove if already exists to update position)
       const updatedRecent = [
         currentChatId,
-        ...recentChatsRef.current.filter((id) => id !== currentChatId),
+        ...recentChats.filter((id) => id !== currentChatId),
       ];
 
       // Keep only the MAX_RECENT_CHATS most recent
       const chatsToKeep = updatedRecent.slice(0, MAX_RECENT_CHATS);
       const chatsToRemove = updatedRecent.slice(MAX_RECENT_CHATS);
 
-      // Update the ref
-      recentChatsRef.current = chatsToKeep;
+      // Update module-level array in place
+      recentChats.length = 0;
+      recentChats.push(...chatsToKeep);
 
       // Remove message caches for old chats
       chatsToRemove.forEach((oldChatId) => {
@@ -62,5 +65,6 @@ export const useChatMessages = (
 
     getNextPageParam: (lastPage) => lastPage.last_evaluated_key ?? undefined,
     enabled: !!chatId,
+    staleTime: Infinity,
   });
 };

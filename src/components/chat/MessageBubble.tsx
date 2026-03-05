@@ -1,5 +1,4 @@
 import { memo } from 'react';
-import 'katex/dist/katex.min.css';
 import { User, Bot, Loader2 } from 'lucide-react';
 import { Card, CardHeaderCompact, CardContentCompact } from '@/components/shadcn/card';
 import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
