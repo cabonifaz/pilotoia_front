@@ -64,7 +64,21 @@ export const MessageBubble = memo(({ message, streamingMessageId, progressMessag
 
   return (
   <div className={`mb-6 ${isUserMessage ? 'flex justify-end' : 'flex justify-start'}`}>
-    <Card className={`max-w-[80%] border-0 shadow-none ${isUserMessage ? 'bg-muted' : 'bg-background'}`}>
+    <div className="flex flex-col max-w-[80%] gap-1">
+    {message.attachment_urls && message.attachment_urls.length > 0 && (
+      <div className={`flex flex-wrap gap-2 ${isUserMessage ? 'justify-end' : 'justify-start'}`}>
+        {message.attachment_urls.map((url, i) => (
+          <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+            <img
+              src={url}
+              alt={`attachment-${i + 1}`}
+              className="h-20 w-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+            />
+          </a>
+        ))}
+      </div>
+    )}
+    <Card className={`border-0 shadow-none ${isUserMessage ? 'bg-muted' : 'bg-background'}`}>
       <CardHeaderCompact className="pb-2">
         <div className="flex items-center gap-2 text-xs">
           <Avatar className="h-6 w-6">
@@ -90,6 +104,7 @@ export const MessageBubble = memo(({ message, streamingMessageId, progressMessag
         </div>
       </CardContentCompact>
     </Card>
+    </div>
   </div>
   );
 });
