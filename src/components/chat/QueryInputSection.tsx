@@ -129,6 +129,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
               text-xs
               leading-normal
               overflow-y-auto
+              chat-scroll
               border-0
               focus-visible:ring-0
               focus-visible:ring-offset-0

@@ -138,8 +138,20 @@
   }
 }
 
-/* Radix ScrollArea: prevent the internal table wrapper from expanding beyond viewport width */
-[data-radix-scroll-area-viewport] > div {
-  display: block !important;
-  width: 100% !important;
+/* Chat scroll: native scrollbar styled to match shadcn ScrollArea */
+.chat-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.chat-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-scroll::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+.chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
 }
