@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { ScrollArea, ScrollBar } from '@/components/shadcn/scroll-area';
 import { User, Bot, Loader2 } from 'lucide-react';
 import { Card, CardHeaderCompact, CardContentCompact } from '@/components/shadcn/card';
 import { Avatar, AvatarFallback } from '@/components/shadcn/avatar';
@@ -64,19 +65,22 @@ export const MessageBubble = memo(({ message, streamingMessageId, progressMessag
 
   return (
   <div className={`mb-6 ${isUserMessage ? 'flex justify-end' : 'flex justify-start'}`}>
-    <div className="flex flex-col max-w-[80%] gap-1">
+    <div className="flex flex-col max-w-[80%]">
     {message.attachment_urls && message.attachment_urls.length > 0 && (
-      <div className={`flex flex-wrap gap-2 ${isUserMessage ? 'justify-end' : 'justify-start'}`}>
-        {message.attachment_urls.map((url, i) => (
-          <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-            <img
-              src={url}
-              alt={`attachment-${i + 1}`}
-              className="h-20 w-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-            />
-          </a>
-        ))}
-      </div>
+      <ScrollArea className="w-full whitespace-nowrap px-1 pb-1">
+        <div className={`flex gap-2 pb-2 ${isUserMessage ? 'justify-end' : 'justify-start'}`}>
+          {message.attachment_urls.map((url, i) => (
+            <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="shrink-0">
+              <img
+                src={url}
+                alt={`attachment-${i + 1}`}
+                className="h-20 w-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+              />
+            </a>
+          ))}
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     )}
     <Card className={`border-0 shadow-none ${isUserMessage ? 'bg-muted' : 'bg-background'}`}>
       <CardHeaderCompact className="pb-2">

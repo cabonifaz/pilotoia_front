@@ -137,3 +137,9 @@
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   }
 }
+
+/* Radix ScrollArea: prevent the internal table wrapper from expanding beyond viewport width */
+[data-radix-scroll-area-viewport] > div {
+  display: block !important;
+  width: 100% !important;
+}

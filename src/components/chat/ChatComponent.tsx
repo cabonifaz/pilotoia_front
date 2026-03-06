@@ -22,6 +22,7 @@ import { Bot, Loader2 } from "lucide-react";
 import { getDefaultLanguage } from "../../constants/languages";
 import { Skeleton } from "../shadcn/skeleton";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/shadcn/scroll-area";
 
 interface ChatComponentProps {
   chatContext: ChatContext;
@@ -307,11 +308,10 @@ const ChatComponent = ({
   const showWelcomeScreen = isChatEmpty && !isProcessing;
 
   // Debounced scroll handler
-  const handleScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => {
-      if (isUserSendingRef.current) return;
+  const handleScroll = useCallback(() => {
+      if (isUserSendingRef.current || !scrollContainerRef.current) return;
 
-      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
 
       const isAtBottom = scrollHeight - scrollTop <= clientHeight + 100;
       setShouldAutoScroll(isAtBottom);
@@ -683,10 +683,10 @@ const ChatComponent = ({
           ) : (
             <>
               <div className="flex-1 min-h-0 overflow-hidden flex">
-                <div
-                  ref={scrollContainerRef}
-                  className="w-full h-full overflow-y-auto messages-container"
-                  onScroll={handleScroll}
+                <ScrollArea
+                  className="w-full h-full min-w-0"
+                  viewportRef={scrollContainerRef}
+                  onScrollCapture={handleScroll}
                 >
                   {isFetchingNextPage && (
                     <div className="h-4 w-full flex justify-center py-2">
@@ -725,7 +725,7 @@ const ChatComponent = ({
                       </Card>
                     </div>
                   )}
-                </div>
+                </ScrollArea>
               </div>
               <div className="flex-shrink-0 flex">
                 <div className="w-full">
