@@ -4,6 +4,7 @@ export interface Message {
   message: string; // renamed from 'content'
   created_at: string; // timestamp as string (milliseconds since epoch)
   attachment_keys?: string[];
+  attachment_urls?: string[];
 }
 
 // Helper function to convert created_at string to Date
