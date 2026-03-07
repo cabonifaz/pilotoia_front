@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { ScrollArea, ScrollBar } from '@/components/shadcn/scroll-area';
 import { User, Bot, Loader2 } from 'lucide-react';
 import { Card, CardHeaderCompact, CardContentCompact } from '@/components/shadcn/card';
@@ -26,6 +26,15 @@ const hasTableOrList = (text: string): boolean => {
 };
 
 export const MessageBubble = memo(({ message, streamingMessageId, progressMessage, user }: MessageBubbleProps) => {
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!lightboxUrl) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightboxUrl(null); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [lightboxUrl]);
+
   const messageType = getMessageType(message.sender);
   const timestamp = parseMessageTimestamp(message.created_at);
   const isTableOrList = hasTableOrList(message.message);
@@ -64,19 +73,20 @@ export const MessageBubble = memo(({ message, streamingMessageId, progressMessag
   const isUserMessage = message.sender === 0;
 
   return (
+  <>
   <div className={`mb-6 ${isUserMessage ? 'flex justify-end' : 'flex justify-start'}`}>
     <div className="flex flex-col max-w-[80%]">
     {message.attachment_urls && message.attachment_urls.length > 0 && (
       <ScrollArea className="w-full whitespace-nowrap px-1 pb-1">
         <div className={`flex gap-2 pb-2 ${isUserMessage ? 'justify-end' : 'justify-start'}`}>
           {message.attachment_urls.map((url, i) => (
-            <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="shrink-0">
-              <img
-                src={url}
-                alt={`attachment-${i + 1}`}
-                className="h-20 w-20 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-              />
-            </a>
+            <img
+              key={i}
+              src={url}
+              alt={`attachment-${i + 1}`}
+              className="h-20 w-20 object-cover rounded shrink-0 cursor-zoom-in hover:opacity-80 transition-opacity"
+              onClick={() => setLightboxUrl(url)}
+            />
           ))}
         </div>
         <ScrollBar orientation="horizontal" />
@@ -110,5 +120,20 @@ export const MessageBubble = memo(({ message, streamingMessageId, progressMessag
     </Card>
     </div>
   </div>
+
+  {lightboxUrl && (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm cursor-zoom-out"
+      onClick={() => setLightboxUrl(null)}
+    >
+      <img
+        src={lightboxUrl}
+        alt="preview"
+        className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  )}
+  </>
   );
 });
