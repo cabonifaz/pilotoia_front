@@ -52,10 +52,9 @@ export const useChatMessages = (
       if (!chatId) return { messages: [], last_evaluated_key: null };
 
       return chatApi.getMessagesByChat(
-        chatId.toString(), // 2. Convertimos el número a string aquí 📝
+        chatId.toString(),
         company_id,
         area_id,
-        15,
         pageParam,
       );
     },
