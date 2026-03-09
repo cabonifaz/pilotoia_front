@@ -1,10 +1,10 @@
-import { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import type { ReactNode } from 'react';
 
 interface CommandContextType {
   // Command selection
-  selectedAction: 'vectorial' | 'vectorial+sql' | 'login';
-  onSelectedActionChange: (action: 'vectorial' | 'vectorial+sql' | 'login') => void;
+  selectedAction: 'vectorial' | 'vectorial+sql' | 'login' | 'ocr';
+  onSelectedActionChange: (action: 'vectorial' | 'vectorial+sql' | 'login' | 'ocr') => void;
 
   // Command execution
   onSearchVectorial: () => void;
@@ -24,6 +24,10 @@ interface CommandContextType {
   // TTS state
   ttsEnabled: boolean;
   onTtsEnabledChange: (enabled: boolean) => void;
+
+  // OCR images
+  ocrImages: File[];
+  onOcrImagesChange: (files: File[]) => void;
 }
 
 const CommandContext = createContext<CommandContextType | undefined>(undefined);
@@ -69,7 +73,10 @@ export const CommandProvider = ({
   ttsEnabled,
   onTtsEnabledChange,
 }: CommandProviderProps) => {
-  const [selectedAction, setSelectedAction] = useState<'vectorial' | 'vectorial+sql' | 'login'>('vectorial');
+  const [selectedAction, setSelectedAction] = useState<'vectorial' | 'vectorial+sql' | 'login' | 'ocr'>('vectorial');
+  const [ocrImages, setOcrImages] = useState<File[]>([]);
+
+  const onOcrImagesChange = useCallback((files: File[]) => setOcrImages(files), []);
 
   // Create main action handler based on selectedAction
   useEffect(() => {
@@ -103,8 +110,10 @@ export const CommandProvider = ({
       onQueryChange,
       ttsEnabled,
       onTtsEnabledChange,
+      ocrImages,
+      onOcrImagesChange,
     }),
-    [selectedAction, onSearchVectorial, onSearchVectorialSQL, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange, ttsEnabled, onTtsEnabledChange]
+    [selectedAction, onSearchVectorial, onSearchVectorialSQL, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange, ttsEnabled, onTtsEnabledChange, ocrImages, onOcrImagesChange]
   );
 
   return (

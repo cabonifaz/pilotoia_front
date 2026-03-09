@@ -2,7 +2,7 @@ import {
   DropdownMenuItem,
 } from '@/components/shadcn/dropdown-menu';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/shadcn/tooltip';
-import { Send, /*Bot, Lock*/ } from 'lucide-react';
+import { Send, ScanSearch, /*Bot, Lock*/ } from 'lucide-react';
 import { useCommand } from '../../contexts/CommandContext';
 //import { LoginModal } from '../external-api/LoginModal';
 
@@ -24,6 +24,20 @@ export const RagModeOptions = () => {
         </TooltipTrigger>
         <TooltipContent side="right">
           Búsqueda en la base de conocimiento
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuItem
+            onSelect={() => onSelectedActionChange('ocr')}
+            className={selectedAction === 'ocr' ? 'border-l-4 border-primary' : ''}
+          >
+            <ScanSearch className="h-4 w-4 mr-2" />
+            Análisis de imagen (OCR)
+          </DropdownMenuItem>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          Extracción de texto e interpretación de imágenes
         </TooltipContent>
       </Tooltip>
       {/* {isAuthenticated && (

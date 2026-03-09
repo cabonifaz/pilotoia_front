@@ -14,8 +14,8 @@ export const useUserChats = () => {
             return chats as ChatData[];
         },
         enabled: !!user, // Only run if user is authenticated
-        staleTime: 1000 * 60 * 5, // Stale after 5 minutes
-        gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+        staleTime: 60 * 60 * 1000, // Stale after 5 minutes
+        gcTime: 2 * 60 * 60 * 1000, // Keep in cache for 10 minutes
         refetchOnWindowFocus: true,
         refetchOnReconnect: true,
         retry: true,

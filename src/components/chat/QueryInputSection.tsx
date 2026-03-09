@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
 import {
@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/shadcn/select';
-import { Square, Languages, AudioLines } from 'lucide-react';
+import { Square, Languages, AudioLines, Paperclip, X } from 'lucide-react';
 import { VoiceRecordButton } from './VoiceRecordButton';
 import { FileTranscribeButton } from './FileTranscribeButton';
 import { ContinuousVoiceButton } from './ContinuousVoiceButton';
@@ -40,7 +40,25 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     selectedAction,
     ttsEnabled,
     onTtsEnabledChange,
+    ocrImages,
+    onOcrImagesChange,
   } = useCommand();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const unique = files.filter(
+      (f) => !ocrImages.some((existing) => existing.name === f.name && existing.size === f.size)
+    );
+    const merged = [...ocrImages, ...unique].slice(0, 5);
+    onOcrImagesChange(merged);
+    e.target.value = '';
+  }, [ocrImages, onOcrImagesChange]);
+
+  const removeOcrImage = useCallback((index: number) => {
+    onOcrImagesChange(ocrImages.filter((_, i) => i !== index));
+  }, [ocrImages, onOcrImagesChange]);
 
   const {
     transcribeProvider,
@@ -150,8 +168,45 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
         {/* CONTROLS ROW - bottom */}
         <div className="flex items-center justify-between pt-1">
           {/* LEFT */}
-          <div>
+          <div className="flex items-center gap-1">
             {!isLoading && <CommandMenu disabled={isLoading} />}
+            {!isLoading && selectedAction === 'ocr' && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".png,.jpg,.jpeg,.webp,.bmp,image/png,image/jpeg,image/webp,image/bmp"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full h-8 w-8"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={ocrImages.length >= 5}
+                  title={ocrImages.length >= 5 ? 'Máximo 5 imágenes' : 'Adjuntar imágenes'}
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+                {ocrImages.map((file, i) => (
+                  <div key={i} className="relative flex items-center">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={file.name}
+                      className="h-7 w-7 rounded object-cover border border-muted-foreground/30"
+                    />
+                    <button
+                      className="absolute -top-1 -right-1 bg-background rounded-full border border-muted-foreground/30 p-px"
+                      onClick={() => removeOcrImage(i)}
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
 
           {/* RIGHT */}
