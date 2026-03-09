@@ -29,6 +29,7 @@ const ChatComponent = ({
 }: ChatComponentProps) => {
   const [userQuery, setUserQuery] = useState("");
   const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [ocrImages, setOcrImages] = useState<File[]>([]);
   const currentMainActionRef = useRef<() => void>(() => {});
 
   const { data: currentUser } = useQuery({
@@ -56,6 +57,7 @@ const ChatComponent = ({
     progressMessage,
     searchVectorial,
     searchVectorialSQL,
+    analyzeImages,
     cancelMessage,
     currentChatId,
     initializeAudio,
@@ -124,6 +126,18 @@ const ChatComponent = ({
     await searchVectorialSQL(currentQuery, chatContext, token);
   }, [userQuery, searchVectorialSQL, chatContext, token, signalUserSending]);
 
+  const imageAnalysisQuery = useCallback(async () => {
+    if (!userQuery.trim() && ocrImages.length === 0) return;
+    const currentQuery = userQuery;
+    const currentImages = ocrImages;
+    setUserQuery("");
+    setOcrImages([]);
+    signalUserSending();
+    prepareBeforeSubmit();
+    const onComplete = buildOnComplete();
+    await analyzeImages(currentQuery, currentImages, chatContext, ttsEnabled, onComplete);
+  }, [userQuery, ocrImages, analyzeImages, chatContext, ttsEnabled, signalUserSending, prepareBeforeSubmit, buildOnComplete]);
+
   // Keep submit callback updated for continuous mode auto-submit
   useEffect(() => {
     setSubmitCallback(chatQuery);
@@ -139,6 +153,9 @@ const ChatComponent = ({
       token={token || undefined}
       onSearchVectorial={chatQuery}
       onSearchVectorialSQL={agentQuery}
+      onAnalyzeImages={imageAnalysisQuery}
+      ocrImages={ocrImages}
+      onOcrImagesChange={setOcrImages}
       onMainActionChange={(action) => { currentMainActionRef.current = action; }}
       ttsEnabled={ttsEnabled}
       onTtsEnabledChange={handleTtsToggle}

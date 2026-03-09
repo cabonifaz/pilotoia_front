@@ -37,6 +37,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     isLoading,
     onCancel,
     onSearchVectorial,
+    onAnalyzeImages,
     selectedAction,
     ttsEnabled,
     onTtsEnabledChange,
@@ -111,8 +112,10 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
   useEffect(() => {
     if (selectedAction === 'vectorial') {
       currentMainActionRef.current = onSearchVectorial;
+    } else if (selectedAction === 'ocr') {
+      currentMainActionRef.current = onAnalyzeImages;
     }
-  }, [selectedAction, onSearchVectorial]);
+  }, [selectedAction, onSearchVectorial, onAnalyzeImages]);
 
   /* ---------------- LANGUAGES ---------------- */
 

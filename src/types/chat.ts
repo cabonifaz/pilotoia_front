@@ -68,3 +68,29 @@ export interface ConfigValidationResponse {
     errors?: string[];
     result: MensajeResponse;
 }
+
+export interface AttachmentUploadUrlsRequest {
+    company_id: number;
+    area_id: number;
+    filenames: string[];
+    timestamp: string;
+}
+
+export interface AttachmentUploadUrlsResponse {
+    uploads: Array<{
+        presigned_url: string;
+        s3_key: string;
+        document_name: string;
+    }>;
+}
+
+export interface VlmMessageRequest {
+    message: string;
+    user_id: number;
+    company_id: number;
+    area_id: number;
+    created_at: string;
+    filenames: string[];
+    chat_id: number | null;
+    request_timezone: string;
+}

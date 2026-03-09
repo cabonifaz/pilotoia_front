@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
 
 interface CommandContextType {
@@ -9,6 +9,7 @@ interface CommandContextType {
   // Command execution
   onSearchVectorial: () => void;
   onSearchVectorialSQL: () => void;
+  onAnalyzeImages: () => void;
   onCancel: () => void;
   onMainActionChange: (action: () => void) => void;
 
@@ -46,6 +47,7 @@ interface CommandProviderProps {
   // Command execution
   onSearchVectorial: () => void;
   onSearchVectorialSQL: () => void;
+  onAnalyzeImages: () => void;
 
   // Auth
   isAuthenticated: boolean;
@@ -57,6 +59,10 @@ interface CommandProviderProps {
   // TTS state
   ttsEnabled: boolean;
   onTtsEnabledChange: (enabled: boolean) => void;
+
+  // OCR images
+  ocrImages: File[];
+  onOcrImagesChange: (files: File[]) => void;
 }
 
 export const CommandProvider = ({
@@ -67,22 +73,24 @@ export const CommandProvider = ({
   onCancel,
   onSearchVectorial,
   onSearchVectorialSQL,
+  onAnalyzeImages,
   isAuthenticated,
   token,
   onMainActionChange,
   ttsEnabled,
   onTtsEnabledChange,
+  ocrImages,
+  onOcrImagesChange,
 }: CommandProviderProps) => {
   const [selectedAction, setSelectedAction] = useState<'vectorial' | 'vectorial+sql' | 'login' | 'ocr'>('vectorial');
-  const [ocrImages, setOcrImages] = useState<File[]>([]);
-
-  const onOcrImagesChange = useCallback((files: File[]) => setOcrImages(files), []);
 
   // Create main action handler based on selectedAction
   useEffect(() => {
     const handleMainButtonClick = () => {
       if (selectedAction === 'vectorial') {
         onSearchVectorial();
+      } else if (selectedAction === 'ocr') {
+        onAnalyzeImages();
       } /*else if (selectedAction === 'vectorial+sql') {
         onSearchVectorialSQL();
       }
@@ -92,7 +100,7 @@ export const CommandProvider = ({
     };
 
     onMainActionChange(handleMainButtonClick);
-  }, [selectedAction, isAuthenticated, onSearchVectorial, onSearchVectorialSQL, onMainActionChange]);
+  }, [selectedAction, isAuthenticated, onSearchVectorial, onSearchVectorialSQL, onAnalyzeImages, onMainActionChange]);
 
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<CommandContextType>(
@@ -101,6 +109,7 @@ export const CommandProvider = ({
       onSelectedActionChange: setSelectedAction,
       onSearchVectorial,
       onSearchVectorialSQL,
+      onAnalyzeImages,
       onCancel,
       onMainActionChange,
       isLoading,
@@ -113,7 +122,7 @@ export const CommandProvider = ({
       ocrImages,
       onOcrImagesChange,
     }),
-    [selectedAction, onSearchVectorial, onSearchVectorialSQL, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange, ttsEnabled, onTtsEnabledChange, ocrImages, onOcrImagesChange]
+    [selectedAction, onSearchVectorial, onSearchVectorialSQL, onAnalyzeImages, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange, ttsEnabled, onTtsEnabledChange, ocrImages, onOcrImagesChange]
   );
 
   return (
