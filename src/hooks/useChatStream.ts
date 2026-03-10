@@ -131,9 +131,9 @@ export const useChatStream = (): UseChatStreamReturn => {
       messageContent: string,
       chatContext: ChatContext,
       runner: StreamRunner,
-      options?: { onComplete?: () => void }
+      options?: { onComplete?: () => void; attachmentUrls?: string[] }
     ) => {
-      if (!messageContent.trim()) return;
+      if (!messageContent.trim() && !options?.attachmentUrls?.length) return;
 
       setIsLoading(true);
       setProgressMessage(null);
@@ -145,6 +145,7 @@ export const useChatStream = (): UseChatStreamReturn => {
         sender: 0,
         message: messageContent,
         created_at: Date.now().toString(),
+        ...(options?.attachmentUrls?.length ? { attachment_urls: options.attachmentUrls } : {}),
       };
       addMessagesToCache(activeChatIdRef.current, [userMessage]);
 
@@ -367,12 +368,14 @@ export const useChatStream = (): UseChatStreamReturn => {
         request_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
 
+      const attachmentUrls = images.map((f) => URL.createObjectURL(f));
+
       await executeStream(
         messageContent,
         chatContext,
         (onMessage, onError, onClose, onOpen, signal) =>
           chatApi.sendVlmStreaming(payload, onMessage, onError, onClose, onOpen, signal),
-        { onComplete }
+        { onComplete, attachmentUrls }
       );
     },
     [executeStream, resetAudio]

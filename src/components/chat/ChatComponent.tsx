@@ -127,7 +127,7 @@ const ChatComponent = ({
   }, [userQuery, searchVectorialSQL, chatContext, token, signalUserSending]);
 
   const imageAnalysisQuery = useCallback(async () => {
-    if (!userQuery.trim() && ocrImages.length === 0) return;
+    if (ocrImages.length === 0) return;
     const currentQuery = userQuery;
     const currentImages = ocrImages;
     setUserQuery("");

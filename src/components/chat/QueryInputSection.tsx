@@ -141,6 +141,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
+                if (selectedAction === 'ocr' && ocrImages.length === 0) return;
                 currentMainActionRef.current();
               }
             }}
