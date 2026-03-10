@@ -25,6 +25,8 @@ export interface DocumentoIngestItem {
   nombre_documento: string;
   ruta_documento: string;
   id_modelo_embedding: number;
+  cant_paginas?: number;
+  tamano_bytes?: number;
 }
 
 export interface RegisterIngestRequest {
@@ -44,6 +46,8 @@ export interface RagDocumentRecord {
   NOMBRE_DOCUMENTO: string;
   RUTA_DOCUMENTO: string;
   FCHCRE: string;
+  CANT_PAGINAS: number | null;
+  TAMANO_BYTES: number | null;
   ID_PROCESO: number;
   NRO_INTENTO: number;
   ID_ESTADO_PROCESO: number;

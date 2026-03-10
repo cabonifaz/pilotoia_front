@@ -77,7 +77,7 @@ const DocumentUpload = () => {
       { idDocumentos: numericIds, idEmpresa: id_empresa },
       {
         onSuccess: () => {
-          setSelectedRows([]);
+          setSelectedRows({ enabled: [], disabled: [] });
           setIsDeleteDialogOpen(false);
           setClearSelectionTrigger(t => t + 1);
         },

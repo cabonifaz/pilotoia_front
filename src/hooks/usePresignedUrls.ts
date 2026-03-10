@@ -9,6 +9,7 @@ type FileStatus = 'idle' | 'uploading' | 'done' | 'error';
 interface UploadPdfsParams {
   files: File[];
   fileIds: string[];
+  pageCounts: (number | null)[];
   areaId?: number;
   embeddingModel?: string;
   onFileStatusChange?: (fileId: string, status: FileStatus) => void;
@@ -23,7 +24,7 @@ export const usePresignedUrls = () => {
 
   return useMutation({
     mutationFn: async (params: UploadPdfsParams): Promise<BatchUploadKnowledgeResponse & { uploadCompanyId: number; uploadAreaId: number }> => {
-      const { files, fileIds, areaId: selectedAreaId, embeddingModel: selectedEmbeddingModel, onFileStatusChange, onRegisterStart } = params;
+      const { files, fileIds, pageCounts, areaId: selectedAreaId, embeddingModel: selectedEmbeddingModel, onFileStatusChange, onRegisterStart } = params;
       const companyId = user?.actual_company_area?.ID_EMPRESA;
       const areaId = selectedAreaId;
       const embeddingModel = selectedEmbeddingModel || '4';
@@ -56,10 +57,12 @@ export const usePresignedUrls = () => {
 
         // Step 3: Register docs in DB and enqueue to SQS
         onRegisterStart?.();
-        const documentos = response.uploads.map(upload => ({
+        const documentos = response.uploads.map((upload, index) => ({
           nombre_documento: upload.document_name,
           ruta_documento: upload.s3_key,
           id_modelo_embedding: parseInt(embeddingModel),
+          cant_paginas: pageCounts[index] ?? undefined,
+          tamano_bytes: files[index].size,
         }));
         await registerIngestion({ id_empresa: companyId, id_area: areaId, documentos });
 

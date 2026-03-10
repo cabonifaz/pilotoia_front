@@ -1,5 +1,17 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
 import { Upload, FileText, X, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { pdfjs } from 'react-pdf';
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
+
+async function getPdfPageCount(file: File): Promise<number> {
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: ab }).promise;
+  return pdf.numPages;
+}
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shadcn/card';
 import { Button } from '@/components/shadcn/button';
 import { Label } from '@/components/shadcn/label';
@@ -21,6 +33,7 @@ type UploadPhase = 'idle' | 'preparing' | 'uploading' | 'registering';
 interface UploadedFile {
   file: File;
   id: string;
+  pageCount: number | null;
 }
 
 interface UploadSidebarProps {
@@ -78,23 +91,31 @@ export const UploadSidebar = ({
     }
   }, [isOpen]);
 
-  const handleAddFiles = useCallback(
-    (selectedFiles: FileList | null) => {
-      if (!selectedFiles) return;
+  const handleAddFiles = useCallback(async (selectedFiles: FileList | null) => {
+    if (!selectedFiles) return;
 
-      const newFiles = Array.from(selectedFiles).map((file) => ({
-        file,
-        id: `${file.name}-${Date.now()}-${Math.random()}`,
-      }));
+    const newFiles = Array.from(selectedFiles).map((file) => ({
+      file,
+      id: `${file.name}-${Date.now()}-${Math.random()}`,
+      pageCount: null as number | null,
+    }));
 
-      setFiles((prev) => [...prev, ...newFiles]);
+    setFiles((prev) => [...prev, ...newFiles]);
 
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    },
-    []
-  );
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    for (const uf of newFiles) {
+      getPdfPageCount(uf.file)
+        .then((count) => {
+          setFiles((prev) =>
+            prev.map((f) => (f.id === uf.id ? { ...f, pageCount: count } : f))
+          );
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   const handleRemoveFile = useCallback((fileId: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== fileId));
@@ -120,6 +141,7 @@ export const UploadSidebar = ({
       {
         files: files.map((f) => f.file),
         fileIds: files.map((f) => f.id),
+        pageCounts: files.map((f) => f.pageCount),
         areaId: typeof areaId === 'number' ? areaId : undefined,
         embeddingModel: embeddingModelId,
         onFileStatusChange: handleFileStatusChange,
@@ -319,6 +341,9 @@ export const UploadSidebar = ({
                           <p className="text-xs font-medium truncate">{file.file.name}</p>
                           <p className="text-xs text-gray-500">
                             {(file.file.size / 1024 / 1024).toFixed(1)} MB
+                            {file.pageCount !== null
+                              ? ` · ${file.pageCount} pág.`
+                              : ' · contando...'}
                           </p>
                         </div>
                       </div>

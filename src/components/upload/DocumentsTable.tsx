@@ -133,6 +133,8 @@ interface DocumentData {
   nombre_documento: string;
   ruta_documento: string;
   fchcre: string;
+  cant_paginas: number | null;
+  tamano_bytes: number | null;
   id_proceso: number;
   nro_intento: number;
   id_estado_proceso: number;
@@ -191,8 +193,6 @@ const DraggableTableHeader = memo(
       "NOMBRE_DOCUMENTO",
       "FCHCRE",
       "ID_ESTADO_PROCESO",
-      "FCH_INICIO",
-      "FCH_FIN",
       "DURACION_SEG",
     ].includes(columnId);
 
@@ -265,8 +265,6 @@ export const DocumentsTable = ({
     | "NOMBRE_DOCUMENTO"
     | "FCHCRE"
     | "ID_ESTADO_PROCESO"
-    | "FCH_INICIO"
-    | "FCH_FIN"
     | "DURACION_SEG"
   >("FCHCRE");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
@@ -285,12 +283,11 @@ export const DocumentsTable = ({
   const [columnOrder, setColumnOrder] = useState<string[]>(() => [
     "select",
     "NOMBRE_DOCUMENTO",
-    "FCHCRE",
-    "FCH_INICIO",
-    "FCH_FIN",
-    "DURACION_SEG",
-    "NRO_INTENTO",
     "ID_ESTADO_PROCESO",
+    "TAMANO_BYTES",
+    "CANT_PAGINAS",
+    "DURACION_SEG",
+    "FCHCRE",
   ]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
@@ -328,6 +325,8 @@ export const DocumentsTable = ({
         nombre_documento: r.NOMBRE_DOCUMENTO,
         ruta_documento: r.RUTA_DOCUMENTO,
         fchcre: r.FCHCRE,
+        cant_paginas: r.CANT_PAGINAS,
+        tamano_bytes: r.TAMANO_BYTES,
         id_proceso: r.ID_PROCESO,
         nro_intento: r.NRO_INTENTO,
         id_estado_proceso: r.ID_ESTADO_PROCESO,
@@ -502,15 +501,18 @@ export const DocumentsTable = ({
         header: "Creado el",
         cell: (info) => formatDate(info.getValue()),
       }),
-      columnHelper.accessor("fch_inicio", {
-        id: "FCH_INICIO",
-        header: "Inicio proceso",
-        cell: (info) => formatDate(info.getValue()),
+      columnHelper.accessor("cant_paginas", {
+        id: "CANT_PAGINAS",
+        header: "Cant. Páginas",
+        cell: (info) => info.getValue() ?? "-",
       }),
-      columnHelper.accessor("fch_fin", {
-        id: "FCH_FIN",
-        header: "Fin proceso",
-        cell: (info) => formatDate(info.getValue()),
+      columnHelper.accessor("tamano_bytes", {
+        id: "TAMANO_BYTES",
+        header: "Tamaño (kB)",
+        cell: (info) => {
+          const bytes = info.getValue();
+          return bytes != null ? (bytes / 1024).toFixed(1) : "-";
+        },
       }),
       columnHelper.accessor("duracion_seg", {
         id: "DURACION_SEG",
@@ -519,10 +521,6 @@ export const DocumentsTable = ({
           const val = info.getValue();
           return val !== null ? `${val}s` : "-";
         },
-      }),
-      columnHelper.accessor("nro_intento", {
-        id: "NRO_INTENTO",
-        header: "Intentos",
       }),
       columnHelper.accessor("status", {
         id: "ID_ESTADO_PROCESO",
