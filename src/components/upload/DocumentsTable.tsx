@@ -7,9 +7,6 @@ import {
   Filter,
   ArrowUp,
   ArrowDown,
-  RotateCcw,
-  EyeOff,
-  Eye,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
 import { Button } from "@/components/shadcn/button";
@@ -20,10 +17,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
 } from "@/components/shadcn/dropdown-menu";
 import {
   Select,
@@ -42,9 +35,6 @@ import {
 } from "@/components/shadcn/table";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import { useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
-import { useRetryIngestion } from "@/hooks/useRetryIngestion";
-import { useToggleRagDocumentStatus } from "@/hooks/useToggleRagDocumentStatus";
-import { useCurrentUser } from "@/hooks/useUserQueries";
 import { toast } from "@/hooks/use-toast";
 
 // --- TANSTACK & DND IMPORTS ---
@@ -171,7 +161,7 @@ const DraggableTableHeader = memo(
     orderDirection,
   }: DraggableTableHeaderProps) => {
     const columnId = header.column.id;
-    const isStatic = columnId === "select" || columnId === "actions";
+    const isStatic = columnId === "select";
     const {
       attributes,
       listeners,
@@ -247,11 +237,17 @@ DraggableTableHeader.displayName = "DraggableTableHeader";
 
 // --- COMPONENTE PRINCIPAL ---
 
+export interface DocumentSelection {
+  enabled: string[];
+  disabled: string[];
+}
+
 interface DocumentsTableProps {
   searchTerm: string;
   selectedRows?: string[];
-  onSelectionChange?: (selectedIds: string[]) => void;
+  onSelectionChange?: (selection: DocumentSelection) => void;
   uploadTrigger?: number;
+  clearSelectionTrigger?: number;
 }
 
 const columnHelper = createColumnHelper<DocumentData>();
@@ -260,6 +256,7 @@ export const DocumentsTable = ({
   searchTerm,
   onSelectionChange,
   uploadTrigger,
+  clearSelectionTrigger,
 }: DocumentsTableProps) => {
   // 1. Estados de Paginación y Filtros
   const [currentPage, setCurrentPage] = useState(1);
@@ -274,14 +271,6 @@ export const DocumentsTable = ({
   >("FCHCRE");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
-
-  // Mutations
-  const retryMutation = useRetryIngestion();
-  const toggleMutation = useToggleRagDocumentStatus();
-
-  // User context (for id_empresa in delete/toggle)
-  const { user } = useCurrentUser();
-  const companyId = user?.actual_company_area?.ID_EMPRESA;
 
   // Toggle: show/hide disabled documents
   const [showDisabled, setShowDisabled] = useState(false);
@@ -302,7 +291,6 @@ export const DocumentsTable = ({
     "DURACION_SEG",
     "NRO_INTENTO",
     "ID_ESTADO_PROCESO",
-    "actions",
   ]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
@@ -358,9 +346,16 @@ export const DocumentsTable = ({
   useEffect(() => {
     if (onSelectionChange) {
       const selectedIds = Object.keys(rowSelection);
-      onSelectionChange(selectedIds);
+      const enabled: string[] = [];
+      const disabled: string[] = [];
+      for (const id of selectedIds) {
+        const row = tableData.find((r) => r.id === id);
+        if (row?.id_estado === 0) disabled.push(id);
+        else enabled.push(id);
+      }
+      onSelectionChange({ enabled, disabled });
     }
-  }, [rowSelection, onSelectionChange]);
+  }, [rowSelection, onSelectionChange, tableData]);
 
   // Handlers
   const handleSortClick = useCallback(
@@ -427,7 +422,7 @@ export const DocumentsTable = ({
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (active && over && active.id !== over.id) {
-      if (over.id === "select" || over.id === "actions") return;
+      if (over.id === "select") return;
       setColumnOrder((items) => {
         const oldIndex = items.indexOf(active.id as string);
         const newIndex = items.indexOf(over.id as string);
@@ -446,6 +441,12 @@ export const DocumentsTable = ({
     orderField,
     orderDirection,
   ]);
+
+  useEffect(() => {
+    if (clearSelectionTrigger && clearSelectionTrigger > 0) {
+      setRowSelection({});
+    }
+  }, [clearSelectionTrigger]);
 
   // --- DEFINICIÓN DE COLUMNAS ---
   const columns = useMemo(
@@ -481,9 +482,17 @@ export const DocumentsTable = ({
         cell: (info) => (
           <div className="flex items-start gap-2">
             <FileText className="h-4 w-4 text-blue-500 mt-1 shrink-0 self-center" />
-            <span className="whitespace-normal break-words">
+            <button
+              className="text-left hover:underline whitespace-normal break-words"
+              onClick={() =>
+                handleViewDocument(
+                  info.row.original.ruta_documento,
+                  info.getValue(),
+                )
+              }
+            >
               {info.getValue()}
-            </span>
+            </button>
           </div>
         ),
         minSize: 200,
@@ -616,157 +625,8 @@ export const DocumentsTable = ({
           </div>
         ),
       }),
-      columnHelper.display({
-        id: "actions",
-        cell: (info) => {
-          const row = info.row.original;
-          const canRetry =
-            (row.id_estado_proceso === 7 || row.id_estado_proceso === 8) &&
-            row.id_estado === 1;
-          const isTerminal =
-            row.id_estado_proceso === 7 || row.id_estado_proceso === 8;
-          const isPending =
-            retryMutation.isPending &&
-            retryMutation.variables?.idDocumento === row.id_documento;
-          const isToggling =
-            toggleMutation.isPending &&
-            toggleMutation.variables?.idDocumento === row.id_documento;
-          const isBusy = isPending || isToggling;
-
-          return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="text-muted-foreground hover:text-foreground px-2"
-                  disabled={isBusy}
-                >
-                  {isBusy ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "⋮"
-                  )}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() =>
-                    handleViewDocument(row.ruta_documento, row.nombre_documento)
-                  }
-                >
-                  Ver documento
-                </DropdownMenuItem>
-
-                {canRetry && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Reintentar desde...
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        {(() => {
-                          const lastSuccess = row.ultima_etapa_exitosa ?? 0;
-                          const stage2Enabled =
-                            row.id_estado_proceso === 7 || lastSuccess >= 1;
-                          const stage3Enabled =
-                            row.id_estado_proceso === 7 || lastSuccess >= 2;
-                          return (
-                            <>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  retryMutation.mutate({
-                                    idDocumento: row.id_documento,
-                                    idEtapa: 1,
-                                  })
-                                }
-                              >
-                                Extracción (etapa 1)
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                disabled={!stage2Enabled}
-                                onClick={() =>
-                                  stage2Enabled &&
-                                  retryMutation.mutate({
-                                    idDocumento: row.id_documento,
-                                    idEtapa: 2,
-                                  })
-                                }
-                                className={
-                                  !stage2Enabled ? "text-muted-foreground" : ""
-                                }
-                              >
-                                Segmentación (etapa 2)
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                disabled={!stage3Enabled}
-                                onClick={() =>
-                                  stage3Enabled &&
-                                  retryMutation.mutate({
-                                    idDocumento: row.id_documento,
-                                    idEtapa: 3,
-                                  })
-                                }
-                                className={
-                                  !stage3Enabled ? "text-muted-foreground" : ""
-                                }
-                              >
-                                Vectorización (etapa 3)
-                              </DropdownMenuItem>
-                            </>
-                          );
-                        })()}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  </>
-                )}
-
-                {isTerminal && companyId && (
-                  <>
-                    <DropdownMenuSeparator />
-                    {row.id_estado === 1 ? (
-                      <DropdownMenuItem
-                        onClick={() =>
-                          toggleMutation.mutate({
-                            idDocumento: row.id_documento,
-                            idEmpresa: companyId,
-                            action: "disable",
-                          })
-                        }
-                      >
-                        <EyeOff className="h-4 w-4 mr-2" />
-                        Deshabilitar
-                      </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem
-                        onClick={() =>
-                          toggleMutation.mutate({
-                            idDocumento: row.id_documento,
-                            idEmpresa: companyId,
-                            action: "enable",
-                          })
-                        }
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Habilitar
-                      </DropdownMenuItem>
-                    )}
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          );
-        },
-        size: 40,
-      }),
     ],
-    [
-      statusFilter,
-      handleStatusFilterChange,
-      retryMutation,
-      toggleMutation,
-      companyId,
-    ],
+    [statusFilter, handleStatusFilterChange, handleViewDocument],
   );
 
   // --- TABLA INSTANCIA ---
@@ -785,7 +645,7 @@ export const DocumentsTable = ({
   });
 
   const draggableColumns = useMemo(
-    () => columnOrder.filter((id) => id !== "select" && id !== "actions"),
+    () => columnOrder.filter((id) => id !== "select"),
     [columnOrder],
   );
 
@@ -913,10 +773,8 @@ export const DocumentsTable = ({
                             className={row.original.id_estado === 0 ? "opacity-50" : undefined}
                           >
                             {row.getVisibleCells().map((cell) => {
-                              const isCompactColumn = [
-                                "select",
-                                "actions",
-                              ].includes(cell.column.id);
+                              const isCompactColumn =
+                                cell.column.id === "select";
                               return (
                                 <TableCell
                                   key={cell.id}

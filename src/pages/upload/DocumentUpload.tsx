@@ -1,11 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useDebounce } from 'use-debounce';
-import { Search, CirclePlus, Trash2 } from 'lucide-react';
+import { Search, CirclePlus, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { DocumentsTable, UploadSidebar } from '@/components/upload';
 import { useDeleteRagDocuments } from '@/hooks/useDeleteRagDocuments';
+import { useRetryIngestionBatch } from '@/hooks/useRetryIngestionBatch';
+import { useDisableRagDocumentsBatch } from '@/hooks/useDisableRagDocumentsBatch';
+import { useEnableRagDocumentsBatch } from '@/hooks/useEnableRagDocumentsBatch';
+import type { DocumentSelection } from '@/components/upload/DocumentsTable';
 import { useCurrentUser } from '@/hooks/useUserQueries';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from '@/components/shadcn/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -18,23 +32,26 @@ import {
 const DocumentUpload = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [selectedRows, setSelectedRows] = useState<DocumentSelection>({ enabled: [], disabled: [] });
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [uploadTrigger, setUploadTrigger] = useState(0); 
+  const [uploadTrigger, setUploadTrigger] = useState(0);
+  const [clearSelectionTrigger, setClearSelectionTrigger] = useState(0);
 
-  // Debounce search term
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
 
   const { user } = useCurrentUser();
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
   const areaName = user?.actual_company_area?.AREA || 'esta área';
-  const deleteMutation = useDeleteRagDocuments();
 
-  // Close sidebar and dialog when company changes
+  const deleteMutation = useDeleteRagDocuments();
+  const retryBatchMutation = useRetryIngestionBatch();
+  const disableBatchMutation = useDisableRagDocumentsBatch();
+  const enableBatchMutation = useEnableRagDocumentsBatch();
+
   useEffect(() => {
     setIsSidebarOpen(false);
     setIsDeleteDialogOpen(false);
-    setSelectedRows([]);
+    setSelectedRows({ enabled: [], disabled: [] });
   }, [id_empresa]);
 
   const closeSidebar = () => {
@@ -42,27 +59,63 @@ const DocumentUpload = () => {
   };
 
   const handleUploadSuccess = () => {
-    setUploadTrigger(prev => prev + 1); // Forzar refetch en DocumentsTable
+    setUploadTrigger(prev => prev + 1);
   };
 
+  const allSelectedIds = [...selectedRows.enabled, ...selectedRows.disabled];
+  const totalSelected = allSelectedIds.length;
+
   const handleDeleteClick = () => {
-    if (selectedRows.length > 0) {
+    if (totalSelected > 0) {
       setIsDeleteDialogOpen(true);
     }
   };
 
   const handleConfirmDelete = async () => {
-    const numericIds = selectedRows.map(id => parseInt(id, 10));
-
+    const numericIds = allSelectedIds.map(id => parseInt(id, 10));
     await deleteMutation.mutateAsync(
       { idDocumentos: numericIds, idEmpresa: id_empresa },
-      { onSuccess: () => { setSelectedRows([]); setIsDeleteDialogOpen(false); } },
+      {
+        onSuccess: () => {
+          setSelectedRows([]);
+          setIsDeleteDialogOpen(false);
+          setClearSelectionTrigger(t => t + 1);
+        },
+      },
     );
   };
 
   const handleCancelDelete = () => {
     setIsDeleteDialogOpen(false);
   };
+
+  const handleRetryBatch = (idEtapa: number) => {
+    const numericIds = allSelectedIds.map(id => parseInt(id, 10));
+    retryBatchMutation.mutate(
+      { idDocumentos: numericIds, idEmpresa: id_empresa, idEtapa },
+      { onSuccess: () => setClearSelectionTrigger(t => t + 1) },
+    );
+  };
+
+  const handleDisableBatch = () => {
+    const numericIds = selectedRows.enabled.map(id => parseInt(id, 10));
+    disableBatchMutation.mutate(
+      { idDocumentos: numericIds, idEmpresa: id_empresa },
+      { onSuccess: () => setClearSelectionTrigger(t => t + 1) },
+    );
+  };
+
+  const handleEnableBatch = () => {
+    const numericIds = selectedRows.disabled.map(id => parseInt(id, 10));
+    enableBatchMutation.mutate(
+      { idDocumentos: numericIds, idEmpresa: id_empresa },
+      { onSuccess: () => setClearSelectionTrigger(t => t + 1) },
+    );
+  };
+
+  const isBatchPending =
+    retryBatchMutation.isPending || disableBatchMutation.isPending ||
+    enableBatchMutation.isPending || deleteMutation.isPending;
 
   return (
     <div className="flex flex-1 overflow-hidden h-full">
@@ -79,18 +132,54 @@ const DocumentUpload = () => {
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              {/* ELIMINADO: Botón de ordenar por estado */}
-
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleDeleteClick}
-                disabled={selectedRows.length === 0}
-                className="gap-2 transition-all duration-300 ease-in-out"
-              >
-                <Trash2 className="h-4 w-4 flex-shrink-0 transition-transform duration-300 ease-in-out" />
-                <span className="hidden md:inline">Eliminar</span>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={totalSelected === 0 || isBatchPending}
+                    className="gap-2"
+                  >
+                    Acciones
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      Reintentar
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onClick={() => handleRetryBatch(1)}>
+                        Extracción
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleRetryBatch(2)}>
+                        Segmentación
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleRetryBatch(3)}>
+                        Vectorización
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  {selectedRows.enabled.length > 0 && (
+                    <DropdownMenuItem onClick={handleDisableBatch}>
+                      Deshabilitar
+                    </DropdownMenuItem>
+                  )}
+                  {selectedRows.disabled.length > 0 && (
+                    <DropdownMenuItem onClick={handleEnableBatch}>
+                      Habilitar
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleDeleteClick}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    Eliminar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <Button onClick={() => setIsSidebarOpen(true)} variant="blue" className="gap-2" size="sm">
                 <CirclePlus className="h-4 w-4 flex-shrink-0" />
@@ -103,6 +192,7 @@ const DocumentUpload = () => {
             selectedRows={selectedRows}
             onSelectionChange={setSelectedRows}
             uploadTrigger={uploadTrigger}
+            clearSelectionTrigger={clearSelectionTrigger}
           />
         </div>
       </div>
@@ -118,7 +208,7 @@ const DocumentUpload = () => {
           <DialogHeader>
             <DialogTitle>Confirmar eliminación</DialogTitle>
             <DialogDescription>
-              ¿Deseas eliminar {selectedRows.length} documento(s) del conocimiento del área {areaName}?
+              ¿Deseas eliminar {totalSelected} documento(s) del conocimiento del área {areaName}?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

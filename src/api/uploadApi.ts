@@ -283,3 +283,38 @@ export const retryIngestion = async (
   );
   return response.data;
 };
+
+export interface RetryIngestionBatchResponse {
+  results: Array<{ id_documento: number; id_proceso?: number; success: boolean; error?: string }>;
+  failed_count: number;
+  result: { idTipoMensaje: number; mensaje: string };
+}
+
+export const retryIngestionBatch = async (
+  idDocumentos: number[],
+  idEmpresa: number,
+  idEtapa: number
+): Promise<RetryIngestionBatchResponse> => {
+  const response = await apiClient.post<RetryIngestionBatchResponse>(
+    '/v1/knowledge/retry_ingestion/batch',
+    { id_documentos: idDocumentos, id_empresa: idEmpresa, id_etapa: idEtapa }
+  );
+  return response.data;
+};
+
+export interface DisableRagDocumentsBatchResponse {
+  disabled_count: number;
+  results: Array<{ id_documento: number; success: boolean; error?: string }>;
+  result: { idTipoMensaje: number; mensaje: string };
+}
+
+export const disableRagDocumentsBatch = async (
+  idDocumentos: number[],
+  idEmpresa: number
+): Promise<DisableRagDocumentsBatchResponse> => {
+  const response = await apiClient.patch<DisableRagDocumentsBatchResponse>(
+    '/v1/knowledge/rag_documents/batch/disable',
+    { id_documentos: idDocumentos, id_empresa: idEmpresa }
+  );
+  return response.data;
+};
