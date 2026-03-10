@@ -4,7 +4,7 @@ import { Search, CirclePlus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { DocumentsTable, UploadSidebar } from '@/components/upload';
-import { useDeleteKnowledge } from '@/hooks/useProcessingLogs';
+import { useDeleteRagDocuments } from '@/hooks/useDeleteRagDocuments';
 import { useCurrentUser } from '@/hooks/useUserQueries';
 import {
   Dialog,
@@ -28,7 +28,7 @@ const DocumentUpload = () => {
   const { user } = useCurrentUser();
   const id_empresa = (user as any)?.actual_company_area?.ID_EMPRESA;
   const areaName = user?.actual_company_area?.AREA || 'esta área';
-  const deleteMutation = useDeleteKnowledge();
+  const deleteMutation = useDeleteRagDocuments();
 
   // Close sidebar and dialog when company changes
   useEffect(() => {
@@ -52,14 +52,12 @@ const DocumentUpload = () => {
   };
 
   const handleConfirmDelete = async () => {
-    // Convert string IDs to numbers for the API
     const numericIds = selectedRows.map(id => parseInt(id, 10));
 
-    await deleteMutation.mutateAsync(numericIds);
-
-    // Clear selection and close dialog
-    setSelectedRows([]);
-    setIsDeleteDialogOpen(false);
+    await deleteMutation.mutateAsync(
+      { idDocumentos: numericIds, idEmpresa: id_empresa },
+      { onSuccess: () => { setSelectedRows([]); setIsDeleteDialogOpen(false); } },
+    );
   };
 
   const handleCancelDelete = () => {

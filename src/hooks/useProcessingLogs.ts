@@ -10,7 +10,8 @@ export const useProcessingLogsPaginated = (
   searchTerm: string,
   orderField: 'NOMBRE_DOCUMENTO' | 'FCHCRE' | 'ID_ESTADO_PROCESO' | 'FCH_INICIO' | 'FCH_FIN' | 'DURACION_SEG',
   orderDirection: 'ASC' | 'DESC',
-  statusFilter: number | null
+  statusFilter: number | null,
+  showDisabled: boolean = false,
 ) => {
   const { user } = useCurrentUser();
   const companyId = user?.actual_company_area?.ID_EMPRESA;
@@ -19,7 +20,7 @@ export const useProcessingLogsPaginated = (
   const pollingInterval = Number(import.meta.env.VITE_POLLING_INTERVAL) || 30000;
 
   return useQuery({
-    queryKey: ['rag-documents-paginated', companyId, areaId, page, pageSize, searchTerm, orderField, orderDirection, statusFilter],
+    queryKey: ['rag-documents-paginated', companyId, areaId, page, pageSize, searchTerm, orderField, orderDirection, statusFilter, showDisabled],
     queryFn: () =>
       getCompanyRagDocumentsPaginated(
         companyId!,
@@ -29,7 +30,8 @@ export const useProcessingLogsPaginated = (
         searchTerm,
         orderField,
         orderDirection,
-        statusFilter !== null ? statusFilter : undefined
+        statusFilter !== null ? statusFilter : undefined,
+        showDisabled,
       ),
     enabled: !!companyId && !!areaId,
     retry: false,

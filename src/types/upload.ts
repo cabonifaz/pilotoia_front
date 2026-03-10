@@ -40,6 +40,7 @@ export interface RegisterIngestResponse {
 
 export interface RagDocumentRecord {
   ID_DOCUMENTO: number;
+  ID_ESTADO: number;
   NOMBRE_DOCUMENTO: string;
   RUTA_DOCUMENTO: string;
   FCHCRE: string;

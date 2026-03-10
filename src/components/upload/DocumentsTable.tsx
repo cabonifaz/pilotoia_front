@@ -8,6 +8,8 @@ import {
   ArrowUp,
   ArrowDown,
   RotateCcw,
+  EyeOff,
+  Eye,
 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
 import { Button } from "@/components/shadcn/button";
@@ -41,6 +43,8 @@ import {
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import { useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
 import { useRetryIngestion } from "@/hooks/useRetryIngestion";
+import { useToggleRagDocumentStatus } from "@/hooks/useToggleRagDocumentStatus";
+import { useCurrentUser } from "@/hooks/useUserQueries";
 import { toast } from "@/hooks/use-toast";
 
 // --- TANSTACK & DND IMPORTS ---
@@ -135,6 +139,7 @@ const formatDate = (isoDate: string | null): string => {
 interface DocumentData {
   id: string;
   id_documento: number;
+  id_estado: number;
   nombre_documento: string;
   ruta_documento: string;
   fchcre: string;
@@ -270,8 +275,16 @@ export const DocumentsTable = ({
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
 
-  // Retry mutation
+  // Mutations
   const retryMutation = useRetryIngestion();
+  const toggleMutation = useToggleRagDocumentStatus();
+
+  // User context (for id_empresa in delete/toggle)
+  const { user } = useCurrentUser();
+  const companyId = user?.actual_company_area?.ID_EMPRESA;
+
+  // Toggle: show/hide disabled documents
+  const [showDisabled, setShowDisabled] = useState(false);
 
   // 2. Estados de Vista Previa (Modal)
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -304,7 +317,7 @@ export const DocumentsTable = ({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, showDisabled]);
 
   // Query de Datos
   const { data, isLoading, isFetching, error } = useProcessingLogsPaginated(
@@ -314,6 +327,7 @@ export const DocumentsTable = ({
     orderField,
     orderDirection,
     statusFilter,
+    showDisabled,
   );
 
   // Transformación de datos para la tabla
@@ -322,6 +336,7 @@ export const DocumentsTable = ({
       data?.registros?.map((r) => ({
         id: r.ID_DOCUMENTO.toString(),
         id_documento: r.ID_DOCUMENTO,
+        id_estado: r.ID_ESTADO ?? 1,
         nombre_documento: r.NOMBRE_DOCUMENTO,
         ruta_documento: r.RUTA_DOCUMENTO,
         fchcre: r.FCHCRE,
@@ -605,26 +620,42 @@ export const DocumentsTable = ({
         id: "actions",
         cell: (info) => {
           const row = info.row.original;
-          const canRetry = row.id_estado_proceso === 7 || row.id_estado_proceso === 8;
-          const isPending = retryMutation.isPending && retryMutation.variables?.idDocumento === row.id_documento;
+          const canRetry =
+            (row.id_estado_proceso === 7 || row.id_estado_proceso === 8) &&
+            row.id_estado === 1;
+          const isTerminal =
+            row.id_estado_proceso === 7 || row.id_estado_proceso === 8;
+          const isPending =
+            retryMutation.isPending &&
+            retryMutation.variables?.idDocumento === row.id_documento;
+          const isToggling =
+            toggleMutation.isPending &&
+            toggleMutation.variables?.idDocumento === row.id_documento;
+          const isBusy = isPending || isToggling;
+
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="text-muted-foreground hover:text-foreground px-2" disabled={isPending}>
-                  {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : "⋮"}
+                <button
+                  className="text-muted-foreground hover:text-foreground px-2"
+                  disabled={isBusy}
+                >
+                  {isBusy ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "⋮"
+                  )}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onClick={() =>
-                    handleViewDocument(
-                      row.ruta_documento,
-                      row.nombre_documento,
-                    )
+                    handleViewDocument(row.ruta_documento, row.nombre_documento)
                   }
                 >
                   Ver documento
                 </DropdownMenuItem>
+
                 {canRetry && (
                   <>
                     <DropdownMenuSeparator />
@@ -636,26 +667,49 @@ export const DocumentsTable = ({
                       <DropdownMenuSubContent>
                         {(() => {
                           const lastSuccess = row.ultima_etapa_exitosa ?? 0;
-                          const stage2Enabled = row.id_estado_proceso === 7 || lastSuccess >= 1;
-                          const stage3Enabled = row.id_estado_proceso === 7 || lastSuccess >= 2;
+                          const stage2Enabled =
+                            row.id_estado_proceso === 7 || lastSuccess >= 1;
+                          const stage3Enabled =
+                            row.id_estado_proceso === 7 || lastSuccess >= 2;
                           return (
                             <>
                               <DropdownMenuItem
-                                onClick={() => retryMutation.mutate({ idDocumento: row.id_documento, idEtapa: 1 })}
+                                onClick={() =>
+                                  retryMutation.mutate({
+                                    idDocumento: row.id_documento,
+                                    idEtapa: 1,
+                                  })
+                                }
                               >
                                 Extracción (etapa 1)
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={!stage2Enabled}
-                                onClick={() => stage2Enabled && retryMutation.mutate({ idDocumento: row.id_documento, idEtapa: 2 })}
-                                className={!stage2Enabled ? "text-muted-foreground" : ""}
+                                onClick={() =>
+                                  stage2Enabled &&
+                                  retryMutation.mutate({
+                                    idDocumento: row.id_documento,
+                                    idEtapa: 2,
+                                  })
+                                }
+                                className={
+                                  !stage2Enabled ? "text-muted-foreground" : ""
+                                }
                               >
                                 Segmentación (etapa 2)
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={!stage3Enabled}
-                                onClick={() => stage3Enabled && retryMutation.mutate({ idDocumento: row.id_documento, idEtapa: 3 })}
-                                className={!stage3Enabled ? "text-muted-foreground" : ""}
+                                onClick={() =>
+                                  stage3Enabled &&
+                                  retryMutation.mutate({
+                                    idDocumento: row.id_documento,
+                                    idEtapa: 3,
+                                  })
+                                }
+                                className={
+                                  !stage3Enabled ? "text-muted-foreground" : ""
+                                }
                               >
                                 Vectorización (etapa 3)
                               </DropdownMenuItem>
@@ -666,6 +720,39 @@ export const DocumentsTable = ({
                     </DropdownMenuSub>
                   </>
                 )}
+
+                {isTerminal && companyId && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {row.id_estado === 1 ? (
+                      <DropdownMenuItem
+                        onClick={() =>
+                          toggleMutation.mutate({
+                            idDocumento: row.id_documento,
+                            idEmpresa: companyId,
+                            action: "disable",
+                          })
+                        }
+                      >
+                        <EyeOff className="h-4 w-4 mr-2" />
+                        Deshabilitar
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        onClick={() =>
+                          toggleMutation.mutate({
+                            idDocumento: row.id_documento,
+                            idEmpresa: companyId,
+                            action: "enable",
+                          })
+                        }
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Habilitar
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           );
@@ -673,7 +760,13 @@ export const DocumentsTable = ({
         size: 40,
       }),
     ],
-    [statusFilter, handleStatusFilterChange, retryMutation],
+    [
+      statusFilter,
+      handleStatusFilterChange,
+      retryMutation,
+      toggleMutation,
+      companyId,
+    ],
   );
 
   // --- TABLA INSTANCIA ---
@@ -712,27 +805,40 @@ export const DocumentsTable = ({
             </p>
           </div>
 
-          {!isLoading && !error && tableData.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground hidden md:inline">
-                Filas por página:
-              </span>
-              <Select
-                value={pageSize.toString()}
-                onValueChange={handlePageSizeChange}
-              >
-                <SelectTrigger className="w-[80px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="15">15</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div className="flex items-center gap-3 flex-wrap justify-end">
+            {/* Toggle: show/hide disabled docs */}
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground select-none">
+              <input
+                type="checkbox"
+                className="accent-primary"
+                checked={showDisabled}
+                onChange={(e) => setShowDisabled(e.target.checked)}
+              />
+              Mostrar deshabilitados
+            </label>
+
+            {!isLoading && !error && tableData.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground hidden md:inline">
+                  Filas por página:
+                </span>
+                <Select
+                  value={pageSize.toString()}
+                  onValueChange={handlePageSizeChange}
+                >
+                  <SelectTrigger className="w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="15">15</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
         </div>
       </CardHeader>
 
@@ -802,7 +908,10 @@ export const DocumentsTable = ({
                         </TableRow>
                       ) : (
                         table.getRowModel().rows.map((row) => (
-                          <TableRow key={row.id}>
+                          <TableRow
+                            key={row.id}
+                            className={row.original.id_estado === 0 ? "opacity-50" : undefined}
+                          >
                             {row.getVisibleCells().map((cell) => {
                               const isCompactColumn = [
                                 "select",

@@ -140,7 +140,8 @@ export const getCompanyRagDocumentsPaginated = async (
   termBusqueda?: string,
   campoOrden?: string,
   dirOrden?: string,
-  filtroEstado?: number
+  filtroEstado?: number,
+  mostrarDeshabilitados?: boolean,
 ): Promise<PaginatedRagDocumentsResponse> => {
   const params = new URLSearchParams({
     id_empresa: companyId.toString(),
@@ -152,6 +153,7 @@ export const getCompanyRagDocumentsPaginated = async (
   });
   if (termBusqueda) params.append('term_busqueda', termBusqueda);
   if (filtroEstado !== undefined) params.append('filtro_estado', filtroEstado.toString());
+  if (mostrarDeshabilitados) params.append('mostrar_deshabilitados', 'true');
 
   const response = await apiClient.get<PaginatedRagDocumentsResponse>(
     `/v1/knowledge/get_rag_documents_paginated?${params.toString()}`
@@ -217,6 +219,59 @@ export interface RetryIngestionResponse {
     mensaje: string;
   };
 }
+
+export interface DeleteRagDocumentsResponse {
+  message_result: { ID_TIPO_MENSAJE: number; MENSAJE: string } | null;
+  deleted_count: number;
+  deleted_records: Array<{
+    ID_DOCUMENTO: number;
+    ID_EMPRESA: number;
+    ID_AREA: number;
+    ID_ESTADO_PROCESO: number;
+    NOMBRE_DOCUMENTO: string;
+  }>;
+  weaviate_result: unknown;
+  rollback_performed: boolean;
+  result: { idTipoMensaje: number; mensaje: string };
+}
+
+export const deleteRagDocuments = async (
+  idDocumentos: number[],
+  idEmpresa: number
+): Promise<DeleteRagDocumentsResponse> => {
+  const response = await apiClient.delete<DeleteRagDocumentsResponse>(
+    '/v1/knowledge/rag_documents',
+    { data: { id_documentos: idDocumentos, id_empresa: idEmpresa } }
+  );
+  return response.data;
+};
+
+export interface ToggleRagDocumentResponse {
+  id_documento: number;
+  result: { idTipoMensaje: number; mensaje: string };
+}
+
+export const disableRagDocument = async (
+  idDocumento: number,
+  idEmpresa: number
+): Promise<ToggleRagDocumentResponse> => {
+  const response = await apiClient.patch<ToggleRagDocumentResponse>(
+    `/v1/knowledge/rag_documents/${idDocumento}/disable`,
+    { id_empresa: idEmpresa }
+  );
+  return response.data;
+};
+
+export const enableRagDocument = async (
+  idDocumento: number,
+  idEmpresa: number
+): Promise<ToggleRagDocumentResponse> => {
+  const response = await apiClient.patch<ToggleRagDocumentResponse>(
+    `/v1/knowledge/rag_documents/${idDocumento}/enable`,
+    { id_empresa: idEmpresa }
+  );
+  return response.data;
+};
 
 export const retryIngestion = async (
   idDocumento: number,
