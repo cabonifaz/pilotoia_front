@@ -11,7 +11,7 @@ import { useCommand } from '../../contexts/CommandContext';
 //import { LoginModal } from '../external-api/LoginModal';
 
 export const RagModeOptions = () => {
-  const { selectedAction, onSelectedActionChange, vlmMode, onVlmModeChange } = useCommand();
+  const { selectedAction, onSelectedActionChange, vlmMode, onVlmModeChange, onQueryChange } = useCommand();
   //const [showLoginModal, setShowLoginModal] = useState(false);
 
   return (
@@ -19,7 +19,7 @@ export const RagModeOptions = () => {
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuItem
-            onSelect={() => onSelectedActionChange('vectorial')}
+            onSelect={() => { onSelectedActionChange('vectorial'); onQueryChange(''); }}
             className={selectedAction === 'vectorial' ? 'border-l-4 border-primary' : ''}
           >
             <Send className="h-4 w-4 mr-2" />
@@ -40,14 +40,14 @@ export const RagModeOptions = () => {
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent>
           <DropdownMenuItem
-            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_qa_over_text'); }}
+            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_qa_over_text'); onQueryChange(''); }}
             className={selectedAction === 'ocr' && vlmMode === 'vlm_qa_over_text' ? 'border-l-4 border-primary' : ''}
           >
             <MessageSquare className="h-4 w-4 mr-2" />
             Pregunta sobre imagen
           </DropdownMenuItem>
           <DropdownMenuItem
-            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_extract_fields'); }}
+            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_extract_fields'); onQueryChange('Extrae los campos del archivo'); }}
             className={selectedAction === 'ocr' && vlmMode === 'vlm_extract_fields' ? 'border-l-4 border-primary' : ''}
           >
             <Table2 className="h-4 w-4 mr-2" />
@@ -55,18 +55,18 @@ export const RagModeOptions = () => {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_summarize_doc'); }}
+            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_summarize_doc'); onQueryChange('Resume la información del archivo'); }}
             className={selectedAction === 'ocr' && vlmMode === 'vlm_summarize_doc' ? 'border-l-4 border-primary' : ''}
           >
             <AlignLeft className="h-4 w-4 mr-2" />
             Resumir documento
           </DropdownMenuItem>
           <DropdownMenuItem
-            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_ocr_clean'); }}
+            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_ocr_clean'); onQueryChange('Extrae la información de este archivo'); }}
             className={selectedAction === 'ocr' && vlmMode === 'vlm_ocr_clean' ? 'border-l-4 border-primary' : ''}
           >
             <ScanText className="h-4 w-4 mr-2" />
-            Extraer texto (OCR puro)
+            Extraer toda la información
           </DropdownMenuItem>
         </DropdownMenuSubContent>
       </DropdownMenuSub>

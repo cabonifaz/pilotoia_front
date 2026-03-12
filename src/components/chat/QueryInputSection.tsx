@@ -39,6 +39,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     onSearchVectorial,
     onAnalyzeImages,
     selectedAction,
+    vlmMode,
     ttsEnabled,
     onTtsEnabledChange,
     ocrImages,
@@ -109,6 +110,18 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     resizeTextarea();
   }, [userQuery]);
 
+  const VLM_PREFILLS: Partial<Record<typeof vlmMode, string>> = {
+    vlm_extract_fields: 'Extrae los campos del archivo',
+    vlm_summarize_doc: 'Resume la información del archivo',
+    vlm_ocr_clean: 'Extrae la información de este archivo',
+  };
+
+  useEffect(() => {
+    if (selectedAction === 'ocr' && !userQuery && vlmMode in VLM_PREFILLS) {
+      onQueryChange(VLM_PREFILLS[vlmMode]!);
+    }
+  }, [userQuery]);
+
   useEffect(() => {
     if (selectedAction === 'vectorial') {
       currentMainActionRef.current = onSearchVectorial;
@@ -141,7 +154,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                if (selectedAction === 'ocr' && ocrImages.length === 0) return;
+                if (selectedAction === 'ocr' && (ocrImages.length === 0 || !userQuery.trim())) return;
                 currentMainActionRef.current();
               }
             }}
