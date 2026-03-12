@@ -66,6 +66,39 @@ export interface PaginatedRagDocumentsResponse {
   pagina_actual: number;
 }
 
+export interface RagDocumentStageLog {
+  id_log: number;
+  id_etapa: number;
+  etapa_nombre: string;
+  fch_inicio: string | null;
+  fch_fin: string | null;
+  duracion_seg: number | null;
+  ruta_resultado: string | null;
+  costo_usd: number | null;
+  cant_chunks: number | null;
+  resultado: number | null;
+  resultado_texto: string;
+  mensaje_error: string | null;
+}
+
+export interface RagDocumentDetailResponse {
+  id_documento: number;
+  nombre_documento: string;
+  ruta_documento: string;
+  cant_paginas: number | null;
+  tamano_bytes: number | null;
+  fchcre: string;
+  id_proceso: number;
+  nro_intento: number;
+  id_estado_proceso: number;
+  estado_nombre: string;
+  fch_inicio: string | null;
+  fch_fin: string | null;
+  duracion_seg: number | null;
+  mensaje_error: string | null;
+  etapas: RagDocumentStageLog[];
+}
+
 export interface PresignedUrlResponse {
   process_id: string;
   pdf_key: string;

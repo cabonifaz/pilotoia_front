@@ -33,9 +33,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/shadcn/table";
-import { DocumentPreviewModal } from "./DocumentPreviewModal";
+import { DocumentDetailModal } from "./DocumentDetailModal";
 import { useProcessingLogsPaginated } from "@/hooks/useProcessingLogs";
-import { toast } from "@/hooks/use-toast";
 
 // --- TANSTACK & DND IMPORTS ---
 import {
@@ -273,11 +272,8 @@ export const DocumentsTable = ({
   // Toggle: show/hide disabled documents
   const [showDisabled, setShowDisabled] = useState(false);
 
-  // 2. Estados de Vista Previa (Modal)
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewDocName, setPreviewDocName] = useState<string>("");
-  const [loadingPreview, setLoadingPreview] = useState(false);
+  // 2. Estado del modal de detalle
+  const [detailDocId, setDetailDocId] = useState<number | null>(null);
 
   // 3. Estados de la Tabla (Orden Columnas y Selección)
   const [columnOrder, setColumnOrder] = useState<string[]>(() => [
@@ -378,39 +374,6 @@ export const DocumentsTable = ({
     setCurrentPage(1);
   }, []);
 
-  const handleViewDocument = useCallback(
-    async (ruta_documento: string, name: string) => {
-      try {
-        setLoadingPreview(true);
-        setPreviewDocName(name);
-
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/api/v1/knowledge/document/url?ruta_documento=${encodeURIComponent(ruta_documento)}`,
-        );
-        const responseData = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            responseData?.result?.mensaje || "Error al obtener documento",
-          );
-        }
-
-        setPreviewUrl(responseData.url);
-        setPreviewOpen(true);
-      } catch (err) {
-        console.error(err);
-        toast({
-          title: "Error",
-          description: "No se pudo cargar el documento.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoadingPreview(false);
-      }
-    },
-    [],
-  );
-
   // --- DND SETUP ---
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -483,12 +446,7 @@ export const DocumentsTable = ({
             <FileText className="h-4 w-4 text-blue-500 mt-1 shrink-0 self-center" />
             <button
               className="text-left hover:underline whitespace-normal break-words"
-              onClick={() =>
-                handleViewDocument(
-                  info.row.original.ruta_documento,
-                  info.getValue(),
-                )
-              }
+              onClick={() => setDetailDocId(info.row.original.id_documento)}
             >
               {info.getValue()}
             </button>
@@ -624,7 +582,7 @@ export const DocumentsTable = ({
         ),
       }),
     ],
-    [statusFilter, handleStatusFilterChange, handleViewDocument],
+    [statusFilter, handleStatusFilterChange],
   );
 
   // --- TABLA INSTANCIA ---
@@ -881,12 +839,10 @@ export const DocumentsTable = ({
         )}
       </CardContent>
 
-      <DocumentPreviewModal
-        open={previewOpen}
-        onOpenChange={setPreviewOpen}
-        url={previewUrl}
-        documentName={previewDocName}
-        loading={loadingPreview}
+      <DocumentDetailModal
+        open={detailDocId !== null}
+        onOpenChange={(o) => { if (!o) setDetailDocId(null); }}
+        idDocumento={detailDocId}
       />
     </Card>
   );

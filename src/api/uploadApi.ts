@@ -1,6 +1,6 @@
 import type { MensajeResponse } from '@/types/Mensaje';
 import apiClient from './apiClient';
-import type { KnowledgeLoadResponse, BatchUploadKnowledgeRequest, BatchUploadKnowledgeResponse, RegisterIngestRequest, RegisterIngestResponse, PaginatedRagDocumentsResponse } from '@/types/upload';
+import type { KnowledgeLoadResponse, BatchUploadKnowledgeRequest, BatchUploadKnowledgeResponse, RegisterIngestRequest, RegisterIngestResponse, PaginatedRagDocumentsResponse, RagDocumentDetailResponse } from '@/types/upload';
 
 export const getPresignedUrls = async (
   batchRequest: BatchUploadKnowledgeRequest
@@ -307,6 +307,9 @@ export interface DisableRagDocumentsBatchResponse {
   results: Array<{ id_documento: number; success: boolean; error?: string }>;
   result: { idTipoMensaje: number; mensaje: string };
 }
+
+export const getDocumentDetail = (id_documento: number): Promise<RagDocumentDetailResponse> =>
+  apiClient.get<RagDocumentDetailResponse>(`/v1/knowledge/rag_documents/${id_documento}/detail`).then((r) => r.data);
 
 export const disableRagDocumentsBatch = async (
   idDocumentos: number[],
