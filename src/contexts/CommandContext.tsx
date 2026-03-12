@@ -1,10 +1,16 @@
 import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
 
+export type VlmMode = 'vlm_qa_over_text' | 'vlm_extract_fields' | 'vlm_summarize_doc' | 'vlm_ocr_clean';
+
 interface CommandContextType {
   // Command selection
   selectedAction: 'vectorial' | 'vectorial+sql' | 'login' | 'ocr';
   onSelectedActionChange: (action: 'vectorial' | 'vectorial+sql' | 'login' | 'ocr') => void;
+
+  // VLM sub-mode (only relevant when selectedAction === 'ocr')
+  vlmMode: VlmMode;
+  onVlmModeChange: (mode: VlmMode) => void;
 
   // Command execution
   onSearchVectorial: () => void;
@@ -83,6 +89,7 @@ export const CommandProvider = ({
   onOcrImagesChange,
 }: CommandProviderProps) => {
   const [selectedAction, setSelectedAction] = useState<'vectorial' | 'vectorial+sql' | 'login' | 'ocr'>('vectorial');
+  const [vlmMode, setVlmMode] = useState<VlmMode>('vlm_qa_over_text');
 
   // Create main action handler based on selectedAction
   useEffect(() => {
@@ -107,6 +114,8 @@ export const CommandProvider = ({
     () => ({
       selectedAction,
       onSelectedActionChange: setSelectedAction,
+      vlmMode,
+      onVlmModeChange: setVlmMode,
       onSearchVectorial,
       onSearchVectorialSQL,
       onAnalyzeImages,
@@ -122,7 +131,7 @@ export const CommandProvider = ({
       ocrImages,
       onOcrImagesChange,
     }),
-    [selectedAction, onSearchVectorial, onSearchVectorialSQL, onAnalyzeImages, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange, ttsEnabled, onTtsEnabledChange, ocrImages, onOcrImagesChange]
+    [selectedAction, vlmMode, onSearchVectorial, onSearchVectorialSQL, onAnalyzeImages, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange, ttsEnabled, onTtsEnabledChange, ocrImages, onOcrImagesChange]
   );
 
   return (

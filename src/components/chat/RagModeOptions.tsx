@@ -1,13 +1,17 @@
 import {
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator,
 } from '@/components/shadcn/dropdown-menu';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/shadcn/tooltip';
-import { Send, ScanSearch, /*Bot, Lock*/ } from 'lucide-react';
+import { Send, ScanSearch, MessageSquare, Table2, AlignLeft, ScanText, /*Bot, Lock*/ } from 'lucide-react';
 import { useCommand } from '../../contexts/CommandContext';
 //import { LoginModal } from '../external-api/LoginModal';
 
 export const RagModeOptions = () => {
-  const { selectedAction, onSelectedActionChange } = useCommand();
+  const { selectedAction, onSelectedActionChange, vlmMode, onVlmModeChange } = useCommand();
   //const [showLoginModal, setShowLoginModal] = useState(false);
 
   return (
@@ -26,20 +30,46 @@ export const RagModeOptions = () => {
           Búsqueda en la base de conocimiento
         </TooltipContent>
       </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger
+          onClick={() => onSelectedActionChange('ocr')}
+          className={selectedAction === 'ocr' ? 'border-l-4 border-primary' : ''}
+        >
+          <ScanSearch className="h-4 w-4 mr-2" />
+          Análisis de imagen (OCR)
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent>
           <DropdownMenuItem
-            onSelect={() => onSelectedActionChange('ocr')}
-            className={selectedAction === 'ocr' ? 'border-l-4 border-primary' : ''}
+            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_qa_over_text'); }}
+            className={selectedAction === 'ocr' && vlmMode === 'vlm_qa_over_text' ? 'border-l-4 border-primary' : ''}
           >
-            <ScanSearch className="h-4 w-4 mr-2" />
-            Análisis de imagen (OCR)
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Pregunta sobre imagen
           </DropdownMenuItem>
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          Extracción de texto e interpretación de imágenes
-        </TooltipContent>
-      </Tooltip>
+          <DropdownMenuItem
+            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_extract_fields'); }}
+            className={selectedAction === 'ocr' && vlmMode === 'vlm_extract_fields' ? 'border-l-4 border-primary' : ''}
+          >
+            <Table2 className="h-4 w-4 mr-2" />
+            Extraer campos
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_summarize_doc'); }}
+            className={selectedAction === 'ocr' && vlmMode === 'vlm_summarize_doc' ? 'border-l-4 border-primary' : ''}
+          >
+            <AlignLeft className="h-4 w-4 mr-2" />
+            Resumir documento
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_ocr_clean'); }}
+            className={selectedAction === 'ocr' && vlmMode === 'vlm_ocr_clean' ? 'border-l-4 border-primary' : ''}
+          >
+            <ScanText className="h-4 w-4 mr-2" />
+            Extraer texto (OCR puro)
+          </DropdownMenuItem>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
       {/* {isAuthenticated && (
         <DropdownMenuItem
           onSelect={() => onSelectedActionChange('vectorial+sql')}
