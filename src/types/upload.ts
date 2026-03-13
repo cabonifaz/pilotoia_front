@@ -76,6 +76,9 @@ export interface RagDocumentStageLog {
   ruta_resultado: string | null;
   costo_usd: number | null;
   cant_chunks: number | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  id_modelo: number | null;
   resultado: number | null;
   resultado_texto: string;
   mensaje_error: string | null;

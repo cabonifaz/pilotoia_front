@@ -21,12 +21,23 @@ import { Card, CardContent } from "@/components/shadcn/card";
 import { useDocumentDetail } from "@/hooks/useDocumentDetail";
 import type { RagDocumentStageLog } from "@/types/upload";
 
+// ── constants ───────────────────────────────────────────────────────────────
+
+const MODEL_NAMES: Record<number, string> = {
+  4: "Cohere Embed",
+  8: "Llama BM25",
+};
+
 // ── helpers ────────────────────────────────────────────────────────────────
 
 function formatTime(iso: string | null): string {
   if (!iso) return "-";
   const d = new Date(iso);
   return d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function formatTokens(n: number): string {
+  return n.toLocaleString("es-ES");
 }
 
 function formatDate(iso: string | null): string {
@@ -158,13 +169,46 @@ export function DocumentDetailModal({ open, onOpenChange, idDocumento }: Documen
     }
   };
 
+  // Group etapas by id_etapa (etapa 3 may have 2 rows — one per model)
+  const stageMap = new Map<number, RagDocumentStageLog[]>();
+  if (data?.etapas) {
+    for (const e of data.etapas) {
+      const group = stageMap.get(e.id_etapa) ?? [];
+      group.push(e);
+      stageMap.set(e.id_etapa, group);
+    }
+  }
+
+  // Build one representative row per stage for the timeline
+  const stages = data?.etapas
+    ? Array.from(stageMap.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([, group]) => {
+          if (group.length === 1) return group[0];
+          // Composite: merge group into a single virtual row
+          const allDone = group.every((r) => r.resultado !== null);
+          const resultado = allDone
+            ? group.every((r) => r.resultado === 1) ? 1 : 0
+            : null;
+          const fch_inicio = group
+            .map((r) => r.fch_inicio)
+            .filter(Boolean)
+            .sort()[0] ?? null;
+          const fch_fin = resultado !== null
+            ? group
+                .map((r) => r.fch_fin)
+                .filter(Boolean)
+                .sort()
+                .at(-1) ?? null
+            : null;
+          return { ...group[0], resultado, fch_inicio, fch_fin };
+        })
+    : [];
+
   // Cost calculations
   const totalCost = data?.etapas.reduce((sum, e) => sum + (e.costo_usd ?? 0), 0) ?? 0;
   const hasCosts = data?.etapas.some((e) => (e.costo_usd ?? 0) > 0);
   const chunkingStage = data?.etapas.find((e) => e.id_etapa === 2);
-
-  // Sort stages by id_etapa for consistent display order
-  const stages = data?.etapas ? [...data.etapas].sort((a, b) => a.id_etapa - b.id_etapa) : [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -253,12 +297,49 @@ export function DocumentDetailModal({ open, onOpenChange, idDocumento }: Documen
                     <p className="text-xs text-muted-foreground">Sin costos registrados.</p>
                   ) : (
                     <div className="space-y-1.5">
-                      {stages.filter((e) => (e.costo_usd ?? 0) > 0).map((e) => (
-                        <div key={e.id_log} className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">{STAGE_NAMES[e.id_etapa] ?? e.etapa_nombre}</span>
-                          <span className="font-medium tabular-nums">${e.costo_usd!.toFixed(6)}</span>
-                        </div>
-                      ))}
+                      {Array.from(stageMap.entries())
+                        .sort(([a], [b]) => a - b)
+                        .map(([idEtapa, group]) => {
+                          const groupCost = group.reduce((s, r) => s + (r.costo_usd ?? 0), 0);
+                          if (groupCost === 0) return null;
+                          const stageName = STAGE_NAMES[idEtapa] ?? group[0].etapa_nombre;
+                          const hasModels = group.length > 1 || group[0].id_modelo != null;
+                          if (!hasModels) {
+                            return (
+                              <div key={idEtapa} className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">{stageName}</span>
+                                <span className="font-medium tabular-nums">${groupCost.toFixed(6)}</span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div key={idEtapa} className="space-y-1">
+                              <div className="text-sm text-muted-foreground">{stageName}</div>
+                              {group.map((r) => {
+                                if ((r.costo_usd ?? 0) === 0) return null;
+                                const modelName = r.id_modelo != null
+                                  ? (MODEL_NAMES[r.id_modelo] ?? `Modelo ${r.id_modelo}`)
+                                  : r.etapa_nombre;
+                                const tokenInfo = r.output_tokens != null
+                                  ? `${formatTokens(r.input_tokens ?? 0)} in · ${formatTokens(r.output_tokens)} out`
+                                  : r.input_tokens != null
+                                    ? `${formatTokens(r.input_tokens)} tokens`
+                                    : null;
+                                return (
+                                  <div key={r.id_log} className="pl-3">
+                                    <div className="flex justify-between items-baseline text-sm">
+                                      <span className="text-muted-foreground/80">{modelName}</span>
+                                      <span className="font-medium tabular-nums ml-2 shrink-0">${(r.costo_usd ?? 0).toFixed(6)}</span>
+                                    </div>
+                                    {tokenInfo && (
+                                      <p className="text-xs text-muted-foreground/60">{tokenInfo}</p>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
                       <div className="border-t my-2" />
                       <div className="flex justify-between text-sm font-semibold">
                         <span>Total</span>
