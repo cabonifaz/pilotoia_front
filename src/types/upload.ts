@@ -102,6 +102,25 @@ export interface RagDocumentDetailResponse {
   etapas: RagDocumentStageLog[];
 }
 
+export interface RagProcessAttemptHeader {
+  id_proceso: number;
+  nro_intento: number;
+  id_estado_proceso: number;
+  estado_nombre: string;
+  fch_inicio: string | null;
+  fch_fin: string | null;
+  duracion_seg: number | null;
+  mensaje_error: string | null;
+}
+
+export interface RagProcessesPageResponse {
+  registros: RagProcessAttemptHeader[];
+  total_registros: number;
+  total_paginas: number;
+  pagina_actual: number;
+  tam_pagina: number;
+}
+
 export interface PresignedUrlResponse {
   process_id: string;
   pdf_key: string;

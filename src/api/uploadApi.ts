@@ -1,6 +1,6 @@
 import type { MensajeResponse } from '@/types/Mensaje';
 import apiClient from './apiClient';
-import type { KnowledgeLoadResponse, BatchUploadKnowledgeRequest, BatchUploadKnowledgeResponse, RegisterIngestRequest, RegisterIngestResponse, PaginatedRagDocumentsResponse, RagDocumentDetailResponse } from '@/types/upload';
+import type { KnowledgeLoadResponse, BatchUploadKnowledgeRequest, BatchUploadKnowledgeResponse, RegisterIngestRequest, RegisterIngestResponse, PaginatedRagDocumentsResponse, RagDocumentDetailResponse, RagProcessesPageResponse } from '@/types/upload';
 
 export const getPresignedUrls = async (
   batchRequest: BatchUploadKnowledgeRequest
@@ -308,8 +308,26 @@ export interface DisableRagDocumentsBatchResponse {
   result: { idTipoMensaje: number; mensaje: string };
 }
 
-export const getDocumentDetail = (id_documento: number): Promise<RagDocumentDetailResponse> =>
-  apiClient.get<RagDocumentDetailResponse>(`/v1/knowledge/rag_documents/${id_documento}/detail`).then((r) => r.data);
+export const getDocumentDetail = (
+  id_documento: number,
+  id_proceso?: number,
+): Promise<RagDocumentDetailResponse> =>
+  apiClient
+    .get<RagDocumentDetailResponse>(`/v1/knowledge/rag_documents/${id_documento}/detail`, {
+      params: id_proceso != null ? { id_proceso } : undefined,
+    })
+    .then((r) => r.data);
+
+export const getDocumentProcesses = (
+  id_documento: number,
+  num_pagina = 1,
+  tam_pagina = 10,
+): Promise<RagProcessesPageResponse> =>
+  apiClient
+    .get<RagProcessesPageResponse>(`/v1/knowledge/rag_documents/${id_documento}/procesos`, {
+      params: { num_pagina, tam_pagina },
+    })
+    .then((r) => r.data);
 
 export const disableRagDocumentsBatch = async (
   idDocumentos: number[],

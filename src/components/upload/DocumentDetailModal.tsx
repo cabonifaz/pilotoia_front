@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   CheckCircle2,
   XCircle,
@@ -8,6 +8,9 @@ import {
   Download,
   BarChart2,
   Layers,
+  History,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   Dialog,
@@ -19,7 +22,8 @@ import { Badge } from "@/components/shadcn/badge";
 import { Button } from "@/components/shadcn/button";
 import { Card, CardContent } from "@/components/shadcn/card";
 import { useDocumentDetail } from "@/hooks/useDocumentDetail";
-import type { RagDocumentStageLog } from "@/types/upload";
+import { useDocumentProcesses } from "@/hooks/useDocumentProcesses";
+import type { RagDocumentStageLog, RagProcessAttemptHeader } from "@/types/upload";
 
 // ── constants ───────────────────────────────────────────────────────────────
 
@@ -70,6 +74,25 @@ function ResultadoBadge({ texto }: { texto: string }) {
     texto === "Error" ? "destructive" :
     "warning";
   return <Badge variant={variant as "success" | "destructive" | "warning"}>{texto}</Badge>;
+}
+
+// ── process state badge — same mapping as DocumentsTable.getStatusFromStage ──
+
+const ESTADO_PROCESO_COLOR_MAP: Record<number, string> = {
+  0: "cyan",
+  1: "warning",
+  2: "purple",
+  3: "info",
+  4: "orange",
+  5: "teal",
+  6: "warning",
+  7: "success",
+  8: "destructive",
+};
+
+function EstadoBadge({ nombre, idEstado }: { nombre: string; idEstado: number }) {
+  const variant = idEstado < 0 ? "destructive" : (ESTADO_PROCESO_COLOR_MAP[idEstado] ?? "secondary");
+  return <Badge variant={variant as "success" | "destructive" | "warning" | "secondary"} className="text-xs">{nombre}</Badge>;
 }
 
 // ── artifact download button ─────────────────────────────────────────────────
@@ -123,7 +146,6 @@ function StageRow({ etapa }: { etapa: RagDocumentStageLog }) {
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-sm">{name}</span>
-          <ResultadoBadge texto={etapa.resultado_texto} />
         </div>
         {timeRange && (
           <p className="text-xs text-muted-foreground mt-0.5">{timeRange}</p>
@@ -143,6 +165,94 @@ function Connector() {
   return <div className="ml-3.5 w-px h-5 bg-border" />;
 }
 
+// ── history panel ─────────────────────────────────────────────────────────────
+
+interface HistoryPanelProps {
+  registros: RagProcessAttemptHeader[];
+  isLoading: boolean;
+  totalPaginas: number;
+  paginaActual: number;
+  selectedProcesoId: number | undefined;
+  onSelectProceso: (id: number | undefined) => void;
+  onPageChange: (page: number) => void;
+  onClose: () => void;
+}
+
+function HistoryPanel({
+  registros,
+  isLoading,
+  totalPaginas,
+  paginaActual,
+  selectedProcesoId,
+  onSelectProceso,
+  onPageChange,
+  onClose,
+}: HistoryPanelProps) {
+  return (
+    <div className="border rounded-lg bg-muted/30 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Historial de intentos</span>
+        <Button variant="ghost" size="sm" className="text-xs h-6 px-2" onClick={onClose}>
+          Cerrar
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-4">
+          <LoaderCircle className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : registros.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-3">Sin intentos registrados.</p>
+      ) : (
+        <div className="space-y-1">
+          {registros.map((r) => {
+            const isSelected = r.id_proceso === selectedProcesoId;
+            return (
+              <button
+                key={r.id_proceso}
+                onClick={() => onSelectProceso(isSelected ? undefined : r.id_proceso)}
+                className={`w-full text-left flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors ${
+                  isSelected
+                    ? "bg-primary/10 border border-primary/30"
+                    : "hover:bg-muted"
+                }`}
+              >
+                <span className="font-medium shrink-0">Intento #{r.nro_intento}</span>
+                <EstadoBadge nombre={r.estado_nombre} idEstado={r.id_estado_proceso} />
+                <span className="text-muted-foreground ml-auto shrink-0">{formatDate(r.fch_inicio)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {totalPaginas > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            disabled={paginaActual <= 1}
+            onClick={() => onPageChange(paginaActual - 1)}
+          >
+            <ChevronLeft className="h-3 w-3" />
+          </Button>
+          <span className="text-xs text-muted-foreground">{paginaActual} / {totalPaginas}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            disabled={paginaActual >= totalPaginas}
+            onClick={() => onPageChange(paginaActual + 1)}
+          >
+            <ChevronRight className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── main component ───────────────────────────────────────────────────────────
 
 interface DocumentDetailModalProps {
@@ -152,7 +262,24 @@ interface DocumentDetailModalProps {
 }
 
 export function DocumentDetailModal({ open, onOpenChange, idDocumento }: DocumentDetailModalProps) {
-  const { data, isLoading, error } = useDocumentDetail(open ? idDocumento : null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [selectedProcesoId, setSelectedProcesoId] = useState<number | undefined>(undefined);
+
+  // Reset history state whenever the modal opens a new document
+  useEffect(() => {
+    setShowHistory(false);
+    setHistoryPage(1);
+    setSelectedProcesoId(undefined);
+  }, [idDocumento]);
+
+  const { data, isLoading, error } = useDocumentDetail(
+    open ? idDocumento : null,
+    selectedProcesoId,
+  );
+
+  const processesQuery = useDocumentProcesses(idDocumento, showHistory, historyPage);
+
   const [loadingPdf, setLoadingPdf] = useState(false);
 
   const handleVerPdf = async () => {
@@ -210,6 +337,11 @@ export function DocumentDetailModal({ open, onOpenChange, idDocumento }: Documen
   const hasCosts = data?.etapas.some((e) => (e.costo_usd ?? 0) > 0);
   const chunkingStage = data?.etapas.find((e) => e.id_etapa === 2);
 
+  // Show history controls if the latest attempt is > 1, OR if the user already
+  // navigated to a prior attempt (meaning we know there are multiple attempts).
+  const hasMultipleAttempts = data != null && (data.nro_intento > 1 || selectedProcesoId != null);
+  const isViewingLatest = selectedProcesoId == null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -242,7 +374,57 @@ export function DocumentDetailModal({ open, onOpenChange, idDocumento }: Documen
               </Button>
             </div>
           )}
+
+          {/* Attempt indicator + history button */}
+          {hasMultipleAttempts && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-muted-foreground">
+                {isViewingLatest
+                  ? `Intento #${data.nro_intento} (actual)`
+                  : `Intento #${data.nro_intento}`}
+              </span>
+              {!isViewingLatest && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-6 px-2"
+                  onClick={() => {
+                    setSelectedProcesoId(undefined);
+                    setShowHistory(false);
+                  }}
+                >
+                  Ver actual
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-6 px-2 gap-1 ml-auto"
+                onClick={() => setShowHistory((v) => !v)}
+              >
+                <History className="h-3 w-3" />
+                Historial
+              </Button>
+            </div>
+          )}
         </DialogHeader>
+
+        {/* History panel */}
+        {showHistory && (
+          <HistoryPanel
+            registros={processesQuery.data?.registros ?? []}
+            isLoading={processesQuery.isLoading}
+            totalPaginas={processesQuery.data?.total_paginas ?? 0}
+            paginaActual={historyPage}
+            selectedProcesoId={selectedProcesoId}
+            onSelectProceso={(id) => {
+              setSelectedProcesoId(id);
+              setShowHistory(false);
+            }}
+            onPageChange={(p) => setHistoryPage(p)}
+            onClose={() => setShowHistory(false)}
+          />
+        )}
 
         {/* ── Loading / Error states ── */}
         {isLoading && (
