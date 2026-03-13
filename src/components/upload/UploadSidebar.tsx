@@ -244,13 +244,13 @@ export const UploadSidebar = ({
                 {files.map((file) => (
                   <div
                     key={file.id}
-                    className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200"
+                    className="flex items-center justify-between p-3 bg-info/10 rounded-lg border border-info/30"
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      <FileText className="h-4 w-4 text-info flex-shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium truncate">{file.file.name}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-muted-foreground">
                           {(file.file.size / 1024 / 1024).toFixed(1)} MB
                         </p>
                       </div>

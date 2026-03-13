@@ -124,10 +124,10 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
   };
 
   useEffect(() => {
-    if (selectedAction === 'ocr' && !userQuery && PREFILL_MODES.has(vlmMode)) {
+    if (!isLoading && selectedAction === 'ocr' && !userQuery && PREFILL_MODES.has(vlmMode)) {
       onQueryChange(getActivePrefill());
     }
-  }, [userQuery]);
+  }, [userQuery, isLoading]);
 
   useEffect(() => {
     if (selectedAction === 'ocr' && PREFILL_MODES.has(vlmMode)) {

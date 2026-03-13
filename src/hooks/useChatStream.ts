@@ -132,23 +132,25 @@ export const useChatStream = (): UseChatStreamReturn => {
       messageContent: string,
       chatContext: ChatContext,
       runner: StreamRunner,
-      options?: { onComplete?: () => void; attachmentUrls?: string[] }
+      options?: { onComplete?: () => void; attachmentUrls?: string[]; skipUserMessage?: boolean; initialProgressMessage?: string }
     ) => {
       if (!messageContent.trim() && !options?.attachmentUrls?.length) return;
 
       setIsLoading(true);
-      setProgressMessage(null);
+      setProgressMessage(options?.initialProgressMessage ?? null);
       streamingContentRef.current = "";
       activeChatIdRef.current = chatContext.chat_id ?? null;
 
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        sender: 0,
-        message: messageContent,
-        created_at: Date.now().toString(),
-        ...(options?.attachmentUrls?.length ? { attachment_urls: options.attachmentUrls } : {}),
-      };
-      addMessagesToCache(activeChatIdRef.current, [userMessage]);
+      if (!options?.skipUserMessage) {
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          sender: 0,
+          message: messageContent,
+          created_at: Date.now().toString(),
+          ...(options?.attachmentUrls?.length ? { attachment_urls: options.attachmentUrls } : {}),
+        };
+        addMessagesToCache(activeChatIdRef.current, [userMessage]);
+      }
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -327,8 +329,23 @@ export const useChatStream = (): UseChatStreamReturn => {
 
       const timestamp = Date.now().toString();
       const filenames = images.map((f) => f.name);
+      const attachmentUrls = images.map((f) => URL.createObjectURL(f));
+
+      // Add user message bubble immediately before the upload starts
+      activeChatIdRef.current = chatContext.chat_id ?? null;
+      streamingContentRef.current = "";
+      const userMessage: Message = {
+        id: timestamp,
+        sender: 0,
+        message: messageContent,
+        created_at: timestamp,
+        attachment_urls: attachmentUrls,
+      };
+      addMessagesToCache(activeChatIdRef.current, [userMessage]);
 
       // Steps 1 & 2: Get presigned URLs and upload images
+      setIsLoading(true);
+      setProgressMessage("Subiendo imágenes...");
       try {
         const { uploads } = await chatApi.getAttachmentUploadUrls({
           company_id: chatContext.company_id,
@@ -355,6 +372,8 @@ export const useChatStream = (): UseChatStreamReturn => {
           description: err instanceof Error ? err.message : "Error inesperado",
           variant: "destructive",
         });
+        setIsLoading(false);
+        setProgressMessage(null);
         return;
       }
 
@@ -371,14 +390,12 @@ export const useChatStream = (): UseChatStreamReturn => {
         vlm_mode: vlmMode,
       };
 
-      const attachmentUrls = images.map((f) => URL.createObjectURL(f));
-
       await executeStream(
         messageContent,
         chatContext,
         (onMessage, onError, onClose, onOpen, signal) =>
           chatApi.sendVlmStreaming(payload, onMessage, onError, onClose, onOpen, signal),
-        { onComplete, attachmentUrls }
+        { onComplete, skipUserMessage: true, initialProgressMessage: "Procesando imágenes..." }
       );
     },
     [executeStream, resetAudio]
