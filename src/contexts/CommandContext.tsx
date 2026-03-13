@@ -69,6 +69,10 @@ interface CommandProviderProps {
   // OCR images
   ocrImages: File[];
   onOcrImagesChange: (files: File[]) => void;
+
+  // VLM mode (lifted to parent)
+  vlmMode: VlmMode;
+  onVlmModeChange: (mode: VlmMode) => void;
 }
 
 export const CommandProvider = ({
@@ -87,9 +91,10 @@ export const CommandProvider = ({
   onTtsEnabledChange,
   ocrImages,
   onOcrImagesChange,
+  vlmMode,
+  onVlmModeChange,
 }: CommandProviderProps) => {
   const [selectedAction, setSelectedAction] = useState<'vectorial' | 'vectorial+sql' | 'login' | 'ocr'>('vectorial');
-  const [vlmMode, setVlmMode] = useState<VlmMode>('vlm_qa_over_text');
 
   // Create main action handler based on selectedAction
   useEffect(() => {
@@ -115,7 +120,7 @@ export const CommandProvider = ({
       selectedAction,
       onSelectedActionChange: setSelectedAction,
       vlmMode,
-      onVlmModeChange: setVlmMode,
+      onVlmModeChange,
       onSearchVectorial,
       onSearchVectorialSQL,
       onAnalyzeImages,
@@ -131,7 +136,7 @@ export const CommandProvider = ({
       ocrImages,
       onOcrImagesChange,
     }),
-    [selectedAction, vlmMode, onSearchVectorial, onSearchVectorialSQL, onAnalyzeImages, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange, ttsEnabled, onTtsEnabledChange, ocrImages, onOcrImagesChange]
+    [selectedAction, vlmMode, onVlmModeChange, onSearchVectorial, onSearchVectorialSQL, onAnalyzeImages, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange, ttsEnabled, onTtsEnabledChange, ocrImages, onOcrImagesChange]
   );
 
   return (

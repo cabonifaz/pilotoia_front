@@ -8,10 +8,20 @@ import {
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/shadcn/tooltip';
 import { Send, ScanSearch, MessageSquare, Table2, AlignLeft, ScanText, /*Bot, Lock*/ } from 'lucide-react';
 import { useCommand } from '../../contexts/CommandContext';
+import { useTranscription } from '../../contexts/TranscriptionContext';
+import { SUPPORTED_LANGUAGES } from '../../constants/languages';
+import { getOcrPrefill } from '../../constants/ocrTools';
 //import { LoginModal } from '../external-api/LoginModal';
 
 export const RagModeOptions = () => {
   const { selectedAction, onSelectedActionChange, vlmMode, onVlmModeChange, onQueryChange } = useCommand();
+  const { selectedLanguage } = useTranscription();
+
+  const lang = SUPPORTED_LANGUAGES.find(
+    (l) => l.codeOpenAI === selectedLanguage || l.codeAws?.includes(selectedLanguage)
+  );
+  const nameEnglish = lang?.nameEnglish ?? 'Spanish';
+
   //const [showLoginModal, setShowLoginModal] = useState(false);
 
   return (
@@ -47,7 +57,7 @@ export const RagModeOptions = () => {
             Pregunta sobre imagen
           </DropdownMenuItem>
           <DropdownMenuItem
-            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_extract_fields'); onQueryChange('Extrae los campos del archivo'); }}
+            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_extract_fields'); onQueryChange(getOcrPrefill(nameEnglish, 'vlm_extract_fields')); }}
             className={selectedAction === 'ocr' && vlmMode === 'vlm_extract_fields' ? 'border-l-4 border-primary' : ''}
           >
             <Table2 className="h-4 w-4 mr-2" />
@@ -55,14 +65,14 @@ export const RagModeOptions = () => {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_summarize_doc'); onQueryChange('Resume la información del archivo'); }}
+            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_summarize_doc'); onQueryChange(getOcrPrefill(nameEnglish, 'vlm_summarize_doc')); }}
             className={selectedAction === 'ocr' && vlmMode === 'vlm_summarize_doc' ? 'border-l-4 border-primary' : ''}
           >
             <AlignLeft className="h-4 w-4 mr-2" />
             Resumir documento
           </DropdownMenuItem>
           <DropdownMenuItem
-            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_ocr_clean'); onQueryChange('Extrae la información de este archivo'); }}
+            onSelect={() => { onSelectedActionChange('ocr'); onVlmModeChange('vlm_ocr_clean'); onQueryChange(getOcrPrefill(nameEnglish, 'vlm_ocr_clean')); }}
             className={selectedAction === 'ocr' && vlmMode === 'vlm_ocr_clean' ? 'border-l-4 border-primary' : ''}
           >
             <ScanText className="h-4 w-4 mr-2" />

@@ -20,7 +20,10 @@ import { useTranscription } from '../../contexts/TranscriptionContext';
 import {
   getAvailableLanguages,
   getLanguageCode,
+  SUPPORTED_LANGUAGES,
 } from '../../constants/languages';
+import { getOcrPrefill } from '../../constants/ocrTools';
+import type { OcrToolPrefill } from '../../constants/ocrTools';
 
 interface QueryInputSectionProps {
   company: string;
@@ -110,17 +113,27 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     resizeTextarea();
   }, [userQuery]);
 
-  const VLM_PREFILLS: Partial<Record<typeof vlmMode, string>> = {
-    vlm_extract_fields: 'Extrae los campos del archivo',
-    vlm_summarize_doc: 'Resume la información del archivo',
-    vlm_ocr_clean: 'Extrae la información de este archivo',
+  const PREFILL_MODES = new Set<typeof vlmMode>(['vlm_extract_fields', 'vlm_summarize_doc', 'vlm_ocr_clean']);
+
+  const getActivePrefill = () => {
+    const lang = SUPPORTED_LANGUAGES.find(
+      (l) => l.codeOpenAI === selectedLanguage || l.codeAws?.includes(selectedLanguage)
+    );
+    const nameEnglish = lang?.nameEnglish ?? 'Spanish';
+    return getOcrPrefill(nameEnglish, vlmMode as keyof OcrToolPrefill);
   };
 
   useEffect(() => {
-    if (selectedAction === 'ocr' && !userQuery && vlmMode in VLM_PREFILLS) {
-      onQueryChange(VLM_PREFILLS[vlmMode]!);
+    if (selectedAction === 'ocr' && !userQuery && PREFILL_MODES.has(vlmMode)) {
+      onQueryChange(getActivePrefill());
     }
   }, [userQuery]);
+
+  useEffect(() => {
+    if (selectedAction === 'ocr' && PREFILL_MODES.has(vlmMode)) {
+      onQueryChange(getActivePrefill());
+    }
+  }, [selectedLanguage]);
 
   useEffect(() => {
     if (selectedAction === 'vectorial') {

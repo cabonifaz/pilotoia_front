@@ -65,6 +65,7 @@ interface UseChatStreamReturn {
     images: File[],
     chatContext: ChatContext,
     tts: boolean,
+    vlmMode: string,
     onComplete?: () => void
   ) => Promise<void>;
   cancelMessage: () => void;
@@ -318,6 +319,7 @@ export const useChatStream = (): UseChatStreamReturn => {
       images: File[],
       chatContext: ChatContext,
       tts: boolean,
+      vlmMode: string,
       onComplete?: () => void
     ) => {
       if (!messageContent.trim() && images.length === 0) return;
@@ -366,6 +368,7 @@ export const useChatStream = (): UseChatStreamReturn => {
         filenames,
         chat_id: chatContext.chat_id ?? null,
         request_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        vlm_mode: vlmMode,
       };
 
       const attachmentUrls = images.map((f) => URL.createObjectURL(f));

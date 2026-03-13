@@ -9,7 +9,7 @@ import { MessageBubble } from "./MessageBubble";
 import { QueryInputSection } from "./QueryInputSection";
 import { ChatWelcome } from "./ChatWelcome";
 import { StreamingProgress } from "./StreamingProgress";
-import { CommandProvider } from "../../contexts/CommandContext";
+import { CommandProvider, type VlmMode } from "../../contexts/CommandContext";
 import { TranscriptionProvider } from "../../contexts/TranscriptionContext";
 import { type ChatContext } from "@/types/aiConfig";
 import { Loader } from "@/components/loader/Loader";
@@ -30,6 +30,7 @@ const ChatComponent = ({
   const [userQuery, setUserQuery] = useState("");
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const [ocrImages, setOcrImages] = useState<File[]>([]);
+  const [vlmMode, setVlmMode] = useState<VlmMode>('vlm_qa_over_text');
   const currentMainActionRef = useRef<() => void>(() => {});
 
   const { data: currentUser } = useQuery({
@@ -135,8 +136,8 @@ const ChatComponent = ({
     signalUserSending();
     prepareBeforeSubmit();
     const onComplete = buildOnComplete();
-    await analyzeImages(currentQuery, currentImages, chatContext, ttsEnabled, onComplete);
-  }, [userQuery, ocrImages, analyzeImages, chatContext, ttsEnabled, signalUserSending, prepareBeforeSubmit, buildOnComplete]);
+    await analyzeImages(currentQuery, currentImages, chatContext, ttsEnabled, vlmMode, onComplete);
+  }, [userQuery, ocrImages, vlmMode, analyzeImages, chatContext, ttsEnabled, signalUserSending, prepareBeforeSubmit, buildOnComplete]);
 
   // Keep submit callback updated for continuous mode auto-submit
   useEffect(() => {
@@ -159,6 +160,8 @@ const ChatComponent = ({
       onMainActionChange={(action) => { currentMainActionRef.current = action; }}
       ttsEnabled={ttsEnabled}
       onTtsEnabledChange={handleTtsToggle}
+      vlmMode={vlmMode}
+      onVlmModeChange={setVlmMode}
     >
       <TranscriptionProvider
         transcribeProvider={transcription.transcribeProvider}
