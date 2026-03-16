@@ -5,6 +5,7 @@ import {
   type AgentMessageRequest,
 } from "../api/chatApi";
 import { showStreamingErrorToast } from "../utils/errorHandler";
+import { toast } from "./use-toast";
 import { type Message } from "@/types/message";
 import { type ChatContext } from "@/types/aiConfig";
 import { useAudioPlayer } from "./useAudioPlayer";
@@ -58,6 +59,14 @@ interface UseChatStreamReturn {
     message: string,
     chatContext: ChatContext,
     token: string
+  ) => Promise<void>;
+  analyzeImages: (
+    message: string,
+    images: File[],
+    chatContext: ChatContext,
+    tts: boolean,
+    vlmMode: string,
+    onComplete?: () => void
   ) => Promise<void>;
   cancelMessage: () => void;
   stopAudio: () => void;
@@ -123,22 +132,25 @@ export const useChatStream = (): UseChatStreamReturn => {
       messageContent: string,
       chatContext: ChatContext,
       runner: StreamRunner,
-      options?: { onComplete?: () => void }
+      options?: { onComplete?: () => void; attachmentUrls?: string[]; skipUserMessage?: boolean; initialProgressMessage?: string }
     ) => {
-      if (!messageContent.trim()) return;
+      if (!messageContent.trim() && !options?.attachmentUrls?.length) return;
 
       setIsLoading(true);
-      setProgressMessage(null);
+      setProgressMessage(options?.initialProgressMessage ?? null);
       streamingContentRef.current = "";
       activeChatIdRef.current = chatContext.chat_id ?? null;
 
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        sender: 0,
-        message: messageContent,
-        created_at: Date.now().toString(),
-      };
-      addMessagesToCache(activeChatIdRef.current, [userMessage]);
+      if (!options?.skipUserMessage) {
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          sender: 0,
+          message: messageContent,
+          created_at: Date.now().toString(),
+          ...(options?.attachmentUrls?.length ? { attachment_urls: options.attachmentUrls } : {}),
+        };
+        addMessagesToCache(activeChatIdRef.current, [userMessage]);
+      }
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -303,6 +315,92 @@ export const useChatStream = (): UseChatStreamReturn => {
     [executeStream, resetAudio]
   );
 
+  const analyzeImages = useCallback(
+    async (
+      messageContent: string,
+      images: File[],
+      chatContext: ChatContext,
+      tts: boolean,
+      vlmMode: string,
+      onComplete?: () => void
+    ) => {
+      if (!messageContent.trim() && images.length === 0) return;
+      if (tts) resetAudio();
+
+      const timestamp = Date.now().toString();
+      const filenames = images.map((f) => f.name);
+      const attachmentUrls = images.map((f) => URL.createObjectURL(f));
+
+      // Add user message bubble immediately before the upload starts
+      activeChatIdRef.current = chatContext.chat_id ?? null;
+      streamingContentRef.current = "";
+      const userMessage: Message = {
+        id: timestamp,
+        sender: 0,
+        message: messageContent,
+        created_at: timestamp,
+        attachment_urls: attachmentUrls,
+      };
+      addMessagesToCache(activeChatIdRef.current, [userMessage]);
+
+      // Steps 1 & 2: Get presigned URLs and upload images
+      setIsLoading(true);
+      setProgressMessage("Subiendo imágenes...");
+      try {
+        const { uploads } = await chatApi.getAttachmentUploadUrls({
+          company_id: chatContext.company_id,
+          area_id: chatContext.area_id,
+          filenames,
+          timestamp,
+        });
+
+        await Promise.all(
+          images.map(async (file, index) => {
+            const res = await fetch(uploads[index].presigned_url, {
+              method: "PUT",
+              body: file,
+              // No Content-Type header — avoids CORS preflight on S3
+            });
+            if (!res.ok) {
+              throw new Error(`"${file.name}": HTTP ${res.status}`);
+            }
+          })
+        );
+      } catch (err) {
+        toast({
+          title: "Error al subir imágenes",
+          description: err instanceof Error ? err.message : "Error inesperado",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        setProgressMessage(null);
+        return;
+      }
+
+      // Step 3: Stream VLM response
+      const payload = {
+        message: messageContent,
+        user_id: chatContext.user_id,
+        company_id: chatContext.company_id,
+        area_id: chatContext.area_id,
+        created_at: timestamp,
+        filenames,
+        chat_id: chatContext.chat_id ?? null,
+        request_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        vlm_mode: vlmMode,
+      };
+
+      await executeStream(
+        messageContent,
+        chatContext,
+        (onMessage, onError, onClose, onOpen, signal) =>
+          chatApi.sendVlmStreaming(payload, onMessage, onError, onClose, onOpen, signal),
+        { onComplete, skipUserMessage: true, initialProgressMessage: "Procesando imágenes..." }
+      );
+    },
+    [executeStream, resetAudio]
+  );
+
   // NOTE: This function is pending replacement. Keep it decoupled from the rest.
   const searchVectorialSQL = useCallback(
     async (messageContent: string, chatContext: ChatContext, token: string) => {
@@ -334,6 +432,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     initializeAudio,
     searchVectorial,
     searchVectorialSQL,
+    analyzeImages,
     cancelMessage,
     stopAudio,
     resetAudio,

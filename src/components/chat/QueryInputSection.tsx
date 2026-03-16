@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Textarea } from '@/components/shadcn/textarea';
 import {
@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/shadcn/select';
-import { Square, Languages, AudioLines } from 'lucide-react';
+import { Square, Languages, AudioLines, Paperclip, X } from 'lucide-react';
 import { VoiceRecordButton } from './VoiceRecordButton';
 import { FileTranscribeButton } from './FileTranscribeButton';
 import { ContinuousVoiceButton } from './ContinuousVoiceButton';
@@ -20,7 +20,10 @@ import { useTranscription } from '../../contexts/TranscriptionContext';
 import {
   getAvailableLanguages,
   getLanguageCode,
+  SUPPORTED_LANGUAGES,
 } from '../../constants/languages';
+import { getOcrPrefill } from '../../constants/ocrTools';
+import type { OcrToolPrefill } from '../../constants/ocrTools';
 
 interface QueryInputSectionProps {
   company: string;
@@ -37,10 +40,30 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     isLoading,
     onCancel,
     onSearchVectorial,
+    onAnalyzeImages,
     selectedAction,
+    vlmMode,
     ttsEnabled,
     onTtsEnabledChange,
+    ocrImages,
+    onOcrImagesChange,
   } = useCommand();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const unique = files.filter(
+      (f) => !ocrImages.some((existing) => existing.name === f.name && existing.size === f.size)
+    );
+    const merged = [...ocrImages, ...unique].slice(0, 5);
+    onOcrImagesChange(merged);
+    e.target.value = '';
+  }, [ocrImages, onOcrImagesChange]);
+
+  const removeOcrImage = useCallback((index: number) => {
+    onOcrImagesChange(ocrImages.filter((_, i) => i !== index));
+  }, [ocrImages, onOcrImagesChange]);
 
   const {
     transcribeProvider,
@@ -90,11 +113,35 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     resizeTextarea();
   }, [userQuery]);
 
+  const PREFILL_MODES = new Set<typeof vlmMode>(['vlm_extract_fields', 'vlm_summarize_doc', 'vlm_ocr_clean']);
+
+  const getActivePrefill = () => {
+    const lang = SUPPORTED_LANGUAGES.find(
+      (l) => l.codeOpenAI === selectedLanguage || l.codeAws?.includes(selectedLanguage)
+    );
+    const nameEnglish = lang?.nameEnglish ?? 'Spanish';
+    return getOcrPrefill(nameEnglish, vlmMode as keyof OcrToolPrefill);
+  };
+
+  useEffect(() => {
+    if (!isLoading && selectedAction === 'ocr' && !userQuery && PREFILL_MODES.has(vlmMode)) {
+      onQueryChange(getActivePrefill());
+    }
+  }, [userQuery, isLoading]);
+
+  useEffect(() => {
+    if (selectedAction === 'ocr' && PREFILL_MODES.has(vlmMode)) {
+      onQueryChange(getActivePrefill());
+    }
+  }, [selectedLanguage]);
+
   useEffect(() => {
     if (selectedAction === 'vectorial') {
       currentMainActionRef.current = onSearchVectorial;
+    } else if (selectedAction === 'ocr') {
+      currentMainActionRef.current = onAnalyzeImages;
     }
-  }, [selectedAction, onSearchVectorial]);
+  }, [selectedAction, onSearchVectorial, onAnalyzeImages]);
 
   /* ---------------- LANGUAGES ---------------- */
 
@@ -120,6 +167,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
+                if (selectedAction === 'ocr' && (ocrImages.length === 0 || !userQuery.trim())) return;
                 currentMainActionRef.current();
               }
             }}
@@ -129,6 +177,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
               text-xs
               leading-normal
               overflow-y-auto
+              chat-scroll
               border-0
               focus-visible:ring-0
               focus-visible:ring-offset-0
@@ -149,8 +198,45 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
         {/* CONTROLS ROW - bottom */}
         <div className="flex items-center justify-between pt-1">
           {/* LEFT */}
-          <div>
+          <div className="flex items-center gap-1">
             {!isLoading && <CommandMenu disabled={isLoading} />}
+            {!isLoading && selectedAction === 'ocr' && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".png,.jpg,.jpeg,.webp,.bmp,image/png,image/jpeg,image/webp,image/bmp"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full h-8 w-8"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={ocrImages.length >= 5}
+                  title={ocrImages.length >= 5 ? 'Máximo 5 imágenes' : 'Adjuntar imágenes'}
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+                {ocrImages.map((file, i) => (
+                  <div key={i} className="relative flex items-center">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={file.name}
+                      className="h-7 w-7 rounded object-cover border border-muted-foreground/30"
+                    />
+                    <button
+                      className="absolute -top-1 -right-1 bg-background rounded-full border border-muted-foreground/30 p-px"
+                      onClick={() => removeOcrImage(i)}
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
 
           {/* RIGHT */}

@@ -9,6 +9,9 @@ import type {
   ChatConfigRequest,
   ConfigValidationResponse,
   MessageListResponse,
+  AttachmentUploadUrlsRequest,
+  AttachmentUploadUrlsResponse,
+  VlmMessageRequest,
 } from "@/types/chat";
 
 export const chatApi = {
@@ -147,6 +150,37 @@ export const chatApi = {
     const response = await apiClient.delete(`/v1/chats/${chatId}`);
     return response.data;
   },
+
+  getAttachmentUploadUrls: async (
+    request: AttachmentUploadUrlsRequest
+  ): Promise<AttachmentUploadUrlsResponse> => {
+    const response = await apiClient.post<AttachmentUploadUrlsResponse>(
+      "/v1/messages/attachment-upload-urls",
+      request
+    );
+    return response.data;
+  },
+
+  sendVlmStreaming: async (
+    messageRequest: VlmMessageRequest,
+    onMessage: (data: any) => void,
+    onError?: (error: Event) => void,
+    onClose?: (event: CloseEvent) => void,
+    onOpen?: () => void,
+    signal?: AbortSignal
+  ): Promise<void> => {
+    return createSSEConnection(
+      {
+        endpoint: "/v1/rag/vlm-streaming",
+        onMessage,
+        onError,
+        onClose,
+        onOpen,
+        signal,
+      },
+      messageRequest
+    );
+  },
 };
 
 // Re-export types for backwards compatibility
@@ -159,4 +193,7 @@ export type {
   ChatConfigRequest,
   ConfigValidationResponse,
   MessageListResponse,
+  AttachmentUploadUrlsRequest,
+  AttachmentUploadUrlsResponse,
+  VlmMessageRequest,
 };

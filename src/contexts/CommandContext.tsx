@@ -1,14 +1,21 @@
 import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
 
+export type VlmMode = 'vlm_qa_over_text' | 'vlm_extract_fields' | 'vlm_summarize_doc' | 'vlm_ocr_clean';
+
 interface CommandContextType {
   // Command selection
-  selectedAction: 'vectorial' | 'vectorial+sql' | 'login';
-  onSelectedActionChange: (action: 'vectorial' | 'vectorial+sql' | 'login') => void;
+  selectedAction: 'vectorial' | 'vectorial+sql' | 'login' | 'ocr';
+  onSelectedActionChange: (action: 'vectorial' | 'vectorial+sql' | 'login' | 'ocr') => void;
+
+  // VLM sub-mode (only relevant when selectedAction === 'ocr')
+  vlmMode: VlmMode;
+  onVlmModeChange: (mode: VlmMode) => void;
 
   // Command execution
   onSearchVectorial: () => void;
   onSearchVectorialSQL: () => void;
+  onAnalyzeImages: () => void;
   onCancel: () => void;
   onMainActionChange: (action: () => void) => void;
 
@@ -24,6 +31,10 @@ interface CommandContextType {
   // TTS state
   ttsEnabled: boolean;
   onTtsEnabledChange: (enabled: boolean) => void;
+
+  // OCR images
+  ocrImages: File[];
+  onOcrImagesChange: (files: File[]) => void;
 }
 
 const CommandContext = createContext<CommandContextType | undefined>(undefined);
@@ -42,6 +53,7 @@ interface CommandProviderProps {
   // Command execution
   onSearchVectorial: () => void;
   onSearchVectorialSQL: () => void;
+  onAnalyzeImages: () => void;
 
   // Auth
   isAuthenticated: boolean;
@@ -53,6 +65,14 @@ interface CommandProviderProps {
   // TTS state
   ttsEnabled: boolean;
   onTtsEnabledChange: (enabled: boolean) => void;
+
+  // OCR images
+  ocrImages: File[];
+  onOcrImagesChange: (files: File[]) => void;
+
+  // VLM mode (lifted to parent)
+  vlmMode: VlmMode;
+  onVlmModeChange: (mode: VlmMode) => void;
 }
 
 export const CommandProvider = ({
@@ -63,19 +83,26 @@ export const CommandProvider = ({
   onCancel,
   onSearchVectorial,
   onSearchVectorialSQL,
+  onAnalyzeImages,
   isAuthenticated,
   token,
   onMainActionChange,
   ttsEnabled,
   onTtsEnabledChange,
+  ocrImages,
+  onOcrImagesChange,
+  vlmMode,
+  onVlmModeChange,
 }: CommandProviderProps) => {
-  const [selectedAction, setSelectedAction] = useState<'vectorial' | 'vectorial+sql' | 'login'>('vectorial');
+  const [selectedAction, setSelectedAction] = useState<'vectorial' | 'vectorial+sql' | 'login' | 'ocr'>('vectorial');
 
   // Create main action handler based on selectedAction
   useEffect(() => {
     const handleMainButtonClick = () => {
       if (selectedAction === 'vectorial') {
         onSearchVectorial();
+      } else if (selectedAction === 'ocr') {
+        onAnalyzeImages();
       } /*else if (selectedAction === 'vectorial+sql') {
         onSearchVectorialSQL();
       }
@@ -85,15 +112,18 @@ export const CommandProvider = ({
     };
 
     onMainActionChange(handleMainButtonClick);
-  }, [selectedAction, isAuthenticated, onSearchVectorial, onSearchVectorialSQL, onMainActionChange]);
+  }, [selectedAction, isAuthenticated, onSearchVectorial, onSearchVectorialSQL, onAnalyzeImages, onMainActionChange]);
 
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<CommandContextType>(
     () => ({
       selectedAction,
       onSelectedActionChange: setSelectedAction,
+      vlmMode,
+      onVlmModeChange,
       onSearchVectorial,
       onSearchVectorialSQL,
+      onAnalyzeImages,
       onCancel,
       onMainActionChange,
       isLoading,
@@ -103,8 +133,10 @@ export const CommandProvider = ({
       onQueryChange,
       ttsEnabled,
       onTtsEnabledChange,
+      ocrImages,
+      onOcrImagesChange,
     }),
-    [selectedAction, onSearchVectorial, onSearchVectorialSQL, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange, ttsEnabled, onTtsEnabledChange]
+    [selectedAction, vlmMode, onVlmModeChange, onSearchVectorial, onSearchVectorialSQL, onAnalyzeImages, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange, ttsEnabled, onTtsEnabledChange, ocrImages, onOcrImagesChange]
   );
 
   return (

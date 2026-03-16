@@ -23,7 +23,7 @@ export const DocumentPreviewModal = ({
 }: DocumentPreviewModalProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] flex flex-col bg-white rounded-xl shadow-xl">
+      <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] flex flex-col rounded-xl shadow-xl">
         {/* Header */}
         <DialogHeader className="border-b px-3 py-1">
           <DialogTitle className="text-lg font-semibold text-center w-full">
