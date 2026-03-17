@@ -8,8 +8,8 @@ import {
     useRefreshUser,
     useUserRole,
     useCompanyAreasQuery,
-    useUserChatsQuery
 } from '../hooks/useUserQueries';
+import { useUserChats } from '../hooks/useChatQueries';
 
 interface QueryAuthContextType {
     user: DecodedUserData | null;
@@ -43,7 +43,7 @@ export const QueryAuthProvider = ({ children }: QueryAuthProviderProps) => {
     useCompanyAreasQuery();
 
     // Automatically fetch user chats when user is authenticated
-    useUserChatsQuery();
+    useUserChats();
 
     const login = async (usuario: string, clave_acceso: string, ref?: string): Promise<{ success: boolean; user?: LoginResponse }> => {
         try {
