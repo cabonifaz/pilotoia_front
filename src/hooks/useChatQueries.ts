@@ -14,8 +14,8 @@ export const useUserChats = () => {
             return chats as ChatData[];
         },
         enabled: !!user, // Only run if user is authenticated
-        staleTime: 60 * 60 * 1000, // Stale after 5 minutes
-        gcTime: 2 * 60 * 60 * 1000, // Keep in cache for 10 minutes
+        staleTime: 4 * 60 * 60 * 1000, // Stale after 4 hours
+        gcTime: 8 * 60 * 60 * 1000, // Keep in cache for 8 hours
         refetchOnWindowFocus: true,
         refetchOnReconnect: true,
         retry: true,
@@ -70,14 +70,5 @@ export const useChatListUpdater = () => {
         updateChat,
         removeChat,
         updateChatsList
-    };
-};
-
-// Hook to clear chat cache (useful for logout)
-export const useClearChatCache = () => {
-    const queryClient = useQueryClient();
-    
-    return () => {
-        queryClient.removeQueries({ queryKey: ['chat'] });
     };
 };
