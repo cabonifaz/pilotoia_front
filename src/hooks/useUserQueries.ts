@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authApi } from "../api/authApi";
-import { chatApi } from "../api/chatApi";
 import type {
   LoginRequest,
   LoginResponse,
@@ -86,9 +85,6 @@ export const useLoginMutation = () => {
 
           // Update the query cache with decoded JWT data (without company_areas)
           queryClient.setQueryData(queryKeys.user.current(), userDataForCache);
-
-          // Note: Chats are now fetched per company/area by useUserChatsQuery
-          // No longer storing all chats at login - they'll be fetched when needed
 
           // Show success message
           toast({
@@ -315,39 +311,12 @@ export const useCompanyAreasQuery = () => {
   });
 };
 
-// Hook to fetch and update user chats
-export const useUserChatsQuery = () => {
-  const { user } = useCurrentUser();
-
-  return useQuery({
-    queryKey: ["user", "chats"],
-    queryFn: async (): Promise<any[]> => {
-      const chats = await chatApi.getUserChats();
-      return chats;
-    },
-    enabled: !!user && !!(user as any)?.actual_company_area, // Wait for user and actual_company_area
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: true,
-    retry: 2,
-  });
-};
-
 // Hook to invalidate company areas (when permissions change)
 export const useInvalidateCompanyAreas = () => {
   const queryClient = useQueryClient();
 
   return () => {
     queryClient.invalidateQueries({ queryKey: ["user", "company-areas"] });
-  };
-};
-
-// Hook to invalidate user chats (when chats change)
-export const useInvalidateUserChats = () => {
-  const queryClient = useQueryClient();
-
-  return () => {
-    queryClient.invalidateQueries({ queryKey: ["user", "chats"] });
   };
 };
 
