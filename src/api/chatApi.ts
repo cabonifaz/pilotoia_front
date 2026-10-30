@@ -12,6 +12,9 @@ import type {
   AttachmentUploadUrlsRequest,
   AttachmentUploadUrlsResponse,
   VlmMessageRequest,
+  MCPChatRequest,
+  MCPChatResponse,
+  MCPAvailabilityResponse,
 } from "@/types/chat";
 
 export const chatApi = {
@@ -181,6 +184,29 @@ export const chatApi = {
       messageRequest
     );
   },
+
+  sendMcpMessage: async (
+    messageRequest: MCPChatRequest,
+    signal?: AbortSignal
+  ): Promise<MCPChatResponse> => {
+    const response = await apiClient.post<MCPChatResponse>(
+      "/v1/mcp/chat",
+      messageRequest,
+      { signal }
+    );
+    return response.data;
+  },
+
+  getMcpAvailability: async (
+    companyId: number,
+    areaId: number
+  ): Promise<MCPAvailabilityResponse> => {
+    const response = await apiClient.post<MCPAvailabilityResponse>(
+      "/v1/mcp/availability",
+      { company_id: companyId, area_id: areaId }
+    );
+    return response.data;
+  },
 };
 
 // Re-export types for backwards compatibility
@@ -196,4 +222,7 @@ export type {
   AttachmentUploadUrlsRequest,
   AttachmentUploadUrlsResponse,
   VlmMessageRequest,
+  MCPChatRequest,
+  MCPChatResponse,
+  MCPAvailabilityResponse,
 };

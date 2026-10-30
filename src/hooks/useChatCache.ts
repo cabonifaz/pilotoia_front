@@ -91,10 +91,15 @@ export const useChatCache = () => {
     [queryClient]
   );
 
+  const refreshChatList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["user", "chats"] });
+  }, [queryClient]);
+
   return {
     addMessagesToCache,
     updateMessageInCache,
     migrateTempCache,
     addNewChatToList,
+    refreshChatList,
   };
 };

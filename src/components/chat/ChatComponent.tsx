@@ -15,6 +15,7 @@ import { type ChatContext } from "@/types/aiConfig";
 import { Loader } from "@/components/loader/Loader";
 import { useQueryAuthContext } from "../../contexts/QueryAuthContext";
 import { Loader2 } from "lucide-react";
+import { chatApi } from "@/api/chatApi";
 
 interface ChatComponentProps {
   chatContext: ChatContext;
@@ -58,6 +59,7 @@ const ChatComponent = ({
     progressMessage,
     searchVectorial,
     searchVectorialSQL,
+    searchMcp,
     analyzeImages,
     cancelMessage,
     currentChatId,
@@ -68,6 +70,17 @@ const ChatComponent = ({
   const { isAuthenticated, token } = useExternalLogin();
   const { user } = useQueryAuthContext();
   const actualCompanyArea = (user as any)?.actual_company_area;
+
+  const { data: mcpAvailability } = useQuery({
+    queryKey: ["mcp-availability", chatContext.company_id, chatContext.area_id],
+    queryFn: () => chatApi.getMcpAvailability(
+      chatContext.company_id,
+      chatContext.area_id,
+    ),
+    enabled: chatContext.company_id > 0 && chatContext.area_id > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
 
   const logoUrl = useMemo(() => {
     if (!actualCompanyArea?.LOGO) return "/fractal-logo.svg";
@@ -127,6 +140,16 @@ const ChatComponent = ({
     await searchVectorialSQL(currentQuery, chatContext, token);
   }, [userQuery, searchVectorialSQL, chatContext, token, signalUserSending]);
 
+  const mcpQuery = useCallback(async () => {
+    if (!userQuery.trim()) return;
+    const currentQuery = userQuery;
+    setUserQuery("");
+    signalUserSending();
+    prepareBeforeSubmit();
+    const onComplete = buildOnComplete();
+    await searchMcp(currentQuery, chatContext, onComplete);
+  }, [userQuery, searchMcp, chatContext, signalUserSending, prepareBeforeSubmit, buildOnComplete]);
+
   const imageAnalysisQuery = useCallback(async () => {
     if (ocrImages.length === 0) return;
     const currentQuery = userQuery;
@@ -155,6 +178,8 @@ const ChatComponent = ({
       onSearchVectorial={chatQuery}
       onSearchVectorialSQL={agentQuery}
       onAnalyzeImages={imageAnalysisQuery}
+      onSearchMcp={mcpQuery}
+      isMcpAvailable={mcpAvailability?.enabled === true}
       ocrImages={ocrImages}
       onOcrImagesChange={setOcrImages}
       onMainActionChange={(action) => { currentMainActionRef.current = action; }}

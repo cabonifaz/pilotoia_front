@@ -2,11 +2,13 @@ import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
 
 export type VlmMode = 'vlm_qa_over_text' | 'vlm_extract_fields' | 'vlm_summarize_doc' | 'vlm_ocr_clean';
+export type ChatAction = 'vectorial' | 'vectorial+sql' | 'login' | 'ocr' | 'mcp';
 
 interface CommandContextType {
   // Command selection
-  selectedAction: 'vectorial' | 'vectorial+sql' | 'login' | 'ocr';
-  onSelectedActionChange: (action: 'vectorial' | 'vectorial+sql' | 'login' | 'ocr') => void;
+  selectedAction: ChatAction;
+  onSelectedActionChange: (action: ChatAction) => void;
+  isMcpAvailable: boolean;
 
   // VLM sub-mode (only relevant when selectedAction === 'ocr')
   vlmMode: VlmMode;
@@ -16,6 +18,7 @@ interface CommandContextType {
   onSearchVectorial: () => void;
   onSearchVectorialSQL: () => void;
   onAnalyzeImages: () => void;
+  onSearchMcp: () => void;
   onCancel: () => void;
   onMainActionChange: (action: () => void) => void;
 
@@ -54,6 +57,8 @@ interface CommandProviderProps {
   onSearchVectorial: () => void;
   onSearchVectorialSQL: () => void;
   onAnalyzeImages: () => void;
+  onSearchMcp: () => void;
+  isMcpAvailable: boolean;
 
   // Auth
   isAuthenticated: boolean;
@@ -84,6 +89,8 @@ export const CommandProvider = ({
   onSearchVectorial,
   onSearchVectorialSQL,
   onAnalyzeImages,
+  onSearchMcp,
+  isMcpAvailable,
   isAuthenticated,
   token,
   onMainActionChange,
@@ -94,7 +101,13 @@ export const CommandProvider = ({
   vlmMode,
   onVlmModeChange,
 }: CommandProviderProps) => {
-  const [selectedAction, setSelectedAction] = useState<'vectorial' | 'vectorial+sql' | 'login' | 'ocr'>('vectorial');
+  const [selectedAction, setSelectedAction] = useState<ChatAction>('vectorial');
+
+  useEffect(() => {
+    if (!isMcpAvailable && selectedAction === 'mcp') {
+      setSelectedAction('vectorial');
+    }
+  }, [isMcpAvailable, selectedAction]);
 
   // Create main action handler based on selectedAction
   useEffect(() => {
@@ -103,6 +116,8 @@ export const CommandProvider = ({
         onSearchVectorial();
       } else if (selectedAction === 'ocr') {
         onAnalyzeImages();
+      } else if (selectedAction === 'mcp' && isMcpAvailable) {
+        onSearchMcp();
       } /*else if (selectedAction === 'vectorial+sql') {
         onSearchVectorialSQL();
       }
@@ -112,18 +127,20 @@ export const CommandProvider = ({
     };
 
     onMainActionChange(handleMainButtonClick);
-  }, [selectedAction, isAuthenticated, onSearchVectorial, onSearchVectorialSQL, onAnalyzeImages, onMainActionChange]);
+  }, [selectedAction, isAuthenticated, isMcpAvailable, onSearchVectorial, onSearchVectorialSQL, onAnalyzeImages, onSearchMcp, onMainActionChange]);
 
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<CommandContextType>(
     () => ({
       selectedAction,
       onSelectedActionChange: setSelectedAction,
+      isMcpAvailable,
       vlmMode,
       onVlmModeChange,
       onSearchVectorial,
       onSearchVectorialSQL,
       onAnalyzeImages,
+      onSearchMcp,
       onCancel,
       onMainActionChange,
       isLoading,
@@ -136,7 +153,7 @@ export const CommandProvider = ({
       ocrImages,
       onOcrImagesChange,
     }),
-    [selectedAction, vlmMode, onVlmModeChange, onSearchVectorial, onSearchVectorialSQL, onAnalyzeImages, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange, ttsEnabled, onTtsEnabledChange, ocrImages, onOcrImagesChange]
+    [selectedAction, isMcpAvailable, vlmMode, onVlmModeChange, onSearchVectorial, onSearchVectorialSQL, onAnalyzeImages, onSearchMcp, onCancel, onMainActionChange, isLoading, isAuthenticated, token, userQuery, onQueryChange, ttsEnabled, onTtsEnabledChange, ocrImages, onOcrImagesChange]
   );
 
   return (

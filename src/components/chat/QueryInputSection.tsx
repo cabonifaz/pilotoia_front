@@ -40,6 +40,7 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
     isLoading,
     onCancel,
     onSearchVectorial,
+    onSearchMcp,
     onAnalyzeImages,
     selectedAction,
     vlmMode,
@@ -138,10 +139,12 @@ export const QueryInputSection = ({ company, area }: QueryInputSectionProps) => 
   useEffect(() => {
     if (selectedAction === 'vectorial') {
       currentMainActionRef.current = onSearchVectorial;
+    } else if (selectedAction === 'mcp') {
+      currentMainActionRef.current = onSearchMcp;
     } else if (selectedAction === 'ocr') {
       currentMainActionRef.current = onAnalyzeImages;
     }
-  }, [selectedAction, onSearchVectorial, onAnalyzeImages]);
+  }, [selectedAction, onSearchVectorial, onSearchMcp, onAnalyzeImages]);
 
   /* ---------------- LANGUAGES ---------------- */
 

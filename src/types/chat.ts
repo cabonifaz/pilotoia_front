@@ -32,6 +32,24 @@ export interface ChatMessageResponse {
     result: MensajeResponse;
 }
 
+export interface MCPChatRequest {
+    message: string;
+    company_id: number;
+    area_id: number;
+    created_at: string;
+    chat_id: number | null;
+}
+
+export interface MCPChatResponse {
+    response: string;
+    chat_id: number;
+    result: MensajeResponse;
+}
+
+export interface MCPAvailabilityResponse {
+    enabled: boolean;
+}
+
 export interface ChatHistoryResponse {
     messages: ChatHistoryMessage[];
     result: MensajeResponse;

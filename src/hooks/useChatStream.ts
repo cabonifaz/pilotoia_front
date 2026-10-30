@@ -3,6 +3,7 @@ import {
   chatApi,
   type ChatMessageRequest,
   type AgentMessageRequest,
+  type MCPChatRequest,
 } from "../api/chatApi";
 import { showStreamingErrorToast } from "../utils/errorHandler";
 import { toast } from "./use-toast";
@@ -60,6 +61,11 @@ interface UseChatStreamReturn {
     chatContext: ChatContext,
     token: string
   ) => Promise<void>;
+  searchMcp: (
+    message: string,
+    chatContext: ChatContext,
+    onComplete?: () => void
+  ) => Promise<void>;
   analyzeImages: (
     message: string,
     images: File[],
@@ -95,7 +101,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     reset: resetAudio,
   } = useAudioPlayer();
 
-  const { addMessagesToCache, updateMessageInCache, migrateTempCache, addNewChatToList } =
+  const { addMessagesToCache, updateMessageInCache, migrateTempCache, addNewChatToList, refreshChatList } =
     useChatCache();
 
   useEffect(() => {
@@ -315,6 +321,70 @@ export const useChatStream = (): UseChatStreamReturn => {
     [executeStream, resetAudio]
   );
 
+  const searchMcp = useCallback(
+    async (
+      messageContent: string,
+      chatContext: ChatContext,
+      onComplete?: () => void
+    ) => {
+      if (!messageContent.trim()) return;
+
+      const createdAt = Date.now().toString();
+      activeChatIdRef.current = chatContext.chat_id ?? null;
+      setIsLoading(true);
+      setProgressMessage("Consultando Banco de Talentos...");
+
+      addMessagesToCache(activeChatIdRef.current, [{
+        id: createdAt,
+        sender: 0,
+        message: messageContent,
+        created_at: createdAt,
+      }]);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      const payload: MCPChatRequest = {
+        message: messageContent,
+        company_id: chatContext.company_id,
+        area_id: chatContext.area_id,
+        created_at: createdAt,
+        chat_id: chatContext.chat_id ?? null,
+      };
+
+      try {
+        const response = await chatApi.sendMcpMessage(payload, controller.signal);
+        const responseChatId = response.chat_id;
+
+        if (activeChatIdRef.current === null) {
+          migrateTempCache(responseChatId);
+          activeChatIdRef.current = responseChatId;
+          refreshChatList();
+        }
+        setCurrentChatId(responseChatId);
+
+        const assistantTimestamp = Math.max(
+          Date.now(),
+          Number(createdAt) + 1000
+        ).toString();
+        addMessagesToCache(responseChatId, [{
+          id: assistantTimestamp,
+          sender: 1,
+          message: response.response,
+          created_at: assistantTimestamp,
+        }]);
+      } catch {
+        // The shared Axios interceptor displays the request error.
+      } finally {
+        abortRef.current = null;
+        setProgressMessage(null);
+        setIsLoading(false);
+        onComplete?.();
+      }
+    },
+    [addMessagesToCache, migrateTempCache, refreshChatList]
+  );
+
   const analyzeImages = useCallback(
     async (
       messageContent: string,
@@ -432,6 +502,7 @@ export const useChatStream = (): UseChatStreamReturn => {
     initializeAudio,
     searchVectorial,
     searchVectorialSQL,
+    searchMcp,
     analyzeImages,
     cancelMessage,
     stopAudio,

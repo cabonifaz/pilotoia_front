@@ -6,7 +6,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/shadcn/dropdown-menu';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/shadcn/tooltip';
-import { Send, ScanSearch, MessageSquare, Table2, AlignLeft, ScanText, /*Bot, Lock*/ } from 'lucide-react';
+import { Send, ScanSearch, MessageSquare, Table2, AlignLeft, ScanText, Users, /*Bot, Lock*/ } from 'lucide-react';
 import { useCommand } from '../../contexts/CommandContext';
 import { useTranscription } from '../../contexts/TranscriptionContext';
 import { SUPPORTED_LANGUAGES } from '../../constants/languages';
@@ -14,7 +14,7 @@ import { getOcrPrefill } from '../../constants/ocrTools';
 //import { LoginModal } from '../external-api/LoginModal';
 
 export const RagModeOptions = () => {
-  const { selectedAction, onSelectedActionChange, vlmMode, onVlmModeChange, onQueryChange } = useCommand();
+  const { selectedAction, onSelectedActionChange, isMcpAvailable, vlmMode, onVlmModeChange, onQueryChange } = useCommand();
   const { selectedLanguage } = useTranscription();
 
   const lang = SUPPORTED_LANGUAGES.find(
@@ -40,6 +40,22 @@ export const RagModeOptions = () => {
           Búsqueda en la base de conocimiento
         </TooltipContent>
       </Tooltip>
+      {isMcpAvailable && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuItem
+              onSelect={() => { onSelectedActionChange('mcp'); onQueryChange(''); }}
+              className={selectedAction === 'mcp' ? 'border-l-4 border-primary' : ''}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Banco de Talentos (MCP)
+            </DropdownMenuItem>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            Consulta de talentos de Fractal Consulting
+          </TooltipContent>
+        </Tooltip>
+      )}
       <DropdownMenuSub>
         <DropdownMenuSubTrigger
           onClick={() => onSelectedActionChange('ocr')}
